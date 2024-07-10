@@ -1,0 +1,18 @@
+difference between module and api
+module
+-->modules are designed to handle specific business operations, such as accounting, sales, inventory management, customer relationship management (CRM), and more. 
+-->Modules allow you to easily navigate and access the various functionalities within NetSuite.
+APi
+-- APIs (Application Programming Interfaces) in NetSuite are a set of tools and protocols that allow different software systems to communicate and interact with NetSuite. APIs provide a way for external applications, services, or integrations to connect with and exchange data with NetSuite. They enable developers to create custom integrations, build applications, and automate processes by accessing and manipulating data within NetSuite modules. 
+--in api we create,update,delete etc., in database ex:-record.create
+
+Map/reduce goverance:
+--map:
+.Consume more than 1,000 usage points
+.Run for more than 5 minutes
+--reduce
+.Consume more than 5,000 usage points
+.Run for more than 15 minutes
+getInputData or summarize function should not:
+.Consume more than 10,000 usage points
+.Run for more than 60 minutes

@@ -1,0 +1,80 @@
+<?xml version="1.0"?><!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+<head>
+	<link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}" src-bold="${nsfont.NotoSans_Bold}" src-italic="${nsfont.NotoSans_Italic}" src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
+	<#if .locale == "zh_CN">
+		<link name="NotoSansCJKsc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKsc_Regular}" src-bold="${nsfont.NotoSansCJKsc_Bold}" bytes="2" />
+	<#elseif .locale == "zh_TW">
+		<link name="NotoSansCJKtc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKtc_Regular}" src-bold="${nsfont.NotoSansCJKtc_Bold}" bytes="2" />
+	<#elseif .locale == "ja_JP">
+		<link name="NotoSansCJKjp" type="font" subtype="opentype" src="${nsfont.NotoSansCJKjp_Regular}" src-bold="${nsfont.NotoSansCJKjp_Bold}" bytes="2" />
+	<#elseif .locale == "ko_KR">
+		<link name="NotoSansCJKkr" type="font" subtype="opentype" src="${nsfont.NotoSansCJKkr_Regular}" src-bold="${nsfont.NotoSansCJKkr_Bold}" bytes="2" />
+	<#elseif .locale == "th_TH">
+		<link name="NotoSansThai" type="font" subtype="opentype" src="${nsfont.NotoSansThai_Regular}" src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
+	</#if>
+    <macrolist>
+        <macro id="nlheader">
+            <#if salesOrderData?has_content>
+<div class="nscke-header" contenteditable="true" style="height: 10%; text-align: right;"><br /><br />customer: ${salesOrderData.customer}<br />Order: ${salesOrderData.salesOrderNumber}<br />Date: ${salesOrderData.date}</div>
+</#if>
+        </macro>
+        <macro id="nlfooter">
+            <p>&nbsp;</p>
+        </macro>
+    </macrolist>
+    <style type="text/css">* {
+		<#if .locale == "zh_CN">
+			font-family: NotoSans, NotoSansCJKsc, sans-serif;
+		<#elseif .locale == "zh_TW">
+			font-family: NotoSans, NotoSansCJKtc, sans-serif;
+		<#elseif .locale == "ja_JP">
+			font-family: NotoSans, NotoSansCJKjp, sans-serif;
+		<#elseif .locale == "ko_KR">
+			font-family: NotoSans, NotoSansCJKkr, sans-serif;
+		<#elseif .locale == "th_TH">
+			font-family: NotoSans, NotoSansThai, sans-serif;
+		<#else>
+			font-family: NotoSans, sans-serif;
+		</#if>
+		}
+		table {
+			font-size: 9pt;
+			table-layout: fixed;
+		}
+        th {
+            font-weight: bold;
+            font-size: 8pt;
+            vertical-align: middle;
+            padding: 5px 6px 3px;
+            background-color: #e3e3e3;
+            color: #333333;
+        }
+        td {
+            padding: 4px 6px;
+        }
+		td p { align:left }
+</style>
+</head>
+<body header="nlheader" header-height="10%" footer="nlfooter" footer-height="20pt" padding="0.5in 0.5in 0.5in 0.5in" size="Letter">
+    <#if salesOrderData?has_content>
+<table style="width: 100%; margin-top: 10px;"><!-- start items --><#list salesOrderData.itemData as itemValues><#if itemValues_index ==0>
+<thead>
+	<tr>
+	<th colspan="12" style="padding: 10px 6px;">Item</th>
+	<th align="center" colspan="3" style="padding: 10px 6px;">Quantity</th>
+	<th align="right" colspan="4" style="padding: 10px 6px;">Rate</th>
+	<th align="right" colspan="4" style="padding: 10px 6px;">Amount</th>
+	</tr>
+</thead>
+</#if><tr>
+	<td colspan="12"><span style="font-weight: bold; line-height: 150%; color: #333333;">${itemValues.item}</span></td>
+	<td align="center" colspan="3" line-height="150%">${itemValues.quantity}</td>
+	<td align="right" colspan="4">${itemValues.rate}</td>
+	<td align="right" colspan="4">${itemValues.amount}</td>
+	</tr>
+	</#list><!-- end items --></table>
+
+<hr style="width: 100%; color: #d3d3d3; background-color: #d3d3d3; height: 1px;" /></#if>
+</body>
+</pdf>
