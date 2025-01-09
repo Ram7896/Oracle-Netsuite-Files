@@ -1,0 +1,119 @@
+Differences:
+var - Global Scope:If you create a variable outside of a function, you can use it anywhere in your code.
+create a variable inside a function, you can only use it within that function.
+const- block scope, immutable:once you assign a value to a const variable, you can’t change it later. 
+let- block scope, mutable:These variables has the block scope. It can’t be accessible outside the particular code block ({block}).
+The variable is only available inside the block {} where you define it.
+
+difference between == and ===?
+==: Compares values after type coercion.Example: 5 == "5" → true.
+===: Compares values without type coercion (strict equality).Example: 5 === "5" → false.
+Netsuite:
+NetSuite is a cloud ERP business solution, encompassing Financials, CRM, eCommerce, inventory, and warehouse management. 
+NetSuite ERP allows you to access data in real data from anywhere. It’s a full package solution known for its robust capabilities,
+business intelligence, scalability, and user-friendly interface.
+Process flow Po and So:
+PurchaseRequisition->Purchaseorder>itemreceipt>vendorbill>billpayment
+SalesOrder>fulfill>itemfulfilment>billbutton>invoice>AcceptPayment
+isDynamic: true: when you need real-time interaction or the UI-like behavior.
+isDynamic: false for batch updates or when speed is a priority, and the dependencies between fields or 
+sublist lines are straightforward.
+NetSuite ERP software presents core financial and accounting functionality. 
+Netsuite Modules:50
+Saved search:
+saved search is a powerful tool used to query and report on data stored within the system. 
+Saved searches allow users to define criteria and filters to extract specific information 
+from NetSuite records, such as transactions, customers, items, or any other type of data.
+Usereventscript:(1000)
+-->It runs on server side and perform events such as record creation,updation or delete.
+entrypoints:
+.beforesubmit:Executes before a record is submitted to the database. This is typically used for data validation and modification of the record's values.
+.beforeload:Executes before a record is loaded. Useful for modifying record form, adding buttons, or setting default values.
+.aftersubmit: Executes after a record has been submitted to the database. Ideal for processes that need to run after the record is saved, like sending notifications or creating related records.
+client:(1000)
+-->Runs in browser side and customize froms,lists and fields.
+(10)lineinit,fieldchange,pageinit,saverecord
+postsourcing:executes on transaction form when a field that sources the information from another field modified.
+sublistchanged:execute after sublist has been inserted,removed,edited.
+validatefield:execute when a field about changed by user or client side call
+delete:execute when removing the exisitng line from edit sublist.
+insert:execute when you insert a line an edit sublist.
+line:execute before line is added inline editor sublist or editor sublist
+suitlet:(1000)
+-->serverside used to create user interface and web applications.
+onrequest:you can process incoming requests, retrieve necessary data, perform operations, and 
+generate appropriate responses in Suitelet scripts.
+scheduled:10000
+-->Runs on server side on specific schedule(every hour or everydy)
+-->Scheduled Scripts are used for executing tasks that need to be performed at regular intervals or at a specific time,
+ such as processing large batches of records, 
+performing data imports/exports, or executing periodic calculations.
+execute:This function is automatically called by the system at the scheduled time or interval specified 
+during deployment
+Difference between Schedule and Map/reduce script:
+    Parallel Processing: Map/Reduce Scripts allow for parallel processing of data, making them more efficient for large datasets, 
+    while Scheduled Scripts process data sequentially.
+    Execution Structure: Map/Reduce has a structured multi-stage process (Get Input Data, Map, Reduce, Summarize), whereas 
+    Scheduled Scripts execute as a single script without such stages.
+    Governance Handling: Map/Reduce is more governance-friendly when dealing with large datasets due to its ability to 
+    break down the data and process it in batches.
+
+ -->Scheduled Scripts for simpler, time-based tasks and Map/Reduce Scripts for complex, 
+ large-scale data processing where efficiency and scalability are critical.
+ -->Scheduled Scripts execute as a single script without such stages.
+ -->Scheduled Scripts process data sequentially.
+
+map/reduce script:(10,000)
+-->it handles large amount of data and runs in serverside.
+-->Map/Reduce Scripts are designed for processing large datasets efficiently by breaking them into smaller chunks (batches) and 
+processing them in parallel. They are ideal for tasks like bulk processing of records, data transformations, and 
+integrations that involve large data sets.entrypoints:getinputdata:10,000 units of API usage,60 minutes of time,1B of instructions,
+map:1,000 units of API usage,5 minutes of time,100M of instructions,
+reduce:The reduce function is executed only once and is typically used for aggregating 
+or summarizing the data processed by the map tasks.5,000 units of API usage,15 minutes of time,100M of instructions
+summarize:function is typically used to generate the final output or result of the Map/Reduce script.
+It provides a way to consolidate and present the processed data in a meaningful and actionable format.10,000 units of API usage
+,60 minutes of time,1B of instructions
+Restlet:(5000)
+-->its an api and perform any funtions that implement suitescript.
+-->its an suitescript that executes called by external application or by script.
+post: such as creating a NetSuite record.
+put:such as inserting/upserting a NetSuite record. 
+get:such as retrieving a NetSuite record.
+delete:such as deleting a NetSuite record.
+Workflowactionscript:(1,000)
+-->WorkflowActionScript is a type of SuiteScript used in Oracle NetSuite to create custom actions within workflows. 
+ WorkflowActionScript is the 'onAction' function, which is triggered when the custom action is executed within the workflow.
+ TotalCountNetsuiteModules-57
+ Difference between suitescript 1.0 and 2.0
+SuiteScript 1.0 is procedural, while 2.0/2.1 is modular (define/require).
+SuiteScript 2.0 supports modern ES6 syntax and better error handling.
+SuiteScript 1.0: Best for simpler, smaller scripts with a straightforward procedural approach. Easier to get started with for basic tasks.
+SuiteScript 2.0: Preferred for modern, large-scale, and complex applications. Offers a modular approach, better performance, enhanced features, and modern JavaScript support.
+SuiteScript 1.0: Non-modular, all functions are globally accessible.
+SuiteScript 2.0: Modular, uses define and require to load specific modules.
+SuiteScript 1.0: Basic try-catch error handling.
+SuiteScript 2.0: Enhanced error handling with detailed error objects.
+SuiteScript 1.0: Less optimized for large-scale operations.
+SuiteScript 2.0: Built for better performance and scalability.
+SuiteScript 1.0: Limited API.
+SuiteScript 2.0: More extensive and feature-rich API.
+Difference between module and API?
+module:
+A module in NetSuite refers to a specific functional area or suite of related features within the platform. NetSuite offers various modules, each designed to address different aspects of business operations.
+Financial Management: Includes features for accounting, financial reporting, and billing.
+Customer Relationship Management (CRM): Manages customer interactions, sales processes, and marketing campaigns.
+APi:
+An API in NetSuite provides a set of protocols and tools that allow developers to interact programmatically with the NetSuite platform. NetSuite offers various APIs, such as:
+SuiteTalk(SOAP,REstful),Suitescript,Restlet.
+Module: In SuiteScript 2.0, modules like N/record, N/search, and N/email are loaded using require or define. 
+These modules provide specific functionalities (e.g., creating records, performing searches) that you can use in your scripts.
+API: In SuiteScript, the API refers to the functions and methods provided by NetSuite that you can use to interact with the platform. 
+For example, record.create() is part of the SuiteScript API, allowing you to create a new record.
+SuiteBuilder:Custom Roles,lists,fields,lists,forms,custom records,tabs,centers.
+
+HTMl template:
+In Oracle NetSuite, HTML templates are used to design and format the content of emails, printed forms, or 
+other documents generated within the system. These templates leverage HTML, CSS, and a set of 
+NetSuite-specific tags and syntax to create customizable and dynamic documents that can pull in data from 
+NetSuite records.

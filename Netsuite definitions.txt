@@ -1,0 +1,23 @@
+Data Migration:CSV imports and saved searches
+Void:the Void option is typically used to cancel or reverse a transaction, such as a check, invoice, 
+payment, or journal entry, without permanently deleting it from the system. This ensures that you maintain
+a complete and accurate audit trail of all financial activities.
+MasterData(Its running business):Customers,vendors,employee,item:goodsandservicesthatyourcompanybuysandsells
+Inventoryitem:item record used to track goods that are purchased, stored in inventory, and then sold
+Non-Inventory Item: These items are not formally stocked.
+Inventory is very important asset for any company its defined array of goods in production or finished goods.
+Three categories:any supplies used in produce finished goods,work-in-progress,finished goods
+Inventorycostingmethods:fifo,lifo,weight average method
+Inventory Adjustment:Used to update inventory quantities manually when there are discrepancies between physical stock and system records.
+Inventory Worksheet:A tool to make bulk inventory updates or adjustments, often used during physical inventory counts.
+Inventory Cost Revaluation:Updates the valuation of inventory items to reflect changes in cost, ensuring accurate financial reporting.
+Review Negative Inventory:Identifying and addressing instances where inventory levels fall below zero, which can happen due to incorrect data entry or timing issues.
+Inventory Distribution:The process of allocating and moving inventory across multiple locations or warehouses.
+Inventory Transfer:Used to transfer inventory from one location to another within the organization.
+Bin Transfer:Moves inventory between bins within the same location for better organization or to reflect accurate stock placement.
+Here’s the content in text format:
+SALES RETURN PROCESS WITHIN NETSUITE
+ Cash Refund Sales Return:This includes refunds given to customers who return their items and receive cash as a refund.
+Credit Memo Sales Return:This involves the customer returning the item and, in turn, will receive a credit memo for future purchases.
+Request for Quote:is a request you send to one or more vendors asking them to provide specifics about their pricing, terms, and conditions in regard to a purchase contract for a product they provide.
+Purchase Requisition:When an employee or company representative, such as a consultant, needs something that must be purchased using company funds, they can use a requisition to initiate the purchasing process.
