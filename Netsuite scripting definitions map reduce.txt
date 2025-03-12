@@ -1,0 +1,68 @@
+Map/Reduce script, similar strategies apply when the governance limit is exceeded:
+Yielding the Script – NetSuite automatically handles yielding in Map/Reduce, but you can manually manage it using context.yield() in the 
+map or reduce stages.(Yield:restart execution with a fresh governance limit if needed.)
+function handleYield() {
+        var remainingUsage = runtime.getCurrentScript().getRemainingUsage();
+        if (remainingUsage < 100) {
+            log.audit('Yielding Script', 'Remaining governance too low: ' + remainingUsage);
+            task.create({
+                taskType: task.TaskType.MAP_REDUCE,
+                scriptId: runtime.getCurrentScript().id
+            }).submit();
+        }
+    }/call in map and reduce(if the goverance is low)
+Efficient Data Chunking – Ensure your getInputData stage returns small, manageable chunks to avoid exceeding limits in the map or reduce 
+stages.
+Minimizing API Calls – Reduce unnecessary record loads, searches, and API interactions within each stage to optimize governance 
+consumption.
+Using search.runPaged() – If working with large data sets, process records in pages rather than loading everything at once.
+Breaking Workloads into Smaller Batches – Split large record processing across multiple map or reduce executions rather than 
+handling everything in a single iteration.
+Using Queues for Parallel Processing – If needed, trigger additional Map/Reduce or Scheduled Scripts using task.create() to distribute 
+workload.
+
+Types of Parent-Child Relationships in NetSuite
+1. One-to-Many (1:M) Relationships
+A single parent record can have multiple child records.
+Examples:
+Customer (Parent) → Contacts (Children)
+Vendor (Parent) → Vendor Addresses (Children)
+Employee (Parent) → Expense Reports (Children)
+2. Many-to-Many (M:M) Relationships
+Multiple parent records can be associated with multiple child records.
+Examples:
+Items ↔ Locations (Items can be available in multiple locations, and locations can have multiple items).
+Employees ↔ Projects (Employees can work on multiple projects, and projects can have multiple employees).
+3. One-to-One (1:1) Relationships
+A single parent record is linked to a single child record.
+Examples:
+User (Parent) → Employee (Child) (Each user has one employee record).
+Subsidiary (Parent) → Tax Nexus (Child) (Each subsidiary has one tax nexus).
+4. Hierarchical (Parent-Child within the Same Record Type)
+A record can be both a parent and a child.
+Examples:
+Subsidiary Hierarchy (Parent Subsidiary → Child Subsidiary).
+Employee Hierarchy (Manager → Subordinates).
+Accounts in Chart of Accounts (Parent Account → Sub-Accounts).
+
+SOAP:use XML-based web services with a structured envelope, header, and body. They provide a robust, strongly-typed interface for inter
+acting with NetSuite data and are ideal for enterprise-level integrations.
+Rest:that typically exchange data in JSON format. They follow REST principles, offering a simpler, more lightweight approach for modern,
+flexible integrations.
+
+Comparison: Token-Based Authentication (TBA) vs. OAuth 2.0
+Feature	        Token-Based Authentication (TBA)	       OAuth 2.0
+Security Level	Secure, but uses static tokens	      More secure, uses short-lived tokens
+Token Expiry	No expiry (unless revoked)	          Tokens expire & require renewal
+Use Case	Internal applications, SuiteScript	        External applications, mobile apps
+API Compatibility	SuiteTalk (SOAP), RESTlets,SuiteScript	REST Web Services, SuiteTalk (SOAP)
+Complexity	         Easier to implement	                             More complex setup
+Authentication Type	    Static tokens	                           Dynamic token exchange
+Best Practices for NetSuite API Authentication
+✅ Use OAuth 2.0 for high-security integrations and external applications.
+✅ Use Token-Based Authentication (TBA) for internal apps and SuiteScripts.
+✅ Never share or expose API credentials in public repositories or logs.
+✅ Rotate tokens periodically to enhance security.
+
+
+

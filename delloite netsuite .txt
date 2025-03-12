@@ -1,0 +1,32 @@
+what is the goverance limit why they introduced?
+Goverance:execution limits imposed on SuiteScript API calls to prevent excessive resource usage and ensure system stability
+prevent System Overload – NetSuite is a multi-tenant cloud system, so governance ensures that one script doesn’t monopolize resources.
+Optimize Performance – Limits prevent poorly optimized scripts from slowing down the system.
+Encourage Best Practices – Developers are forced to write efficient scripts and optimize API calls.
+Ensure Fair Usage – Multiple users share NetSuite's resources, so limits ensure fair access for all.
+
+what is the soft limit and hard limit?
+ Soft Limit → Can be temporarily exceeded, but may slow execution or require yielding.
+ if (runtime.getCurrentScript().getRemainingUsage() < 100) {
+    task.yieldScript(); // ✅ Yields execution to prevent failure
+}
+Hard Limit → Cannot be exceeded; script immediately stops if reached.
+let results = search.create({ type: 'customer' }).run().getRange({ start: 0, end: 50000 }); 
+// ❌ Exceeds 1,000 search limit → Throws SSS_SEARCH_RESULT_LIMIT_EXCEEDED error
+
+Feature	      Soft Limit	                                  Hard Limit
+Definition	A threshold that can be temporarily exceeded	A strict limit that cannot be exceeded
+Effect	     Slows execution or triggers warnings	            Immediately stops script execution
+Examples	Governance usage units, search record limits	     Maximum execution time, max search results (100,000)
+Can Be Handled?	✅ Yes (by yielding, optimizing, or breaking tasks)	❌ No (script must be redesigned)
+
+i want to reterive 3000 records which one i need to use ?
+if i have mistakenly update the sales order but i want more tha 500 i need to apply discount?
+difference define and require?
+
+Feature	          define	                                 require
+Purpose	    Used to define a SuiteScript module	              Used to load a module dynamically
+ExecutionTime	Runs only once when the script is loaded	      Runs each time it is called
+Usage	Used for creating scripts like User Event, Scheduled, and Map/Reduce	Used when you need to load a module inside a function dynamically
+Syntax	Uses an array of dependencies and a callback function	Returns the required module immediately
+Best Use Case	When defining a script or custom module	When loading a module on demand inside a function

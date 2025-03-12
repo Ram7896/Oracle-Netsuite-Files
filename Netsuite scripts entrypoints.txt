@@ -1,0 +1,8 @@
+1.if the usereventscript beforeload and workflow beforerecordload deployed in salesorder which one triggers first?
+A)The User Event Script's beforeLoad event triggers first, followed by the Workflow's beforeRecordLoad event.
+re:User event scripts run during record initialization, while workflows trigger after the record has loaded.
+2.The User Event Script's beforeSubmit event triggers first, followed by the Workflow's beforeRecordSubmit event.(bs first,brs second)
+re:User event scripts execute earlier in the submission process, allowing any changes or validations to occur before the workflow's actions.
+3.if the usereventscript beforeLoad and clientscript pageinit deployed in salesorder which one triggers first?(bl first,pisecond)
+re:BeforeLoad runs on the server to prepare the record before it's rendered; pageInit runs on the client once the page is loaded.
+
