@@ -1,10 +1,4 @@
-/**********************************************
- * Script Name			:	
- * Author               : 
- * Creation date		: 24th March 2025
- * Company	  			: Capgemini India
- * Description          : This script is used to linked Item receipt to vendor bill.
- */
+
 /**
  * @NApiVersion 2.1
  * @NScriptType ScheduledScript
