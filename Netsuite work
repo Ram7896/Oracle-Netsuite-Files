@@ -20,7 +20,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                     "AND",
                     ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
                     "AND",
-                    ["appliedtotransaction.internalid", "anyof", "2093074"]
+                    ["appliedtotransaction.internalid", "anyof", "2093410"]
                 ],
                 columns: [
                     search.createColumn({ name: "trandate", label: "Date" }),
@@ -32,7 +32,12 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                     search.createColumn({ name: "internalid", label: "InternalId" }),
                     search.createColumn({ name: "quantity", label: "Quantity" }),
                     search.createColumn({ name: "custcol_ada_po_qty", label: "PO Qty" }),
-                    search.createColumn({ name: "amount", label: "Amount" })
+                    search.createColumn({ name: "amount", label: "Amount" }),
+                    search.createColumn({
+                        name: "tranid",
+                        join: "appliedToTransaction",
+                        label: "Purchase Number"
+                     })
                 ]
             });
 
@@ -60,7 +65,11 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             poquantity: res.getValue("custcol_ada_po_qty"),
                             amount: res.getValue("amount"),
                             vbinternalid: res.getValue("internalid"),
-                            datecreated: res.getValue("datecreated")
+                            datecreated: res.getValue("datecreated"),
+                            poNumber:res.getValue({
+                                name: "tranid",
+                                join: "appliedToTransaction"
+                            })
                         })
                     );
                     start++;
@@ -79,14 +88,19 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                     "AND",
                     ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
                     "AND",
-                    ["appliedtotransaction.internalid", "anyof", "2093074"]
+                    ["appliedtotransaction.internalid", "anyof", "2093410"]
                 ],
                 columns: [
                     search.createColumn({ name: "tranid", label: "IR Number" }),
                     search.createColumn({ name: "internalid", label: "IR Internal ID" }),
                     search.createColumn({ name: "item", label: "Item" }),
                     search.createColumn({ name: "quantity", label: "Quantity" }),
-                    search.createColumn({ name: "datecreated", label: "Date Created", sort: search.Sort.ASC })
+                    search.createColumn({ name: "datecreated", label: "Date Created", sort: search.Sort.ASC }),
+                    search.createColumn({
+                        name: "tranid",
+                        join: "appliedToTransaction",
+                        label: "Purchase Number"
+                     })
                 ]
             });
 
@@ -109,7 +123,11 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             internalid: result.getValue("internalid"),
                             item: result.getValue("item"),
                             quantity: result.getValue("quantity"),
-                            datecreated: result.getValue("datecreated")
+                            datecreated: result.getValue("datecreated"),
+                            poNumber:result.getValue({
+                                name: "tranid",
+                                join: "appliedToTransaction"
+                            })
                         })
                     );
                     starting++;
@@ -144,25 +162,6 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
 
                         if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity) {
                             log.debug("Linking process started");
-
-                            /*var vb = record.load({
-                                type: record.Type.VENDOR_BILL,
-                                id: vendorBillarr[i].vbinternalid
-                            });
-
-                            vb.setValue({
-                                fieldId: 'custbody_ada_created_from',
-                                value: [itemReceiptarr[j].internalid],
-                                ignoreFieldChange: true
-                            });
-                            /*vb.setValue({
-                                fieldId: 'custbody_ada_vb_ir',
-                                value: false
-                            });
-                            var vb_save = vb.save({
-                                enableSourcing: true,
-                                ignoreMandatoryFields: true
-                            });*/
                             var vb_save = record.submitFields({
                                 type: record.Type.VENDOR_BILL,
                                 id: vendorBillarr[i].vbinternalid,
@@ -177,21 +176,6 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             if (vb_save) {
                                 enableCheck(vendorBillarr[i].vbinternalid);
                             }
-                            /* var ir = record.load({
-                                 type: record.Type.ITEM_RECEIPT,
-                                 id: itemReceiptarr[j].internalid
-                             });
- 
-                             ir.setValue({
-                                 fieldId: 'custbody_ada_created_from',
-                                 value: vendorBillarr[i].vbinternalid,
-                                 ignoreFieldChange: true
-                             });
- 
-                             var ir_save = ir.save({
-                                 enableSourcing: true,
-                                 ignoreMandatoryFields: true
-                             });*/
                             var ir_save = record.submitFields({
                                 type: record.Type.ITEM_RECEIPT,
                                 id: itemReceiptarr[j].internalid,
@@ -205,6 +189,13 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             });
 
                             log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
+                        }
+                        else if(vendorBillarr[i].poNumber == itemReceiptarr[j].poNumber){
+                            log.debug("Else If condition triggered");
+                            totalqty = 0;
+                            totalqty+=vendorBillarr[i].quantity;
+                            log.debug("Vendor Bill Quantity:",totalqty);
+
                         }
                         else {
                             log.debug("item comaprsion else triggered");
@@ -224,41 +215,6 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
     function enableCheck(vbInternalId) {
         try {
             const vendorBill = search.lookupFields({
-                type: record.Type.VENDOR_BILL,
-                id: vbInternalId,
-                columns: ['custbody_ada_created_from']
-            });
-            log.debug("Vendor bill search lookup value:", vendorBill);
-
-            // Check if custbody_ada_created_from is defined and has at least one element
-            var createdFrom = (vendorBill.custbody_ada_created_from && vendorBill.custbody_ada_created_from.length > 0) ? vendorBill.custbody_ada_created_from[0].value : '';
-            log.debug("created from vb value:", createdFrom);
-
-            var vb = record.load({
-                type: record.Type.VENDOR_BILL,
-                id: vbInternalId
-            });
-
-            if (createdFrom) {
-                vb.setValue({
-                    fieldId: 'custbody_ada_vb_ir',
-                    value: false
-                });
-                log.debug("If Enable CheckBox is function working");
-            } else {
-                vb.setValue({
-                    fieldId: 'custbody_ada_vb_ir',
-                    value: true
-                });
-                log.debug("Else Enable CheckBox is function working");
-            }
-
-            var vb_save = vb.save({
-                enableSourcing: true,
-                ignoreMandatoryFields: true
-            });
-
-            /*const vendorBill = search.lookupFields({
                 type: record.Type.VENDOR_BILL,
                 id: vbInternalId,
                 columns: ['custbody_ada_created_from']
@@ -295,7 +251,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                         ignoreMandatoryFields: true
                     }
                 });
-            }*/
+            }
         } catch (error) {
             log.debug("Error in Enable Check:", error.message);
         }
