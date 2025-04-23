@@ -1,67 +1,91 @@
-function itemComparsion(vendorBillarr, itemReceiptarr) {
-    try {
-        log.debug("Function Item Comparison triggered");
-
-        for (let i = 0; i < vendorBillarr.length; i++) {
-            let vb = vendorBillarr[i];
-            let vbTotalQty = parseFloat(vb.quantity) || 0;
-            let vbUsedQty = getLinkedQuantity(record.Type.VENDOR_BILL, vb.vbinternalid);
-            let vbRemainingQty = vbTotalQty - vbUsedQty;
-
-            log.debug(`VB ${vb.vbinternalid} - Total: ${vbTotalQty}, Linked: ${vbUsedQty}, Remaining: ${vbRemainingQty}`);
-
-            if (vbRemainingQty <= 0) {
-                log.debug(`Skipping VB ${vb.vbinternalid}, fully linked.`);
-                continue;
-            }
-
-            for (let j = 0; j < itemReceiptarr.length && vbRemainingQty > 0; j++) {
-                let ir = itemReceiptarr[j];
-                let irTotalQty = parseFloat(ir.quantity) || 0;
-                let irUsedQty = getLinkedQuantity(record.Type.ITEM_RECEIPT, ir.internalid);
-                let irRemainingQty = irTotalQty - irUsedQty;
-
-                log.debug(`IR ${ir.internalid} - Total: ${irTotalQty}, Linked: ${irUsedQty}, Remaining: ${irRemainingQty}`);
-
-                if (irRemainingQty <= 0) {
-                    log.debug(`Skipping IR ${ir.internalid}, fully linked.`);
-                    continue;
+ function itemComparsion(vendorBillarr, itemReceiptarr) {
+        try {
+            log.debug("Function Item Comparison triggered");
+            for (var i = 0; i < vendorBillarr.length; i++) {
+                if (isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
+                    var vbqty = vendorBillarr[i].quantity;
+                    var irsumQuantity = getIrQuantity(itemReceiptarr[j].quantity);
+                    if(vbqty<=irsumQuantity){
+                        continue;
+                    }
+                    
                 }
+                else{
+                for (var j = 0; j < itemReceiptarr.length; j++) {
+                    if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
 
-                if (vb.item === ir.item) {
-                    let qtyToLink = Math.min(vbRemainingQty, irRemainingQty);
+                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity) {
+                            log.debug("Linking process started");
+                            var vb_save = record.submitFields({
+                                type: record.Type.VENDOR_BILL,
+                                id: vendorBillarr[i].vbinternalid,
+                                values: {
+                                    custbody_ada_created_from: itemReceiptarr[j].internalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
+                            if (vb_save) {
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                            }
+                            var ir_save = record.submitFields({
+                                type: record.Type.ITEM_RECEIPT,
+                                id: itemReceiptarr[j].internalid,
+                                values: {
+                                    custbody_ada_created_from: vendorBillarr[i].vbinternalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
 
-                    if (qtyToLink > 0) {
-                        log.debug(`Linking ${qtyToLink} of Item ${vb.item} between VB ${vb.vbinternalid} and IR ${ir.internalid}`);
+                            log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
+                        }
+                        else {
+                            log.debug("item comaprsion else triggered");
+                            enableCheck(vendorBillarr[i].vbinternalid);
 
-                        // Perform the linking (this can be updated to a custom record or sublist for tracking partial link quantities)
-                        record.submitFields({
-                            type: record.Type.VENDOR_BILL,
-                            id: vb.vbinternalid,
-                            values: {
-                                custbody_ada_created_from: ir.internalid
-                            },
-                            options: { enableSourcing: false, ignoreMandatoryFields: true }
-                        });
-
-                        record.submitFields({
-                            type: record.Type.ITEM_RECEIPT,
-                            id: ir.internalid,
-                            values: {
-                                custbody_ada_created_from: vb.vbinternalid
-                            },
-                            options: { enableSourcing: false, ignoreMandatoryFields: true }
-                        });
-
-                        // Update remaining quantity
-                        vbRemainingQty -= qtyToLink;
+                        }
+                    } else {
+                        log.debug("Its not linked condition else triggered");
+                        enableCheck(vendorBillarr[i].vbinternalid);
                     }
                 }
             }
-
-            enableCheck(vb.vbinternalid); // Enable/disable checkbox after loop
+            }
+        } catch (error) {
+            log.debug("Error in itemComparsion:", error.message);
         }
-    } catch (error) {
-        log.debug("Error in itemComparsion:", error.message);
     }
+ELSE{
+ 
+var  = remaining linking quantity =(VB QTY - SUM OF LINKED IRs)  FLAG = 5
+
+ 
+FOR(J=0){
+ 
+FLAG > 0
+ 
+ 
+IF IR IS LINKED{
+ 
+	IR1 CHECK THE QUANTITY SUM WITH LINKED VB SUM (=< 0 )
+
+	CONTINUE;
+
+	}
+ 
+else{
+ 
+	IF(ITEM A IN VB, IR){
+ 
+Linking IR1 With VB1
+ 
+flag = flag- IR1 quantity 2
+ 
+}
+
 }
