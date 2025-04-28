@@ -1,4 +1,3 @@
-
 /**
  * @NApiVersion 2.1
  * @NScriptType ScheduledScript
@@ -20,7 +19,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                     "AND",
                     ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
                     "AND",
-                    ["appliedtotransaction.internalid", "anyof", "2093410"]
+                    ["appliedtotransaction.internalid", "anyof", "2093302"]
                 ],
                 columns: [
                     search.createColumn({ name: "trandate", label: "Date" }),
@@ -37,7 +36,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                         name: "tranid",
                         join: "appliedToTransaction",
                         label: "Purchase Number"
-                     })
+                    })
                 ]
             });
 
@@ -66,7 +65,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             amount: res.getValue("amount"),
                             vbinternalid: res.getValue("internalid"),
                             datecreated: res.getValue("datecreated"),
-                            poNumber:res.getValue({
+                            poNumber: res.getValue({
                                 name: "tranid",
                                 join: "appliedToTransaction"
                             })
@@ -88,7 +87,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                     "AND",
                     ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
                     "AND",
-                    ["appliedtotransaction.internalid", "anyof", "2093410"]
+                    ["appliedtotransaction.internalid", "anyof", "2093302"]
                 ],
                 columns: [
                     search.createColumn({ name: "tranid", label: "IR Number" }),
@@ -100,7 +99,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                         name: "tranid",
                         join: "appliedToTransaction",
                         label: "Purchase Number"
-                     })
+                    })
                 ]
             });
 
@@ -124,7 +123,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             item: result.getValue("item"),
                             quantity: result.getValue("quantity"),
                             datecreated: result.getValue("datecreated"),
-                            poNumber:result.getValue({
+                            poNumber: result.getValue({
                                 name: "tranid",
                                 join: "appliedToTransaction"
                             })
@@ -190,12 +189,63 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
 
                             log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
                         }
-                        else if(vendorBillarr[i].poNumber == itemReceiptarr[j].poNumber){
-                            log.debug("Else If condition triggered");
-                            totalqty = 0;
-                            totalqty+=vendorBillarr[i].quantity;
-                            log.debug("Vendor Bill Quantity:",totalqty);
+                        else if (vendorBillarr[i].poNumber == itemReceiptarr[j].poNumber &&
+                            vendorBillarr[i].item == itemReceiptarr[j].item) {
 
+                            let matchedIRs = [];
+                            let totalIRQty = 0;
+
+                            // Loop through all IRs again to find matches by PO and Item
+                            for (let k = 0; k < itemReceiptarr.length; k++) {
+                                if (itemReceiptarr[k].poNumber === vendorBillarr[i].poNumber &&
+                                    itemReceiptarr[k].item === vendorBillarr[i].item &&
+                                    !isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[k].internalid)) {
+
+                                    totalIRQty += parseFloat(itemReceiptarr[k].quantity || 0);
+                                    matchedIRs.push(itemReceiptarr[k]);
+                                    log.debug("Matched IRs:", matchedIRs);
+                                }
+
+                                if (totalIRQty >= parseFloat(vendorBillarr[i].quantity)) {
+                                    break;
+                                }
+                            }
+
+                            log.debug("Accumulated IR Quantity", totalIRQty);
+                            if (totalIRQty == parseFloat(vendorBillarr[i].quantity)) {
+                                log.debug("Total quantity matches, begin linking");
+
+                                // Link each IR with VB
+                                matchedIRs.forEach(ir => {
+                                    record.submitFields({
+                                        type: record.Type.ITEM_RECEIPT,
+                                        id: ir.internalid,
+                                        values: {
+                                            custbody_ada_created_from: vendorBillarr[i].vbinternalid
+                                        },
+                                        options: {
+                                            enableSourcing: false,
+                                            ignoreMandatoryFields: true
+                                        }
+                                    });
+                                });
+                                let irIds = matchedIRs.map(ir => ir.internalid);
+                                log.debug("IR Ids:",irIds);
+                                // Link VB with the first IR (or store comma-separated IDs if needed)
+                                record.submitFields({
+                                    type: record.Type.VENDOR_BILL,
+                                    id: vendorBillarr[i].vbinternalid,
+                                    values: {
+                                        custbody_ada_created_from: irIds,
+                                    },
+                                    options: {
+                                        enableSourcing: false,
+                                        ignoreMandatoryFields: true
+                                    }
+                                });
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                                log.debug("Vendor Bill linked with multiple IRs", matchedIRs.map(x => x.internalid).join(", "));
+                            }
                         }
                         else {
                             log.debug("item comaprsion else triggered");
@@ -280,4 +330,4 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
     return {
         execute: execute
     };
-});if I have vendor bill with quantity 10 and item receipt quantity 5 and item receipt quantity 5 I want sum this quantity of ir and attach in both in vendor bill and item receipt I want these updation in else if block
+});for example if I have vendor bill 1 quantity 5 and vendor bill 2 quantity 5 and item receipt is 10 I want these type of test case in else if I want these scenario also in else if condition 
