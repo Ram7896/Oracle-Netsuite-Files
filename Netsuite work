@@ -20,7 +20,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                     "AND",
                     ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
                     "AND",
-                    ["appliedtotransaction.internalid", "anyof", "2093072","2093074","2093067"]
+                    ["appliedtotransaction.internalid", "anyof", "2093410"]
                 ],
                 columns: [
                     search.createColumn({ name: "trandate", label: "Date" }),
@@ -66,7 +66,10 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             amount: res.getValue("amount"),
                             vbinternalid: res.getValue("internalid"),
                             datecreated: res.getValue("datecreated"),
-                            poDoc: res.getValue({name:"tranid",join:"appliedToTransaction"})
+                            poNumber:res.getValue({
+                                name: "tranid",
+                                join: "appliedToTransaction"
+                            })
                         })
                     );
                     start++;
@@ -85,7 +88,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                     "AND",
                     ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
                     "AND",
-                    ["appliedtotransaction.internalid", "anyof", "2093072","2093074","2093067"]
+                    ["appliedtotransaction.internalid", "anyof", "2093410"]
                 ],
                 columns: [
                     search.createColumn({ name: "tranid", label: "IR Number" }),
@@ -121,7 +124,10 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             item: result.getValue("item"),
                             quantity: result.getValue("quantity"),
                             datecreated: result.getValue("datecreated"),
-                            poDoc: result.getValue({name:"tranid",join:"appliedToTransaction"})
+                            poNumber:result.getValue({
+                                name: "tranid",
+                                join: "appliedToTransaction"
+                            })
                         })
                     );
                     starting++;
@@ -149,10 +155,6 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
 
     function itemComparsion(vendorBillarr, itemReceiptarr) {
         try {
-            var vbSumQty = 0;
-            var IRSumQty = 0;
-            var vbIdArr = [];
-            var irIdArr = [];
             log.debug("Function Item Comparison triggered");
             for (var i = 0; i < vendorBillarr.length; i++) {
                 for (var j = 0; j < itemReceiptarr.length; j++) {
@@ -164,7 +166,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                                 type: record.Type.VENDOR_BILL,
                                 id: vendorBillarr[i].vbinternalid,
                                 values: {
-                                    custbody_ada_linked_record: itemReceiptarr[j].internalid
+                                    custbody_ada_created_from: itemReceiptarr[j].internalid
                                 },
                                 options: {
                                     enableSourcing: false,
@@ -178,7 +180,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                                 type: record.Type.ITEM_RECEIPT,
                                 id: itemReceiptarr[j].internalid,
                                 values: {
-                                    custbody_ada_linked_record: vendorBillarr[i].vbinternalid
+                                    custbody_ada_created_from: vendorBillarr[i].vbinternalid
                                 },
                                 options: {
                                     enableSourcing: false,
@@ -188,47 +190,11 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
 
                             log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
                         }
-       
-                        else if(vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc)
-                        {
-                            log.debug('else if execute in term partail IRBill','else if execute in term partail IRBill->>');
-                            if(vendorBillarr.length > itemReceiptarr.length)
-                            {
-                                vbSumQty += parseInt(vendorBillarr[i].quantity);
-                                IRSumQty = parseInt(itemReceiptarr[j].quantity);
-                                if(vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1')
-                                {
-                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
-                                }
-                                if(irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1')
-                                {
-                                    irIdArr.push(itemReceiptarr[j].internalid);
-                                }
-                            }
-                            if(itemReceiptarr.length > vendorBillarr.length)
-                            {
-                                IRSumQty += parseInt(itemReceiptarr[j].quantity);
-                                vbSumQty = parseInt(vendorBillarr[i].quantity);
-                                if(vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1')
-                                {
-                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
-                                }
-                                if(irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1')
-                                {
-                                    irIdArr.push(itemReceiptarr[j].internalid);
-                                }
-                                
-                            }
-                            log.debug('vbSumQty->>','vbSumQty->>'+vbSumQty);
-                            log.debug('IRSumQty->>','IRSumQty->>'+IRSumQty);
-                            if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == IRSumQty) 
-                            {
-                                log.debug('all set to link->>','all set to link->>');
-                                partialIRVbLink(vendorBillarr[i].vbinternalid,itemReceiptarr[j].internalid,vbIdArr,irIdArr)
-                                vbSumQty = 0;
-                                IRSumQty = 0;
-                            }
-
+                        else if(vendorBillarr[i].poNumber == itemReceiptarr[j].poNumber){
+                            log.debug("Else If condition triggered");
+                            totalqty = 0;
+                            totalqty+=vendorBillarr[i].quantity;
+                            log.debug("Vendor Bill Quantity:",totalqty);
 
                         }
                         else {
@@ -246,80 +212,16 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
             log.debug("Error in itemComparsion:", error.message);
         }
     }
-    function partialIRVbLink(vbinternalid,irinternalid,vbIdArr,irIdArr)
-    {
-        log.debug('partialIRVbLink->>','partialIRVbLink->>>');
-        log.debug('vbIdArr->>','vbIdArr->>>'+vbIdArr);
-        log.debug('irIdArr->>','irIdArr->>>'+irIdArr);
-        if(irIdArr.length > vbIdArr.length)
-        {
-            for(var r=0;r<irIdArr.length;r++)
-            {
-                var vb_save = record.submitFields({
-                    type: record.Type.VENDOR_BILL,
-                    id: vbinternalid,
-                    values: {
-                        custbody_ada_linked_record: irIdArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-                var ir_save = record.submitFields({
-                    type: record.Type.ITEM_RECEIPT,
-                    id: irIdArr[r],
-                    values: {
-                        custbody_ada_linked_record: vbIdArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-            }
-        }
-        else
-        {
-            for(var v=0;v<vbIdArr.length;v++)
-            {
-                var vb_save = record.submitFields({
-                    type: record.Type.VENDOR_BILL,
-                    id: vbIdArr[v],
-                    values: {
-                        custbody_ada_linked_record: irIdArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-                var ir_save = record.submitFields({
-                    type: record.Type.ITEM_RECEIPT,
-                    id: irinternalid,
-                    values: {
-                        custbody_ada_linked_record: vbIdArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-            }
-
-        }
-
-    }
     function enableCheck(vbInternalId) {
         try {
             const vendorBill = search.lookupFields({
                 type: record.Type.VENDOR_BILL,
                 id: vbInternalId,
-                columns: ['custbody_ada_linked_record']
+                columns: ['custbody_ada_created_from']
             });
             log.debug("Vendor bill search lookup value:", vendorBill);
 
-            var createdFrom = (vendorBill.custbody_ada_linked_record && vendorBill.custbody_ada_linked_record.length > 0) ? vendorBill.custbody_ada_linked_record[0].value : '';
+            var createdFrom = (vendorBill.custbody_ada_created_from && vendorBill.custbody_ada_created_from.length > 0) ? vendorBill.custbody_ada_created_from[0].value : '';
             log.debug("created from vb value:", createdFrom);
 
             if (createdFrom) {
@@ -359,17 +261,17 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
         const vendorBill = search.lookupFields({
             type: record.Type.VENDOR_BILL,
             id: vendorBillId,
-            columns: ['custbody_ada_linked_record']
+            columns: ['custbody_ada_created_from']
         });
         const itemReceipt = search.lookupFields({
             type: record.Type.ITEM_RECEIPT,
             id: itemReceiptId,
-            columns: ['custbody_ada_linked_record']
+            columns: ['custbody_ada_created_from']
         });
 
-        const linkedIR = vendorBill.custbody_ada_linked_record && vendorBill.custbody_ada_linked_record.length > 0;
+        const linkedIR = vendorBill.custbody_ada_created_from && vendorBill.custbody_ada_created_from.length > 0;
         log.debug("Linked Ir:", linkedIR);
-        const linkedVB = itemReceipt.custbody_ada_linked_record && itemReceipt.custbody_ada_linked_record.length > 0;
+        const linkedVB = itemReceipt.custbody_ada_created_from && itemReceipt.custbody_ada_created_from.length > 0;
         log.debug("Linked Vb:", linkedVB);
         log.debug("is already linked", linkedVB || linkedIR);
         return linkedVB || linkedIR;
@@ -378,4 +280,4 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
     return {
         execute: execute
     };
-});
+});if I have vendor bill with quantity 10 and item receipt quantity 5 and item receipt quantity 5 I want sum this quantity of ir and attach in both in vendor bill and item receipt I want these updation in else if block
