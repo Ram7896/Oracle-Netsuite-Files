@@ -1,102 +1,381 @@
-else if (
-    vendorBillarr[i].poNumber === itemReceiptarr[j].poNumber &&
-    vendorBillarr[i].item === itemReceiptarr[j].item
-) {
-    // Existing logic: IRs that add up to match a VB
-    let matchedIRs = [];
-    let totalIRQty = 0;
 
-    for (let k = 0; k < itemReceiptarr.length; k++) {
-        if (
-            itemReceiptarr[k].poNumber === vendorBillarr[i].poNumber &&
-            itemReceiptarr[k].item === vendorBillarr[i].item &&
-            !isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[k].internalid)
-        ) {
-            totalIRQty += parseFloat(itemReceiptarr[k].quantity || 0);
-            matchedIRs.push(itemReceiptarr[k]);
-        }
-
-        if (totalIRQty >= parseFloat(vendorBillarr[i].quantity)) break;
-    }
-
-    if (totalIRQty === parseFloat(vendorBillarr[i].quantity)) {
-        // Link VBs to multiple IRs
-        matchedIRs.forEach(ir => {
-            record.submitFields({
-                type: record.Type.ITEM_RECEIPT,
-                id: ir.internalid,
-                values: {
-                    custbody_ada_created_from: vendorBillarr[i].vbinternalid
-                },
-                options: {
-                    enableSourcing: false,
-                    ignoreMandatoryFields: true
-                }
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ScheduledScript
+ */
+define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, search, url, runtime, format) => {
+    const execute = (context) => {
+        try {
+            var vendorbillSearchObj = search.create({
+                type: "vendorbill",
+                settings: [{ "name": "consolidationtype", "value": "ACCTTYPE" }],
+                filters: [
+                    ["type", "anyof", "VendBill"],
+                    "AND",
+                    ["mainline", "is", "F"],
+                    "AND",
+                    ["appliedtotransaction.type", "anyof", "PurchOrd"],
+                    "AND",
+                    ["status", "anyof", "VendBill:A"],
+                    "AND",
+                    ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
+                    "AND",
+                    ["appliedtotransaction.internalid", "anyof", "2093067","2093072"]
+                ],
+                columns: [
+                    search.createColumn({ name: "trandate", label: "Date" }),
+                    search.createColumn({ name: "datecreated", label: "Date Created", sort: search.Sort.ASC }),
+                    search.createColumn({ name: "tranid", label: "Bill Invoice no" }),
+                    search.createColumn({ name: "invoicenum", label: "Bill Invoice no" }),
+                    search.createColumn({ name: "statusref", label: "Bill Status" }),
+                    search.createColumn({ name: "item", label: "Item" }),
+                    search.createColumn({ name: "internalid", label: "InternalId" }),
+                    search.createColumn({ name: "quantity", label: "Quantity" }),
+                    search.createColumn({ name: "custcol_ada_po_qty", label: "PO Qty" }),
+                    search.createColumn({ name: "amount", label: "Amount" }),
+                    search.createColumn({
+                        name: "tranid",
+                        join: "appliedToTransaction",
+                        label: "Purchase Number"
+                     })
+                ]
             });
-        });
 
-        const irIds = matchedIRs.map(ir => ir.internalid);
-        record.submitFields({
-            type: record.Type.VENDOR_BILL,
-            id: vendorBillarr[i].vbinternalid,
-            values: {
-                custbody_ada_created_from: irIds
-            },
-            options: {
-                enableSourcing: false,
-                ignoreMandatoryFields: true
+            var searchResultCount = vendorbillSearchObj.runPaged().count;
+            log.debug("vendorbillSearchObj result count", searchResultCount);
+            let start = 0;
+            let searchResults;
+            const vendorBillResponse = [];
+
+            if (searchResultCount > 0) {
+                do {
+                    searchResults = vendorbillSearchObj.run().getRange({
+                        start: start * 1000,
+                        end: (start + 1) * 1000,
+                    });
+
+                    searchResults.forEach((res) =>
+                        vendorBillResponse.push({
+                            billinvoicenumber: res.getValue("tranid"),
+                            billtrandate: res.getValue("trandate"),
+                            billin: res.getValue("invoicenum"),
+                            billstatus: res.getValue("statusref"),
+                            item: res.getValue("item"),
+                            quantity: res.getValue("quantity"),
+                            poquantity: res.getValue("custcol_ada_po_qty"),
+                            amount: res.getValue("amount"),
+                            vbinternalid: res.getValue("internalid"),
+                            datecreated: res.getValue("datecreated"),
+                            poDoc: res.getValue({name:"tranid",join:"appliedToTransaction"})
+                        })
+                    );
+                    start++;
+                } while (searchResults.length == 1000);
             }
-        });
-        enableCheck(vendorBillarr[i].vbinternalid);
+
+            var itemreceiptSearchObj = search.create({
+                type: "itemreceipt",
+                settings: [{ "name": "consolidationtype", "value": "ACCTTYPE" }],
+                filters: [
+                    ["type", "anyof", "ItemRcpt"],
+                    "AND",
+                    ["mainline", "is", "F"],
+                    "AND",
+                    ["appliedtotransaction.type", "anyof", "PurchOrd"],
+                    "AND",
+                    ["appliedtotransaction.status", "anyof", "PurchOrd:D", "PurchOrd:E", "PurchOrd:B", "PurchOrd:G", "PurchOrd:F"],
+                    "AND",
+                    ["appliedtotransaction.internalid", "anyof", "2093067","2093072"]
+                ],
+                columns: [
+                    search.createColumn({ name: "tranid", label: "IR Number" }),
+                    search.createColumn({ name: "internalid", label: "IR Internal ID" }),
+                    search.createColumn({ name: "item", label: "Item" }),
+                    search.createColumn({ name: "quantity", label: "Quantity" }),
+                    search.createColumn({ name: "datecreated", label: "Date Created", sort: search.Sort.ASC }),
+                    search.createColumn({
+                        name: "tranid",
+                        join: "appliedToTransaction",
+                        label: "Purchase Number"
+                     })
+                ]
+            });
+
+            var searchResultCountIR = itemreceiptSearchObj.runPaged().count;
+            log.debug("itemreceiptSearchObj result count", searchResultCountIR);
+            let starting = 0;
+            let searchResult;
+            const itemReceiptResponse = [];
+
+            if (searchResultCountIR > 0) {
+                do {
+                    searchResult = itemreceiptSearchObj.run().getRange({
+                        start: starting * 1000,
+                        end: (starting + 1) * 1000,
+                    });
+
+                    searchResult.forEach((result) =>
+                        itemReceiptResponse.push({
+                            itemreceiptnumber: result.getValue("tranid"),
+                            internalid: result.getValue("internalid"),
+                            item: result.getValue("item"),
+                            quantity: result.getValue("quantity"),
+                            datecreated: result.getValue("datecreated"),
+                            poDoc: result.getValue({name:"tranid",join:"appliedToTransaction"})
+                        })
+                    );
+                    starting++;
+                } while (searchResult.length == 1000);
+            }
+
+            log.debug("Vendor Bill Response", vendorBillResponse);
+            log.debug("Item Receipt Response", itemReceiptResponse);
+
+            for (let i = 0; i < vendorBillResponse.length; i++) {
+                for (let j = 0; j < itemReceiptResponse.length; j++) {
+                    if (itemReceiptResponse[j].datecreated < vendorBillResponse[i].datecreated) {
+                        log.debug("IR is created first,We unable process further.");
+                    }
+                    else {
+                        itemComparsion(vendorBillResponse, itemReceiptResponse);
+                        log.debug("Item Comparison triggered");
+                    }
+                }
+            }
+        } catch (error) {
+            log.debug("Error in Scheduled Script:", error.message);
+        }
+    };
+
+    function itemComparsion(vendorBillarr, itemReceiptarr) {
+        try {
+            var vbSumQty = 0;
+            var IRSumQty = 0;
+            var vbIdArr = [];
+            var irIdArr = [];
+            log.debug("Function Item Comparison triggered");
+            for (var i = 0; i < vendorBillarr.length; i++) {
+                for (var j = 0; j < itemReceiptarr.length; j++) {
+                    if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
+
+                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity) {
+                            log.debug("Linking process started");
+                            var vb_save = record.submitFields({
+                                type: record.Type.VENDOR_BILL,
+                                id: vendorBillarr[i].vbinternalid,
+                                values: {
+                                    custbody_ada_linked_record: itemReceiptarr[j].internalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
+                            if (vb_save) {
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                            }
+                            var ir_save = record.submitFields({
+                                type: record.Type.ITEM_RECEIPT,
+                                id: itemReceiptarr[j].internalid,
+                                values: {
+                                    custbody_ada_linked_record: vendorBillarr[i].vbinternalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
+
+                            log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
+                        }
+       
+                        else if(vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc)
+                        {
+                            log.debug('else if execute in term partail IRBill','else if execute in term partail IRBill->>');
+                            if(vendorBillarr.length > itemReceiptarr.length)
+                            {
+                                vbSumQty += parseInt(vendorBillarr[i].quantity);
+                                IRSumQty = parseInt(itemReceiptarr[j].quantity);
+                                if(vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1')
+                                {
+                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
+                                }
+                                if(irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1')
+                                {
+                                    irIdArr.push(itemReceiptarr[j].internalid);
+                                }
+                            }
+                            if(itemReceiptarr.length > vendorBillarr.length)
+                            {
+                                IRSumQty += parseInt(itemReceiptarr[j].quantity);
+                                vbSumQty = parseInt(vendorBillarr[i].quantity);
+                                if(vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1')
+                                {
+                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
+                                }
+                                if(irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1')
+                                {
+                                    irIdArr.push(itemReceiptarr[j].internalid);
+                                }
+                                
+                            }
+                            log.debug('vbSumQty->>','vbSumQty->>'+vbSumQty);
+                            log.debug('IRSumQty->>','IRSumQty->>'+IRSumQty);
+                            if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == IRSumQty) 
+                            {
+                                log.debug('all set to link->>','all set to link->>');
+                                partialIRVbLink(vendorBillarr[i].vbinternalid,itemReceiptarr[j].internalid,vbIdArr,irIdArr)
+                                vbSumQty = 0;
+                                IRSumQty = 0;
+                            }
+
+
+                        }
+                        else {
+                            log.debug("item comaprsion else triggered");
+                            enableCheck(vendorBillarr[i].vbinternalid);
+
+                        }
+                    } else {
+                        log.debug("Its not linked condition else triggered");
+                        enableCheck(vendorBillarr[i].vbinternalid);
+                    }
+                }
+            }
+        } catch (error) {
+            log.debug("Error in itemComparsion:", error.message);
+        }
     }
+    function partialIRVbLink(vbinternalid,irinternalid,vbIdArr,irIdArr)
+    {
+        log.debug('partialIRVbLink->>','partialIRVbLink->>>');
+        log.debug('vbIdArr->>','vbIdArr->>>'+vbIdArr);
+        log.debug('irIdArr->>','irIdArr->>>'+irIdArr);
+        if(irIdArr.length > vbIdArr.length)
+        {
+            for(var r=0;r<irIdArr.length;r++)
+            {
+                var vb_save = record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbinternalid,
+                    values: {
+                        custbody_ada_linked_record: irIdArr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                var ir_save = record.submitFields({
+                    type: record.Type.ITEM_RECEIPT,
+                    id: irIdArr[r],
+                    values: {
+                        custbody_ada_linked_record: vbIdArr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+            }
+        }
+        else
+        {
+            for(var v=0;v<vbIdArr.length;v++)
+            {
+                var vb_save = record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbIdArr[v],
+                    values: {
+                        custbody_ada_linked_record: irIdArr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                var ir_save = record.submitFields({
+                    type: record.Type.ITEM_RECEIPT,
+                    id: irinternalid,
+                    values: {
+                        custbody_ada_linked_record: vbIdArr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+            }
 
-    // New logic: Multiple VBs matching a single IR
-    let matchedVBs = [];
-    let totalVBQty = 0;
-
-    for (let v = 0; v < vendorBillarr.length; v++) {
-        if (
-            vendorBillarr[v].poNumber === itemReceiptarr[j].poNumber &&
-            vendorBillarr[v].item === itemReceiptarr[j].item &&
-            !isAlreadyLinked(vendorBillarr[v].vbinternalid, itemReceiptarr[j].internalid)
-        ) {
-            totalVBQty += parseFloat(vendorBillarr[v].quantity || 0);
-            matchedVBs.push(vendorBillarr[v]);
         }
 
-        if (totalVBQty >= parseFloat(itemReceiptarr[j].quantity)) break;
     }
-
-    if (totalVBQty === parseFloat(itemReceiptarr[j].quantity)) {
-        log.debug("Multiple VBs matched to one IR");
-
-        // Link IR to each VB
-        matchedVBs.forEach(vb => {
-            record.submitFields({
+    function enableCheck(vbInternalId) {
+        try {
+            const vendorBill = search.lookupFields({
                 type: record.Type.VENDOR_BILL,
-                id: vb.vbinternalid,
-                values: {
-                    custbody_ada_created_from: itemReceiptarr[j].internalid
-                },
-                options: {
-                    enableSourcing: false,
-                    ignoreMandatoryFields: true
-                }
+                id: vbInternalId,
+                columns: ['custbody_ada_linked_record']
             });
-            enableCheck(vb.vbinternalid);
+            log.debug("Vendor bill search lookup value:", vendorBill);
+
+            var createdFrom = (vendorBill.custbody_ada_linked_record && vendorBill.custbody_ada_linked_record.length > 0) ? vendorBill.custbody_ada_linked_record[0].value : '';
+            log.debug("created from vb value:", createdFrom);
+
+            if (createdFrom) {
+                log.debug("Make payment false:");
+                record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbInternalId,
+                    values: {
+                        custbody_ada_vb_ir: false
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                log.debug("record is submitted");
+            } else {
+                log.debug("Make payment checkbox enabled");
+                record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbInternalId,
+                    values: {
+                        custbody_ada_vb_ir: true
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+            }
+        } catch (error) {
+            log.debug("Error in Enable Check:", error.message);
+        }
+
+    }
+    function isAlreadyLinked(vendorBillId, itemReceiptId) {
+        const vendorBill = search.lookupFields({
+            type: record.Type.VENDOR_BILL,
+            id: vendorBillId,
+            columns: ['custbody_ada_linked_record']
+        });
+        const itemReceipt = search.lookupFields({
+            type: record.Type.ITEM_RECEIPT,
+            id: itemReceiptId,
+            columns: ['custbody_ada_linked_record']
         });
 
-        const vbIds = matchedVBs.map(vb => vb.vbinternalid);
-        record.submitFields({
-            type: record.Type.ITEM_RECEIPT,
-            id: itemReceiptarr[j].internalid,
-            values: {
-                custbody_ada_created_from: vbIds
-            },
-            options: {
-                enableSourcing: false,
-                ignoreMandatoryFields: true
-            }
-        });
+        const linkedIR = vendorBill.custbody_ada_linked_record && vendorBill.custbody_ada_linked_record.length > 0;
+        log.debug("Linked Ir:", linkedIR);
+        const linkedVB = itemReceipt.custbody_ada_linked_record && itemReceipt.custbody_ada_linked_record.length > 0;
+        log.debug("Linked Vb:", linkedVB);
+        log.debug("is already linked", linkedVB || linkedIR);
+        return linkedVB || linkedIR;
     }
-}
+
+    return {
+        execute: execute
+    };
+});
