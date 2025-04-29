@@ -1,119 +1,80 @@
-function itemComparsion(vendorBillarr, itemReceiptarr) {
-    try {
-        var vbSumQty = 0;
-        var IRSumQty = 0;
-        var vbIdArr = [];
-        var irIdArr = [];
-        log.debug("Function Item Comparison triggered");
-
-        for (var i = 0; i < vendorBillarr.length; i++) {
-            let matchFound = false;
-            for (var j = 0; j < itemReceiptarr.length; j++) {
-                if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
-                    if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity) {
-                        log.debug("Linking process started");
-                        var vb_save = record.submitFields({
-                            type: record.Type.VENDOR_BILL,
-                            id: vendorBillarr[i].vbinternalid,
-                            values: {
-                                custbody_ada_linked_record: itemReceiptarr[j].internalid
-                            },
-                            options: {
-                                enableSourcing: false,
-                                ignoreMandatoryFields: true
+else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
+                            log.debug('else if execute in term partial IRBill', 'else if execute in term partial IRBill->>');
+                            
+                            let tempIRSumQty = 0;
+    
+                            if (vendorBillarr.length > itemReceiptarr.length) {
+                                vbSumQty += parseInt(vendorBillarr[i].quantity);
+                                tempIRSumQty = parseInt(itemReceiptarr[j].quantity);
+                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
+                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
+                                }
+                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
+                                    irIdArr.push(itemReceiptarr[j].internalid);
+                                }
                             }
-                        });
-                        if (vb_save) {
-                            enableCheck(vendorBillarr[i].vbinternalid);
-                        }
-                        var ir_save = record.submitFields({
-                            type: record.Type.ITEM_RECEIPT,
-                            id: itemReceiptarr[j].internalid,
-                            values: {
-                                custbody_ada_linked_record: vendorBillarr[i].vbinternalid
-                            },
-                            options: {
-                                enableSourcing: false,
-                                ignoreMandatoryFields: true
+                            if (itemReceiptarr.length > vendorBillarr.length) {
+                                log.debug("Length Item Receipt arr:",itemReceiptarr);
+                                log.debug("Item Receipt Quantity:",itemReceiptarr[j].quantity);
+                                var sum =0;
+                                 sum+=itemReceiptarr[j].quantity;
+                                 log.debug("Sum of IR Quantity:",sum);
+                                tempIRSumQty += parseInt(itemReceiptarr[j].quantity);
+                                log.debug("Item receipt greater IRSum:", tempIRSumQty);
+                                vbSumQty = parseInt(vendorBillarr[i].quantity);
+                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
+                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
+                                }
+                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
+                                    irIdArr.push(itemReceiptarr[j].internalid);
+                                }
                             }
-                        });
-
-                        log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
-                        vendorBillarr.splice(i, 1);
-                        itemReceiptarr.splice(j, 1);
-                        i--;
-                        break;
-
-                    } else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
-                        log.debug('else if execute in term partial IRBill', 'else if execute in term partial IRBill->>');
-                        
-                        // Initialize IRSumQty here for each iteration
-                        let tempIRSumQty = 0;
-
-                        if (vendorBillarr.length > itemReceiptarr.length) {
-                            vbSumQty += parseInt(vendorBillarr[i].quantity);
-                            tempIRSumQty = parseInt(itemReceiptarr[j].quantity);
-                            if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
-                                vbIdArr.push(vendorBillarr[i].vbinternalid);
+    
+                            log.debug("VB Sum Quantity Array:", vendorBillarr);
+                            log.debug("IR Sum Quantity:", itemReceiptarr);
+                            log.debug("vendor bill Item:", vendorBillarr[i].item);
+                            log.debug("Item Receipt Item:", itemReceiptarr[j].item);
+                            log.debug("vendor bill Quantity:", vendorBillarr[i].quantity);
+                            log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
+                            log.debug('vbSumQty->>', vbSumQty);
+                            log.debug('tempIRSumQty->>', tempIRSumQty); 
+    
+                            // Compare vendor bill quantity to item receipt quantity
+                            if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == tempIRSumQty) {
+                                log.debug('all set to link->>', 'all set to link->>');
+                                partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, irIdArr);
+                                vbSumQty = 0;
+                                tempIRSumQty = 0; // Reset local variable
                             }
-                            if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
-                                irIdArr.push(itemReceiptarr[j].internalid);
+    
+                        } else {
+                            log.debug("item comparison else triggered");
+                            log.debug("J iteration value:", j);
+                            if (!matchFound) {
+                                log.debug("Else Item Receipt array:", itemReceiptarr);
+                                log.debug("Else vendorbill array:", vendorBillarr);
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                                itemReceiptarr.splice(0, 1);
+                                vendorBillarr.splice(i, 1);
+                                i--;
                             }
-                        }
-                        if (itemReceiptarr.length > vendorBillarr.length) {
-                            tempIRSumQty += parseInt(itemReceiptarr[j].quantity); // Update only local variable
-                            log.debug("Item receipt greater IRSum:", tempIRSumQty);
-                            vbSumQty = parseInt(vendorBillarr[i].quantity);
-                            if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
-                                vbIdArr.push(vendorBillarr[i].vbinternalid);
-                            }
-                            if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
-                                irIdArr.push(itemReceiptarr[j].internalid);
-                            }
-                        }
-
-                        log.debug("VB Sum Quantity Array:", vendorBillarr);
-                        log.debug("IR Sum Quantity:", itemReceiptarr);
-                        log.debug("vendor bill Item:", vendorBillarr[i].item);
-                        log.debug("Item Receipt Item:", itemReceiptarr[j].item);
-                        log.debug("vendor bill Quantity:", vendorBillarr[i].quantity);
-                        log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
-                        log.debug('vbSumQty->>', vbSumQty);
-                        log.debug('tempIRSumQty->>', tempIRSumQty);  // Added the tempIRSumQty debug log
-
-                        // Compare vendor bill quantity to item receipt quantity
-                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == tempIRSumQty) {
-                            log.debug('all set to link->>', 'all set to link->>');
-                            partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, irIdArr);
-                            vbSumQty = 0;
-                            tempIRSumQty = 0; // Reset local variable
-                        }
-
-                    } else {
-                        log.debug("item comparison else triggered");
-                        log.debug("J iteration value:", j);
-                        if (!matchFound) {
-                            log.debug("Else Item Receipt array:", itemReceiptarr);
-                            log.debug("Else vendorbill array:", vendorBillarr);
-                            enableCheck(vendorBillarr[i].vbinternalid);
-                            itemReceiptarr.splice(0, 1); // Corrected to remove the first element
-                            vendorBillarr.splice(i, 1);
-                            i--;
-                        }
-                    }
-                } else {
-                    log.debug("It's not linked condition else triggered");
-                    if (!matchFound) {
-                        log.debug("Else Item Receipt array:", itemReceiptarr);
-                        enableCheck(vendorBillarr[i].vbinternalid);
-                        itemReceiptarr.splice(0, 1); // Corrected to remove the first element
-                        vendorBillarr.splice(i, 1);
-                        i--;
-                    }
-                }
-            }
-        }
-    } catch (error) {
-        log.debug("Error in itemComparsion:", error.message);
-    }
-}
+                        }	
+	Length Item Receipt arr:	4/29/2025	10:21 am	-System-	
+[
+   {
+      itemreceiptnumber: "IR008201",
+      internalid: "2093304",
+      item: "824",
+      quantity: "3",
+      datecreated: "4/4/2025 3:00 am",
+      poDoc: "PO035268"
+   },
+   {
+      itemreceiptnumber: "IR008202",
+      internalid: "2093305",
+      item: "824",
+      quantity: "3",
+      datecreated: "4/4/2025 3:01 am",
+      poDoc: "PO035268"
+   }
+]Sum of IR Quantity:	4/29/2025	10:21 am	-System-	03 i have 2 itemreceipts but i am getting this log one time only second time not coming what is the issue in if (itemReceiptarr.length > vendorBillarr.length) {} in this if condition 
