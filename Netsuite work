@@ -1,4 +1,10 @@
-
+/**********************************************
+ * Script Name			:	
+ * Author               : 
+ * Creation date		: 24th March 2025
+ * Company	  			: Capgemini India
+ * Description          : This script is used to linked Item receipt to vendor bill record and linked Vendor bill to Item receipt record.
+ */
 /**
  * @NApiVersion 2.1
  * @NScriptType ScheduledScript
@@ -205,9 +211,14 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                             });
 
                             log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
+                            vendorBillarr.splice(i, 1);
+                            itemReceiptarr.splice(j, 1);
+                            i--;
+                            break;
+
                         }
 
-                        else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc) {
+                        else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
                             log.debug('else if execute in term partail IRBill', 'else if execute in term partail IRBill->>');
                             if (vendorBillarr.length > itemReceiptarr.length) {
                                 vbSumQty += parseInt(vendorBillarr[i].quantity);
@@ -253,11 +264,20 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                         else {
                             log.debug("item comaprsion else triggered");
                             enableCheck(vendorBillarr[i].vbinternalid);
+                            vendorBillarr.splice(i, 1);
+                            itemReceiptarr.splice(j, 1);
+                            i--;
+                            break;
 
                         }
                     } else {
                         log.debug("Its not linked condition else triggered");
                         enableCheck(vendorBillarr[i].vbinternalid);
+                        vendorBillarr.splice(i, 1);
+                        itemReceiptarr.splice(j, 1);
+                        i--;
+                        break;
+
                     }
                 }
             }
@@ -399,183 +419,3 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
         execute: execute
     };
 });
-1	View	Debug	IRSumQty->>	4/28/2025	7:19 am	-System-	IRSumQty->>8	Remove
-2	View	Debug	vbSumQty->>	4/28/2025	7:19 am	-System-	vbSumQty->>6	Remove
-3	View	Debug	Item Receipt Quantity:	4/28/2025	7:19 am	-System-	3	Remove
-4	View	Debug	vendor bill Quantity:	4/28/2025	7:19 am	-System-	6	Remove
-5	View	Debug	Item Receipt Item:	4/28/2025	7:19 am	-System-	824	Remove
-6	View	Debug	vendor bill Item:	4/28/2025	7:19 am	-System-	824	Remove
-7	View	Debug	IR Sum Quantity length:	4/28/2025	7:19 am	-System-	4	Remove
-8	View	Debug	IR Sum Quantity:	4/28/2025	7:19 am	-System-	
-[
-   {
-      itemreceiptnumber: "IR008196",
-      internalid: "2093294",
-      item: "716",
-      quantity: "2",
-      datecreated: "4/4/2025 12:43 am",
-      poDoc: "PO035264"
-   },
-   {
-      itemreceiptnumber: "IR008197",
-      internalid: "2093295",
-      item: "714",
-      quantity: "2",
-      datecreated: "4/4/2025 12:44 am",
-      poDoc: "PO035264"
-   },
-   {
-      itemreceiptnumber: "IR008201",
-      internalid: "2093304",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:00 am",
-      poDoc: "PO035268"
-   },
-   {
-      itemreceiptnumber: "IR008202",
-      internalid: "2093305",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:01 am",
-      poDoc: "PO035268"
-   }
-]
-Remove
-9	View	Debug	VB Sum Quantity length:	4/28/2025	7:19 am	-System-	3	Remove
-10	View	Debug	VB Sum Quantity Array:	4/28/2025	7:19 am	-System-	
-[
-   {
-      billinvoicenumber: "9-769-90937",
-      billtrandate: "4/2/2025",
-      billin: "Bill #9-769-90937",
-      billstatus: "open",
-      item: "716",
-      quantity: "2",
-      poquantity: "2",
-      amount: "200.00",
-      vbinternalid: "2093075",
-      datecreated: "4/2/2025 12:48 am",
-      poDoc: "PO035264"
-   },
-   {
-      billinvoicenumber: "734.929.2481",
-      billtrandate: "4/2/2025",
-      billin: "Bill #734.929.2481",
-      billstatus: "open",
-      item: "714",
-      quantity: "1",
-      poquantity: "1",
-      amount: "200.00",
-      vbinternalid: "2093077",
-      datecreated: "4/2/2025 12:52 am",
-      poDoc: "PO035264"
-   },
-   {
-      billinvoicenumber: "testing123",
-      billtrandate: "4/4/2025",
-      billin: "Bill #testing123",
-      billstatus: "open",
-      item: "824",
-      quantity: "6",
-      poquantity: "6",
-      amount: "600.00",
-      vbinternalid: "2093303",
-      datecreated: "4/4/2025 2:59 am",
-      poDoc: "PO035268"
-   }
-]
-Remove
-11	View	Debug	else if execute in term partail IRBill	4/28/2025	7:19 am	-System-	else if execute in term partail IRBill->>	Remove
-12	View	Debug	is already linked	4/28/2025	7:19 am	-System-	false	Remove
-13	View	Debug	Linked Vb:	4/28/2025	7:19 am	-System-	false	Remove
-14	View	Debug	Linked Ir:	4/28/2025	7:19 am	-System-	false	Remove
-15	View	Debug	IRSumQty->>	4/28/2025	7:19 am	-System-	IRSumQty->>5	Remove
-16	View	Debug	vbSumQty->>	4/28/2025	7:19 am	-System-	vbSumQty->>6	Remove
-17	View	Debug	Item Receipt Quantity:	4/28/2025	7:19 am	-System-	3	Remove
-18	View	Debug	vendor bill Quantity:	4/28/2025	7:19 am	-System-	6	Remove
-19	View	Debug	Item Receipt Item:	4/28/2025	7:19 am	-System-	824	Remove
-20	View	Debug	vendor bill Item:	4/28/2025	7:19 am	-System-	824	Remove
-21	View	Debug	IR Sum Quantity length:	4/28/2025	7:19 am	-System-	4	Remove
-22	View	Debug	IR Sum Quantity:	4/28/2025	7:19 am	-System-	
-[
-   {
-      itemreceiptnumber: "IR008196",
-      internalid: "2093294",
-      item: "716",
-      quantity: "2",
-      datecreated: "4/4/2025 12:43 am",
-      poDoc: "PO035264"
-   },
-   {
-      itemreceiptnumber: "IR008197",
-      internalid: "2093295",
-      item: "714",
-      quantity: "2",
-      datecreated: "4/4/2025 12:44 am",
-      poDoc: "PO035264"
-   },
-   {
-      itemreceiptnumber: "IR008201",
-      internalid: "2093304",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:00 am",
-      poDoc: "PO035268"
-   },
-   {
-      itemreceiptnumber: "IR008202",
-      internalid: "2093305",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:01 am",
-      poDoc: "PO035268"
-   }
-]
-Remove
-23	View	Debug	VB Sum Quantity length:	4/28/2025	7:19 am	-System-	3	Remove
-24	View	Debug	VB Sum Quantity Array:	4/28/2025	7:19 am	-System-	
-[
-   {
-      billinvoicenumber: "9-769-90937",
-      billtrandate: "4/2/2025",
-      billin: "Bill #9-769-90937",
-      billstatus: "open",
-      item: "716",
-      quantity: "2",
-      poquantity: "2",
-      amount: "200.00",
-      vbinternalid: "2093075",
-      datecreated: "4/2/2025 12:48 am",
-      poDoc: "PO035264"
-   },
-   {
-      billinvoicenumber: "734.929.2481",
-      billtrandate: "4/2/2025",
-      billin: "Bill #734.929.2481",
-      billstatus: "open",
-      item: "714",
-      quantity: "1",
-      poquantity: "1",
-      amount: "200.00",
-      vbinternalid: "2093077",
-      datecreated: "4/2/2025 12:52 am",
-      poDoc: "PO035264"
-   },
-   {
-      billinvoicenumber: "testing123",
-      billtrandate: "4/4/2025",
-      billin: "Bill #testing123",
-      billstatus: "open",
-      item: "824",
-      quantity: "6",
-      poquantity: "6",
-      amount: "600.00",
-      vbinternalid: "2093303",
-      datecreated: "4/4/2025 2:59 am",
-      poDoc: "PO035268"
-   }
-]
-Remove
-25	View	Debug	else if execute in term partail IRBill	4/28/2025	7:19 am	-System-	else if execute in term partail IRBill->>	Remove
-Actions
