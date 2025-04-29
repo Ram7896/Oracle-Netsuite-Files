@@ -79,7 +79,7 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
                         log.debug("vendor bill Quantity:", vendorBillarr[i].quantity);
                         log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
                         log.debug('vbSumQty->>', vbSumQty);
-                        log.debug('tempIRSumQty->>', tempIRSumQty);
+                        log.debug('tempIRSumQty->>', tempIRSumQty);  // Added the tempIRSumQty debug log
 
                         // Compare vendor bill quantity to item receipt quantity
                         if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == tempIRSumQty) {
