@@ -539,63 +539,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
         execute: execute
     };
 });
-1	View	Debug	IRSumQty->>	4/29/2025	5:42 am	-System-	IRSumQty->>8	Remove
-2	View	Debug	vbSumQty->>	4/29/2025	5:42 am	-System-	vbSumQty->>6	Remove
-3	View	Debug	Item Receipt Quantity:	4/29/2025	5:42 am	-System-	3	Remove
-4	View	Debug	vendor bill Quantity:	4/29/2025	5:42 am	-System-	6	Remove
-5	View	Debug	Item Receipt Item:	4/29/2025	5:42 am	-System-	824	Remove
-6	View	Debug	vendor bill Item:	4/29/2025	5:42 am	-System-	824	Remove
-7	View	Debug	IR Sum Quantity length:	4/29/2025	5:42 am	-System-	2	Remove
-8	View	Debug	IR Sum Quantity:	4/29/2025	5:42 am	-System-	
-[
-   {
-      itemreceiptnumber: "IR008201",
-      internalid: "2093304",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:00 am",
-      poDoc: "PO035268"
-   },
-   {
-      itemreceiptnumber: "IR008202",
-      internalid: "2093305",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:01 am",
-      poDoc: "PO035268"
-   }
-]
-Remove
-9	View	Debug	VB Sum Quantity length:	4/29/2025	5:42 am	-System-	1	Remove
-10	View	Debug	VB Sum Quantity Array:	4/29/2025	5:42 am	-System-	
-[
-   {
-      billinvoicenumber: "testing123",
-      billtrandate: "4/4/2025",
-      billin: "Bill #testing123",
-      billstatus: "open",
-      item: "824",
-      quantity: "6",
-      poquantity: "6",
-      amount: "600.00",
-      vbinternalid: "2093303",
-      datecreated: "4/4/2025 2:59 am",
-      poDoc: "PO035268"
-   }
-]
-Remove
-11	View	Debug	else if execute in term partail IRBill	4/29/2025	5:42 am	-System-	else if execute in term partail IRBill->>	Remove
-12	View	Debug	is already linked	4/29/2025	5:42 am	-System-	false	Remove
-13	View	Debug	Linked Vb:	4/29/2025	5:42 am	-System-	false	Remove
-14	View	Debug	Linked Ir:	4/29/2025	5:42 am	-System-	false	Remove
-15	View	Debug	IRSumQty->>	4/29/2025	5:42 am	-System-	IRSumQty->>5	Remove
-16	View	Debug	vbSumQty->>	4/29/2025	5:42 am	-System-	vbSumQty->>6	Remove
-17	View	Debug	Item Receipt Quantity:	4/29/2025	5:42 am	-System-	3	Remove
-18	View	Debug	vendor bill Quantity:	4/29/2025	5:42 am	-System-	6	Remove
-19	View	Debug	Item Receipt Item:	4/29/2025	5:42 am	-System-	824	Remove
-20	View	Debug	vendor bill Item:	4/29/2025	5:42 am	-System-	824	Remove
-21	View	Debug	IR Sum Quantity length:	4/29/2025	5:42 am	-System-	2	Remove
-22	View	Debug	IR Sum Quantity:	4/29/2025	5:42 am	-System-	
+	IR Sum Quantity:	4/29/2025	5:42 am	-System-	
 [
    {
       itemreceiptnumber: "IR008201",
@@ -632,6 +576,44 @@ Remove
       poDoc: "PO035268"
    }
 ]
+Debug	IRSumQty->>	4/29/2025	5:42 am	-System-	IRSumQty->>5	Remove
+16	View	Debug	vbSumQty->>	4/29/2025	5:42 am	-System-	vbSumQty->>6IR Sum Quantity:	4/29/2025	5:42 am	-System-	
+[
+   {
+      itemreceiptnumber: "IR008201",
+      internalid: "2093304",
+      item: "824",
+      quantity: "3",
+      datecreated: "4/4/2025 3:00 am",
+      poDoc: "PO035268"
+   },
+   {
+      itemreceiptnumber: "IR008202",
+      internalid: "2093305",
+      item: "824",
+      quantity: "3",
+      datecreated: "4/4/2025 3:01 am",
+      poDoc: "PO035268"
+   }
+]
 Remove
-25	View	Debug	else if execute in term partail IRBill	4/29/2025	5:42 am	-System-	else if execute in term partail IRBill->>	Remove
-Actions
+9	View	Debug	VB Sum Quantity length:	4/29/2025	5:42 am	-System-	1	Remove
+10	View	Debug	VB Sum Quantity Array:	4/29/2025	5:42 am	-System-	
+[
+   {
+      billinvoicenumber: "testing123",
+      billtrandate: "4/4/2025",
+      billin: "Bill #testing123",
+      billstatus: "open",
+      item: "824",
+      quantity: "6",
+      poquantity: "6",
+      amount: "600.00",
+      vbinternalid: "2093303",
+      datecreated: "4/4/2025 2:59 am",
+      poDoc: "PO035268"
+   }
+]	View	Debug	IRSumQty->>	4/29/2025	5:42 am	-System-	IRSumQty->>8	Remove
+2	View	Debug	vbSumQty->>	4/29/2025	5:42 am	-System-	vbSumQty->>6	Remove
+3	View	Debug	Item Receipt Quantity:	4/29/2025	5:42 am	-System-	3	Remove
+4	View	Debug	vendor bill Quantity:	4/29/2025	5:42 am	-System-	6
