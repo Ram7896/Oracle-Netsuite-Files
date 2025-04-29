@@ -173,6 +173,7 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
             var irIdArr = [];
             log.debug("Function Item Comparison triggered");
             for (var i = 0; i < vendorBillarr.length; i++) {
+                let matchFound = false;
                 for (var j = 0; j < itemReceiptarr.length; j++) {
                     if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
 
@@ -257,20 +258,28 @@ define(['N/record', 'N/search', 'N/url', 'N/runtime', 'N/format'], (record, sear
                         }
                         else {
                             log.debug("item comaprsion else triggered");
-                            enableCheck(vendorBillarr[i].vbinternalid);
-                            vendorBillarr.splice(i, 1);
-                            itemReceiptarr.splice(j, 1);
-                            i--;
-                            break;
+                            log.debug("J iteration value:", j);
+                            if (!matchFound) {
+                                log.debug("Item Receipt length:", itemReceiptarr.length - 1);
+                                log.debug(" Else Item Receipt array:", itemReceiptarr);
+                                log.debug("Else vendorbill array:", vendorBillarr);
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                                log.debug("else J iteration value:", j);
+                                vendorBillarr.splice(i, 1);
+                                itemReceiptarr.splice(j, 1);
+                                i--;
+                            }
 
                         }
                     } else {
                         log.debug("Its not linked condition else triggered");
-                        enableCheck(vendorBillarr[i].vbinternalid);
-                        vendorBillarr.splice(i, 1);
-                        itemReceiptarr.splice(j, 1);
-                        i--;
-                        break;
+                        if (!matchFound) {
+                            log.debug(" Else Item Receipt array:", itemReceiptarr);
+                            enableCheck(vendorBillarr[i].vbinternalid);
+                            vendorBillarr.splice(i, 1);
+                            itemReceiptarr.splice(j, 1);
+                            i--;
+                        }
 
                     }
                 }
