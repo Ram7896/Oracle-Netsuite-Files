@@ -89,8 +89,8 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
                             // Compare vendor bill quantity to item receipt quantity
                             if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
                                 log.debug('all set to link->>', 'all set to link->>');
-                                const finalirIds = itemReceiptarr.map(ir => ir.internalid);
-                                log.debug("Matched Ir Ids:",finalirIds);
+                                let finalirIds = itemReceiptarr.map(ir => ir.internalid);
+                                log.debug("Matched Ir Ids:",parseInt(finalirIds));
                                 partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, finalirIds);
                                 vbSumQty = 0;
                                 tempIRSumQty = 0;
@@ -190,4 +190,7 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
 
         }
 
-    }
+    }Error in itemComparsion:	4/30/2025	10:28 am	-System-	execute on com.netledger.app.common.scripting.api.record.RecordApiV2.nlapiSubmitField failed due to: Cannot convert '["2093303"]'(language: JavaScript, type: Array) to Java type 'java.lang.String': Invalid or lossy primitive coercion.	Remove
+2	View	Debug	if Ir greater vb triggered	4/30/2025	10:28 am	-System-	 	Remove
+3	View	Debug	irIdArr->>	4/30/2025	10:28 am	-System-	irIdArr->>>2093304,2093305	Remove
+4	View	Debug	vbIdArr->>	4/30/2025	10:28 am	-System-	vbIdArr->>>2093303
