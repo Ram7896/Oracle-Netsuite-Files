@@ -56,7 +56,7 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
                                     vbIdArr.push(vendorBillarr[i].vbinternalid);
                                 }
                                 if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
-                                    irIdArr.push(itemReceiptarr[j].internalid);
+                                    irIdArr.push(itemReceiptarr[j]);
                                 }
                             }
                             if (itemReceiptarr.length > vendorBillarr.length) {
@@ -89,7 +89,9 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
                             // Compare vendor bill quantity to item receipt quantity
                             if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
                                 log.debug('all set to link->>', 'all set to link->>');
-                                partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, irIdArr);
+                                const finalirIds = itemReceiptarr.map(ir => ir.internalid);
+                                log.debug("Matched Ir Ids:",finalirIds);
+                                partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, finalirIds);
                                 vbSumQty = 0;
                                 tempIRSumQty = 0;
                             }
@@ -123,17 +125,18 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
         }
     }
 
-    function partialIRVbLink(vbinternalid, irinternalid, vbIdArr, irIdArr) {
+    function partialIRVbLink(vbinternalid, irinternalid, vbidArr, iridArr) {
         log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
-        log.debug('vbIdArr->>', 'vbIdArr->>>' + vbIdArr);
-        log.debug('irIdArr->>', 'irIdArr->>>' + irIdArr);
-        if (irIdArr.length > vbIdArr.length) {
-            for (var r = 0; r < irIdArr.length; r++) {
+        log.debug('vbIdArr->>', 'vbIdArr->>>' + vbidArr);
+        log.debug('irIdArr->>', 'irIdArr->>>' + iridArr);
+        if (iridArr.length > vbidArr.length) {
+            log.debug("if Ir greater vb triggered");
+            for (var r = 0; r < iridArr.length; r++) {
                 var vb_save = record.submitFields({
                     type: record.Type.VENDOR_BILL,
-                    id: vbIdArr,
+                    id: vbidArr,
                     values: {
-                        custbody_ada_linked_record: irIdArr[r]
+                        custbody_ada_linked_record: iridArr
                     },
                     options: {
                         enableSourcing: false,
@@ -145,9 +148,9 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
                 }
                 var ir_save = record.submitFields({
                     type: record.Type.ITEM_RECEIPT,
-                    id: irIdArr[r],
+                    id: iridArr[r],
                     values: {
-                        custbody_ada_linked_record: vbIdArr
+                        custbody_ada_linked_record: vbidArr
                     },
                     options: {
                         enableSourcing: false,
@@ -157,12 +160,12 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
             }
         }
         else {
-            for (var v = 0; v < vbIdArr.length; v++) {
+            for (var v = 0; v < vbidArr.length; v++) {
                 var vb_save = record.submitFields({
                     type: record.Type.VENDOR_BILL,
-                    id: vbIdArr[v],
+                    id: vbidArr[v],
                     values: {
-                        custbody_ada_linked_record: irIdArr
+                        custbody_ada_linked_record: iridArr
                     },
                     options: {
                         enableSourcing: false,
@@ -170,13 +173,13 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
                     }
                 });
                 if (vb_save) {
-                    enableCheck(vbIdArr[v]);
+                    enableCheck(vbidArr[v]);
                 }
                 var ir_save = record.submitFields({
                     type: record.Type.ITEM_RECEIPT,
                     id: irinternalid,
                     values: {
-                        custbody_ada_linked_record: vbIdArr
+                        custbody_ada_linked_record: vbidArr
                     },
                     options: {
                         enableSourcing: false,
@@ -188,65 +191,3 @@ function itemComparsion(vendorBillarr, itemReceiptarr) {
         }
 
     }
-    function enableCheck(vbInternalId) {
-        try {
-            const vendorBill = search.lookupFields({
-                type: record.Type.VENDOR_BILL,
-                id: vbInternalId,
-                columns: ['custbody_ada_linked_record']
-            });
-            log.debug("Vendor bill search lookup value:", vendorBill);
-
-            var createdFrom = (vendorBill.custbody_ada_linked_record && vendorBill.custbody_ada_linked_record.length > 0) ? vendorBill.custbody_ada_linked_record[0].value : '';
-            log.debug("created from vb value:", createdFrom);
-
-            if (createdFrom) {
-                log.debug("Make payment false:");
-                record.submitFields({
-                    type: record.Type.VENDOR_BILL,
-                    id: vbInternalId,
-                    values: {
-                        custbody_ada_vb_ir: false
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-                log.debug("record is submitted");
-            } else {
-                log.debug("Make payment checkbox enabled");
-                record.submitFields({
-                    type: record.Type.VENDOR_BILL,
-                    id: vbInternalId,
-                    values: {
-                        custbody_ada_vb_ir: true
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-            }
-        } catch (error) {
-            log.debug("Error in Enable Check:", error.message);
-        }
-
-    }[
-   {
-      itemreceiptnumber: "IR008201",
-      internalid: "2093304",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:00 am",
-      poDoc: "PO035268"
-   },
-   {
-      itemreceiptnumber: "IR008202",
-      internalid: "2093305",
-      item: "824",
-      quantity: "3",
-      datecreated: "4/4/2025 3:01 am",
-      poDoc: "PO035268"
-   }
-]
