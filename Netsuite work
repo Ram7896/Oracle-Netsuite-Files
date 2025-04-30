@@ -1,8 +1,54 @@
-else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
+function itemComparsion(vendorBillarr, itemReceiptarr) {
+        try {
+            var vbSumQty = 0;
+            var IRSumQty = 0;
+            var vbIdArr = [];
+            var irIdArr = [];
+            log.debug("Function Item Comparison triggered");
+
+            for (var i = 0; i < vendorBillarr.length; i++) {
+                let matchFound = false;
+                for (var j = 0; j < itemReceiptarr.length; j++) {
+                    if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
+                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity) {
+                            log.debug("Linking process started");
+                            var vb_save = record.submitFields({
+                                type: record.Type.VENDOR_BILL,
+                                id: vendorBillarr[i].vbinternalid,
+                                values: {
+                                    custbody_ada_linked_record: itemReceiptarr[j].internalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
+                            if (vb_save) {
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                            }
+                            var ir_save = record.submitFields({
+                                type: record.Type.ITEM_RECEIPT,
+                                id: itemReceiptarr[j].internalid,
+                                values: {
+                                    custbody_ada_linked_record: vendorBillarr[i].vbinternalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
+
+                            log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
+                            vendorBillarr.splice(i, 1);
+                            itemReceiptarr.splice(j, 1);
+                            i--;
+                            break;
+
+                        } else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
                             log.debug('else if execute in term partial IRBill', 'else if execute in term partial IRBill->>');
-                            
+
                             let tempIRSumQty = 0;
-    
+
                             if (vendorBillarr.length > itemReceiptarr.length) {
                                 vbSumQty += parseInt(vendorBillarr[i].quantity);
                                 tempIRSumQty = parseInt(itemReceiptarr[j].quantity);
@@ -14,12 +60,13 @@ else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].i
                                 }
                             }
                             if (itemReceiptarr.length > vendorBillarr.length) {
-                                log.debug("Length Item Receipt arr:",itemReceiptarr);
-                                log.debug("Item Receipt Quantity:",itemReceiptarr[j].quantity);
-                                var sum =0;
-                                 sum+=itemReceiptarr[j].quantity;
-                                 log.debug("Sum of IR Quantity:",sum);
-                                tempIRSumQty += parseInt(itemReceiptarr[j].quantity);
+                                log.debug("Length Item Receipt arr:", itemReceiptarr);
+                                log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
+                                var totalQuantity = 0;
+                                for (var k = 0; k < itemReceiptarr.length; k++) {
+                                    totalQuantity += parseInt(itemReceiptarr[k].quantity);
+                                    log.debug("Sum Of IR Quantity:", totalQuantity);
+                                }
                                 log.debug("Item receipt greater IRSum:", tempIRSumQty);
                                 vbSumQty = parseInt(vendorBillarr[i].quantity);
                                 if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
@@ -29,7 +76,7 @@ else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].i
                                     irIdArr.push(itemReceiptarr[j].internalid);
                                 }
                             }
-    
+
                             log.debug("VB Sum Quantity Array:", vendorBillarr);
                             log.debug("IR Sum Quantity:", itemReceiptarr);
                             log.debug("vendor bill Item:", vendorBillarr[i].item);
@@ -37,16 +84,16 @@ else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].i
                             log.debug("vendor bill Quantity:", vendorBillarr[i].quantity);
                             log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
                             log.debug('vbSumQty->>', vbSumQty);
-                            log.debug('tempIRSumQty->>', tempIRSumQty); 
-    
+                            log.debug('tempIRSumQty->>', tempIRSumQty);
+
                             // Compare vendor bill quantity to item receipt quantity
-                            if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == tempIRSumQty) {
+                            if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
                                 log.debug('all set to link->>', 'all set to link->>');
                                 partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, irIdArr);
                                 vbSumQty = 0;
-                                tempIRSumQty = 0; // Reset local variable
+                                tempIRSumQty = 0;
                             }
-    
+
                         } else {
                             log.debug("item comparison else triggered");
                             log.debug("J iteration value:", j);
@@ -58,9 +105,134 @@ else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].i
                                 vendorBillarr.splice(i, 1);
                                 i--;
                             }
-                        }	
-	Length Item Receipt arr:	4/29/2025	10:21 am	-System-	
-[
+                        }
+                    } else {
+                        log.debug("It's not linked condition else triggered");
+                        if (!matchFound) {
+                            log.debug("Else Item Receipt array:", itemReceiptarr);
+                            enableCheck(vendorBillarr[i].vbinternalid);
+                            itemReceiptarr.splice(0, 1);
+                            vendorBillarr.splice(i, 1);
+                            i--;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            log.debug("Error in itemComparsion:", error.message);
+        }
+    }
+
+    function partialIRVbLink(vbinternalid, irinternalid, vbIdArr, irIdArr) {
+        log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
+        log.debug('vbIdArr->>', 'vbIdArr->>>' + vbIdArr);
+        log.debug('irIdArr->>', 'irIdArr->>>' + irIdArr);
+        if (irIdArr.length > vbIdArr.length) {
+            for (var r = 0; r < irIdArr.length; r++) {
+                var vb_save = record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbIdArr,
+                    values: {
+                        custbody_ada_linked_record: irIdArr[r]
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                if (vb_save) {
+                    enableCheck(vbinternalid);
+                }
+                var ir_save = record.submitFields({
+                    type: record.Type.ITEM_RECEIPT,
+                    id: irIdArr[r],
+                    values: {
+                        custbody_ada_linked_record: vbIdArr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+            }
+        }
+        else {
+            for (var v = 0; v < vbIdArr.length; v++) {
+                var vb_save = record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbIdArr[v],
+                    values: {
+                        custbody_ada_linked_record: irIdArr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                if (vb_save) {
+                    enableCheck(vbIdArr[v]);
+                }
+                var ir_save = record.submitFields({
+                    type: record.Type.ITEM_RECEIPT,
+                    id: irinternalid,
+                    values: {
+                        custbody_ada_linked_record: vbIdArr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+            }
+
+        }
+
+    }
+    function enableCheck(vbInternalId) {
+        try {
+            const vendorBill = search.lookupFields({
+                type: record.Type.VENDOR_BILL,
+                id: vbInternalId,
+                columns: ['custbody_ada_linked_record']
+            });
+            log.debug("Vendor bill search lookup value:", vendorBill);
+
+            var createdFrom = (vendorBill.custbody_ada_linked_record && vendorBill.custbody_ada_linked_record.length > 0) ? vendorBill.custbody_ada_linked_record[0].value : '';
+            log.debug("created from vb value:", createdFrom);
+
+            if (createdFrom) {
+                log.debug("Make payment false:");
+                record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbInternalId,
+                    values: {
+                        custbody_ada_vb_ir: false
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                log.debug("record is submitted");
+            } else {
+                log.debug("Make payment checkbox enabled");
+                record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbInternalId,
+                    values: {
+                        custbody_ada_vb_ir: true
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+            }
+        } catch (error) {
+            log.debug("Error in Enable Check:", error.message);
+        }
+
+    }[
    {
       itemreceiptnumber: "IR008201",
       internalid: "2093304",
@@ -77,4 +249,4 @@ else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].i
       datecreated: "4/4/2025 3:01 am",
       poDoc: "PO035268"
    }
-]Sum of IR Quantity:	4/29/2025	10:21 am	-System-	03 i have 2 itemreceipts but i am getting this log one time only second time not coming what is the issue in if (itemReceiptarr.length > vendorBillarr.length) {} in this if condition 
+]
