@@ -1,196 +1,70 @@
-function itemComparsion(vendorBillarr, itemReceiptarr) {
-        try {
-            var vbSumQty = 0;
-            var IRSumQty = 0;
-            var vbIdArr = [];
-            var irIdArr = [];
-            log.debug("Function Item Comparison triggered");
+function partialIRVbLink(vbinternalid, irinternalid, vbidArr, iridArr) {
+    log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
+    log.debug('vbIdArr->>', 'vbIdArr->>>' + vbidArr);
+    log.debug('irIdArr->>', 'irIdArr->>>' + iridArr);
 
-            for (var i = 0; i < vendorBillarr.length; i++) {
-                let matchFound = false;
-                for (var j = 0; j < itemReceiptarr.length; j++) {
-                    if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
-                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity) {
-                            log.debug("Linking process started");
-                            var vb_save = record.submitFields({
-                                type: record.Type.VENDOR_BILL,
-                                id: vendorBillarr[i].vbinternalid,
-                                values: {
-                                    custbody_ada_linked_record: itemReceiptarr[j].internalid
-                                },
-                                options: {
-                                    enableSourcing: false,
-                                    ignoreMandatoryFields: true
-                                }
-                            });
-                            if (vb_save) {
-                                enableCheck(vendorBillarr[i].vbinternalid);
-                            }
-                            var ir_save = record.submitFields({
-                                type: record.Type.ITEM_RECEIPT,
-                                id: itemReceiptarr[j].internalid,
-                                values: {
-                                    custbody_ada_linked_record: vendorBillarr[i].vbinternalid
-                                },
-                                options: {
-                                    enableSourcing: false,
-                                    ignoreMandatoryFields: true
-                                }
-                            });
+    if (iridArr.length > vbidArr.length) {
+        log.debug("if Ir greater vb triggered");
+        for (var r = 0; r < iridArr.length; r++) {
+            var irId = iridArr[r];
 
-                            log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
-                            vendorBillarr.splice(i, 1);
-                            itemReceiptarr.splice(j, 1);
-                            i--;
-                            break;
-
-                        } else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
-                            log.debug('else if execute in term partial IRBill', 'else if execute in term partial IRBill->>');
-
-                            let tempIRSumQty = 0;
-
-                            if (vendorBillarr.length > itemReceiptarr.length) {
-                                vbSumQty += parseInt(vendorBillarr[i].quantity);
-                                tempIRSumQty = parseInt(itemReceiptarr[j].quantity);
-                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
-                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
-                                }
-                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
-                                    irIdArr.push(itemReceiptarr[j]);
-                                }
-                            }
-                            if (itemReceiptarr.length > vendorBillarr.length) {
-                                log.debug("Length Item Receipt arr:", itemReceiptarr);
-                                log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
-                                var totalQuantity = 0;
-                                for (var k = 0; k < itemReceiptarr.length; k++) {
-                                    totalQuantity += parseInt(itemReceiptarr[k].quantity);
-                                    log.debug("Sum Of IR Quantity:", totalQuantity);
-                                }
-                                log.debug("Item receipt greater IRSum:", tempIRSumQty);
-                                vbSumQty = parseInt(vendorBillarr[i].quantity);
-                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
-                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
-                                }
-                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
-                                    irIdArr.push(itemReceiptarr[j].internalid);
-                                }
-                            }
-
-                            log.debug("VB Sum Quantity Array:", vendorBillarr);
-                            log.debug("IR Sum Quantity:", itemReceiptarr);
-                            log.debug("vendor bill Item:", vendorBillarr[i].item);
-                            log.debug("Item Receipt Item:", itemReceiptarr[j].item);
-                            log.debug("vendor bill Quantity:", vendorBillarr[i].quantity);
-                            log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
-                            log.debug('vbSumQty->>', vbSumQty);
-                            log.debug('tempIRSumQty->>', tempIRSumQty);
-
-                            // Compare vendor bill quantity to item receipt quantity
-                            if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
-                                log.debug('all set to link->>', 'all set to link->>');
-                                let finalirIds = itemReceiptarr.map(ir => ir.internalid);
-                                log.debug("Matched Ir Ids:",parseInt(finalirIds));
-                                partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, finalirIds);
-                                vbSumQty = 0;
-                                tempIRSumQty = 0;
-                            }
-
-                        } else {
-                            log.debug("item comparison else triggered");
-                            log.debug("J iteration value:", j);
-                            if (!matchFound) {
-                                log.debug("Else Item Receipt array:", itemReceiptarr);
-                                log.debug("Else vendorbill array:", vendorBillarr);
-                                enableCheck(vendorBillarr[i].vbinternalid);
-                                itemReceiptarr.splice(0, 1);
-                                vendorBillarr.splice(i, 1);
-                                i--;
-                            }
-                        }
-                    } else {
-                        log.debug("It's not linked condition else triggered");
-                        if (!matchFound) {
-                            log.debug("Else Item Receipt array:", itemReceiptarr);
-                            enableCheck(vendorBillarr[i].vbinternalid);
-                            itemReceiptarr.splice(0, 1);
-                            vendorBillarr.splice(i, 1);
-                            i--;
-                        }
-                    }
+            var vb_save = record.submitFields({
+                type: record.Type.VENDOR_BILL,
+                id: vbinternalid,
+                values: {
+                    custbody_ada_linked_record: irId
+                },
+                options: {
+                    enableSourcing: false,
+                    ignoreMandatoryFields: true
                 }
+            });
+            if (vb_save) {
+                enableCheck(vbinternalid);
             }
-        } catch (error) {
-            log.debug("Error in itemComparsion:", error.message);
+
+            var ir_save = record.submitFields({
+                type: record.Type.ITEM_RECEIPT,
+                id: irId,
+                values: {
+                    custbody_ada_linked_record: vbinternalid
+                },
+                options: {
+                    enableSourcing: false,
+                    ignoreMandatoryFields: true
+                }
+            });
+        }
+    } else {
+        for (var v = 0; v < vbidArr.length; v++) {
+            var vbId = vbidArr[v];
+
+            var vb_save = record.submitFields({
+                type: record.Type.VENDOR_BILL,
+                id: vbId,
+                values: {
+                    custbody_ada_linked_record: irinternalid
+                },
+                options: {
+                    enableSourcing: false,
+                    ignoreMandatoryFields: true
+                }
+            });
+            if (vb_save) {
+                enableCheck(vbId);
+            }
+
+            var ir_save = record.submitFields({
+                type: record.Type.ITEM_RECEIPT,
+                id: irinternalid,
+                values: {
+                    custbody_ada_linked_record: vbId
+                },
+                options: {
+                    enableSourcing: false,
+                    ignoreMandatoryFields: true
+                }
+            });
         }
     }
-
-    function partialIRVbLink(vbinternalid, irinternalid, vbidArr, iridArr) {
-        log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
-        log.debug('vbIdArr->>', 'vbIdArr->>>' + vbidArr);
-        log.debug('irIdArr->>', 'irIdArr->>>' + iridArr);
-        if (iridArr.length > vbidArr.length) {
-            log.debug("if Ir greater vb triggered");
-            for (var r = 0; r < iridArr.length; r++) {
-                var vb_save = record.submitFields({
-                    type: record.Type.VENDOR_BILL,
-                    id: vbidArr,
-                    values: {
-                        custbody_ada_linked_record: iridArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-                if (vb_save) {
-                    enableCheck(vbinternalid);
-                }
-                var ir_save = record.submitFields({
-                    type: record.Type.ITEM_RECEIPT,
-                    id: iridArr[r],
-                    values: {
-                        custbody_ada_linked_record: vbidArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-            }
-        }
-        else {
-            for (var v = 0; v < vbidArr.length; v++) {
-                var vb_save = record.submitFields({
-                    type: record.Type.VENDOR_BILL,
-                    id: vbidArr[v],
-                    values: {
-                        custbody_ada_linked_record: iridArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-                if (vb_save) {
-                    enableCheck(vbidArr[v]);
-                }
-                var ir_save = record.submitFields({
-                    type: record.Type.ITEM_RECEIPT,
-                    id: irinternalid,
-                    values: {
-                        custbody_ada_linked_record: vbidArr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-            }
-
-        }
-
-    }Error in itemComparsion:	4/30/2025	10:28 am	-System-	execute on com.netledger.app.common.scripting.api.record.RecordApiV2.nlapiSubmitField failed due to: Cannot convert '["2093303"]'(language: JavaScript, type: Array) to Java type 'java.lang.String': Invalid or lossy primitive coercion.	Remove
-2	View	Debug	if Ir greater vb triggered	4/30/2025	10:28 am	-System-	 	Remove
-3	View	Debug	irIdArr->>	4/30/2025	10:28 am	-System-	irIdArr->>>2093304,2093305	Remove
-4	View	Debug	vbIdArr->>	4/30/2025	10:28 am	-System-	vbIdArr->>>2093303
+}
