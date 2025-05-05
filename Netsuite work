@@ -1,126 +1,62 @@
- function itemComparsion(vendorBillarr, itemReceiptarr) {
-        try {
-            var vbSumQty = 0;
-            var IRSumQty = 0;
-            var vbIdArr = [];
-            var irIdArr = [];
-            log.debug("Function Item Comparison triggered");
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ */
+define(['N/ui/serverWidget', 'N/search', 'N/record', 'N/runtime', 'N/llm'], function(ui, search, record, runtime, llm) {
 
-            for (var i = 0; i < vendorBillarr.length; i++) {
-                let matchFound = false;
-                for (var j = 0; j < itemReceiptarr.length; j++) {
-                    if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
-                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity) {
-                            log.debug("Linking process started");
-                            var vb_save = record.submitFields({
-                                type: record.Type.VENDOR_BILL,
-                                id: vendorBillarr[i].vbinternalid,
-                                values: {
-                                    custbody_ada_linked_record: itemReceiptarr[j].internalid
-                                },
-                                options: {
-                                    enableSourcing: false,
-                                    ignoreMandatoryFields: true
-                                }
-                            });
-                            if (vb_save) {
-                                enableCheck(vendorBillarr[i].vbinternalid);
-                            }
-                            var ir_save = record.submitFields({
-                                type: record.Type.ITEM_RECEIPT,
-                                id: itemReceiptarr[j].internalid,
-                                values: {
-                                    custbody_ada_linked_record: vendorBillarr[i].vbinternalid
-                                },
-                                options: {
-                                    enableSourcing: false,
-                                    ignoreMandatoryFields: true
-                                }
-                            });
+    function onRequest(context) {
+        if (context.request.method === 'GET') {
+            // Form to enter the requirement
+            var form = ui.createForm({title: 'Create Saved Search using LLM'});
+            var requirementField = form.addField({
+                id: 'custpage_requirement',
+                type: ui.FieldType.LONGTEXT,
+                label: 'Enter Saved Search Requirement'
+            });
+            requirementField.layoutType = ui.FieldLayoutType.NORMAL;
+            requirementField.updateLayoutType({
+                layoutType: ui.FieldLayoutType.OUTSIDEABOVE
+            });
+            form.addSubmitButton('Create Saved Search');
+            context.response.writePage(form);
+            
+        } else { 
+            // POST: Handle form submit
+            var requirementText = context.request.parameters.custpage_requirement;
 
-                            log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
-                            vendorBillarr.splice(i, 1);
-                            itemReceiptarr.splice(j, 1);
-                            i--;
-                            break;
+            // Use LLM module to generate a JSON saved search definition
+            var prompt = `Given this NetSuite requirement: "${requirementText}", generate a SuiteScript 2.1 JSON object for search.create(). Do NOT explain, just output JSON only.`;
+            
+            var generatedText = llm.generateText({
+                model: 'gpt-4',
+                prompt: prompt,
+                temperature: 0.2,
+                maxTokens: 1500
+            });
 
-                        } else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
-                            log.debug('else if execute in term partial IRBill', 'else if execute in term partial IRBill->>');
-
-                            let tempIRSumQty = 0;
-
-                            if (vendorBillarr.length > itemReceiptarr.length) {
-                                vbSumQty += parseInt(vendorBillarr[i].quantity);
-                                tempIRSumQty = parseInt(itemReceiptarr[j].quantity);
-                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
-                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
-                                }
-                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
-                                    irIdArr.push(itemReceiptarr[j]);
-                                }
-                            }
-                            if (itemReceiptarr.length > vendorBillarr.length) {
-                                log.debug("Length Item Receipt arr:", itemReceiptarr);
-                                log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
-                                var totalQuantity = 0;
-                                for (var k = 0; k < itemReceiptarr.length; k++) {
-                                    totalQuantity += parseInt(itemReceiptarr[k].quantity);
-                                    log.debug("Sum Of IR Quantity:", totalQuantity);
-                                }
-                                log.debug("Item receipt greater IRSum:", tempIRSumQty);
-                                vbSumQty = parseInt(vendorBillarr[i].quantity);
-                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
-                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
-                                }
-                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
-                                    irIdArr.push(itemReceiptarr[j].internalid);
-                                }
-                            }
-
-                            log.debug("VB Sum Quantity Array:", vendorBillarr);
-                            log.debug("IR Sum Quantity:", itemReceiptarr);
-                            log.debug("vendor bill Item:", vendorBillarr[i].item);
-                            log.debug("Item Receipt Item:", itemReceiptarr[j].item);
-                            log.debug("vendor bill Quantity:", vendorBillarr[i].quantity);
-                            log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
-                            log.debug('vbSumQty->>', vbSumQty);
-                            log.debug('tempIRSumQty->>', tempIRSumQty);
-
-                            // Compare vendor bill quantity to item receipt quantity
-                            if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
-                                log.debug('all set to link->>', 'all set to link->>');
-                                let finalirIds = itemReceiptarr.map(ir => ir.internalid);
-                                log.debug("Matched Ir Ids:", parseInt(finalirIds));
-                                partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, finalirIds);
-                                vbSumQty = 0;
-                                tempIRSumQty = 0;
-                            }
-
-                        } else {
-                            log.debug("item comparison else triggered");
-                            log.debug("J iteration value:", j);
-                            if (!matchFound) {
-                                log.debug("Else Item Receipt array:", itemReceiptarr);
-                                log.debug("Else vendorbill array:", vendorBillarr);
-                                enableCheck(vendorBillarr[i].vbinternalid);
-                                itemReceiptarr.splice(0, 1);
-                                vendorBillarr.splice(i, 1);
-                                i--;
-                            }
-                        }
-                    } else {
-                        log.debug("It's not linked condition else triggered");
-                        if (!matchFound) {
-                            log.debug("Else Item Receipt array:", itemReceiptarr);
-                            enableCheck(vendorBillarr[i].vbinternalid);
-                            itemReceiptarr.splice(0, 1);
-                            vendorBillarr.splice(i, 1);
-                            i--;
-                        }
-                    }
-                }
+            var generatedJson;
+            try {
+                generatedJson = JSON.parse(generatedText.text); // parse the JSON
+            } catch (e) {
+                throw 'Error parsing LLM response: ' + generatedText.text;
             }
-        } catch (error) {
-            log.debug("Error in itemComparsion:", error.message);
+
+            // Create Saved Search dynamically
+            var createdSearch = search.create(generatedJson);
+            var searchId = createdSearch.save();
+
+            var form = ui.createForm({title: 'Saved Search Created!'});
+            form.addField({
+                id: 'custpage_message',
+                type: ui.FieldType.INLINEHTML,
+                label: ' '
+            }).defaultValue = '<div style="color:green;font-weight:bold;">Saved Search Created Successfully! ID: ' + searchId + '</div>';
+
+            context.response.writePage(form);
         }
-    }if (vendorBillarr.length > itemReceiptarr.length) {} if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {} i want above way logic in this two if conitions for vendorbill
+    }
+
+    return {
+        onRequest: onRequest
+    };
+});
