@@ -1,88 +1,82 @@
-function partialIRVbLink(vbIds, irIds) {
-  try {
-    log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
-    log.debug('VB Ids:', vbIds);
-    log.debug('IR Ids:', irIds);
 
-    if (irIds.length > vbIds.length) {
-      log.debug("Condition: IRs > VBs triggered");
+    function partialIRVbLink(vbIds, irIds) {
+        try {
+            log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
+            log.debug('VB Ids:', vbIds);
+            log.debug('IR Ids:', irIds);
+            if (irIds.length > vbIds.length) {
+                log.debug("Condition: IRs > VBs triggered");
+                // Link each VB with all IRs
+                var vb_save = record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbIds,
+                    values: {
+                        custbody_ada_linked_record: irIds // link all IRs to this VB
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                if (vb_save) {
+                    enableCheck(vbId);
+                }
+                // Each IR is linked to all VBs
+                for (let i = 0; i < irIds.length; i++) {
+                    const irId = irIds[i];
+                    record.submitFields({
+                        type: record.Type.ITEM_RECEIPT,
+                        id: irId,
+                        values: {
+                            custbody_ada_linked_record: vbIds
+                        },
+                        options: {
+                            enableSourcing: false,
+                            ignoreMandatoryFields: true
+                        }
+                    });
+                    log.debug("IR linked to VBs:", { irId, vbIds });
+                }
+            }
+            else {
+                log.debug("Condition: VBs >= IRs triggered");
+                // Each VB is linked to its corresponding IR (optional: use first IR or all)
+                for (let j = 0; j < vbIds.length; j++) {
+                    const vbId = vbIds[j];
+                    var vb_save = record.submitFields({
+                        type: record.Type.VENDOR_BILL,
+                        id: vbId,
+                        values: {
+                            custbody_ada_linked_record: irIds
+                        },
+                        options: {
+                            enableSourcing: false,
+                            ignoreMandatoryFields: true
+                        }
+                    });
+                    if (vb_save) {
+                        enableCheck(vbId);
+                    }
 
-      // Each IR is linked to all VBs
-      for (let i = 0; i < irIds.length; i++) {
-        const irId = irIds[i];
-        record.submitFields({
-          type: record.Type.ITEM_RECEIPT,
-          id: irId,
-          values: {
-            custbody_ada_linked_record: vbIds
-          },
-          options: {
-            enableSourcing: false,
-            ignoreMandatoryFields: true
-          }
-        });
-        log.debug("IR linked to VBs:", { irId, vbIds });
-      }
+                    record.submitFields({
+                        type: record.Type.ITEM_RECEIPT,
+                        id: irIds,
+                        values: {
+                            custbody_ada_linked_record: vbIds
+                        },
+                        options: {
+                            enableSourcing: false,
+                            ignoreMandatoryFields: true
+                        }
+                    });
+                    log.debug("VB linked to IRs:", { vbId, irIds });
+                }
 
-      // Each VB is linked to its corresponding IR (optional: use first IR or all)
-      for (let j = 0; j < vbIds.length; j++) {
-        const vbId = vbIds[j];
-        record.submitFields({
-          type: record.Type.VENDOR_BILL,
-          id: vbId,
-          values: {
-            custbody_ada_linked_record: irIds
-          },
-          options: {
-            enableSourcing: false,
-            ignoreMandatoryFields: true
-          }
-        });
-        enableCheck(vbId);
-        log.debug("VB linked to IRs:", { vbId, irIds });
-      }
-
-    } else {
-      log.debug("Condition: VBs >= IRs triggered");
-
-      // Each VB is linked to all IRs
-      for (let i = 0; i < vbIds.length; i++) {
-        const vbId = vbIds[i];
-        record.submitFields({
-          type: record.Type.VENDOR_BILL,
-          id: vbId,
-          values: {
-            custbody_ada_linked_record: irIds
-          },
-          options: {
-            enableSourcing: false,
-            ignoreMandatoryFields: true
-          }
-        });
-        enableCheck(vbId);
-        log.debug("VB linked to IRs:", { vbId, irIds });
-      }
-
-      // Each IR is linked to all VBs
-      for (let j = 0; j < irIds.length; j++) {
-        const irId = irIds[j];
-        record.submitFields({
-          type: record.Type.ITEM_RECEIPT,
-          id: irId,
-          values: {
-            custbody_ada_linked_record: vbIds
-          },
-          options: {
-            enableSourcing: false,
-            ignoreMandatoryFields: true
-          }
-        });
-        log.debug("IR linked to VBs:", { irId, vbIds });
-      }
+            }
+            log.debug("Linking complete");
+        } catch (error) {
+            log.debug("Error in PartialIrLink function:", error.message);
+        }
     }
 
-    log.debug("Linking complete");
-  } catch (error) {
-    log.debug("Error in partialIRVbLink function:", error.message);
-  }
-}
+	View	Debug	Error in PartialIrLink function:	5/6/2025	4:40 am	-System-	execute on com.netledger.app.common.scripting.api.record.RecordApiV2.nlapiSubmitField failed due to: Cannot convert '["2093529"]'(language: JavaScript, type: Array) to Java type 'java.lang.String': Invalid or lossy primitive coercion.
