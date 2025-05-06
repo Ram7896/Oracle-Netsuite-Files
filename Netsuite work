@@ -128,3 +128,4 @@ else if (
             log.debug("Error in PartialIrLink function:", error.message);
         }
     }
+1	View	Debug	Error in PartialIrLink function:	5/6/2025	3:22 am	-System-	Transaction type specified is incorrect.
