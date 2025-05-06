@@ -1,131 +1,81 @@
 else if (
-                            vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc &&
-                            vendorBillarr[i].item === itemReceiptarr[j].item
-                          ) {
-                              const currentPODoc = vendorBillarr[i].poDoc;
-                              const currentItem = vendorBillarr[i].item;
-                          
-                              // Filter vendor bills and item receipts for current PO and item
-                              const matchingVBs = vendorBillarr.filter(vb => vb.poDoc === currentPODoc && vb.item === currentItem);
-                              const matchingIRs = itemReceiptarr.filter(ir => ir.poDoc === currentPODoc && ir.item === currentItem);
-                          
-                              const totalVBQty = matchingVBs.reduce((sum, vb) => sum + parseInt(vb.quantity), 0);
-                              const totalIRQty = matchingIRs.reduce((sum, ir) => sum + parseInt(ir.quantity), 0);
-                          
-                              log.debug("Filtered VB Quantity:", totalVBQty);
-                              log.debug("Filtered IR Quantity:", totalIRQty);
-                          
-                              if (totalVBQty === totalIRQty) {
-                                  const vbIds = matchingVBs.map(vb => vb.vbinternalid);
-                                  const irIds = matchingIRs.map(ir => ir.internalid);
-                          
-                                  log.debug("Linking VB Ids:", vbIds);
-                                  log.debug("Linking IR Ids:", irIds);
-                          
-                                  partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIds, irIds, vbIds); 
-                                  matchFound = true;
-                              }
-                          }
+  vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc &&
+  vendorBillarr[i].item === itemReceiptarr[j].item
+) {
+  const currentPODoc = vendorBillarr[i].poDoc;
+  const currentItem = vendorBillarr[i].item;
 
-                        else {
-                            log.debug("item comparison else triggered");
-                            log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
-                            log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
-                            log.debug("Else If Item Receipt array:", itemReceiptarr);
-                            log.debug("Else If vendorbill array:", vendorBillarr);
-                            if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc) {
-                                enableCheck(vendorBillarr[i].vbinternalid);
-                            }
-                        }
-                    } else {
-                        log.debug("It's not linked condition else triggered");
-                        log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
-                        log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
-                        if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc) {
-                            enableCheck(vendorBillarr[i].vbinternalid);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            log.debug("Error in itemComparsion:", error.message);
+  const matchingVBs = vendorBillarr.filter(
+    vb => vb.poDoc === currentPODoc && vb.item === currentItem
+  );
+  const matchingIRs = itemReceiptarr.filter(
+    ir => ir.poDoc === currentPODoc && ir.item === currentItem
+  );
+
+  const totalVBQty = matchingVBs.reduce((sum, vb) => sum + parseInt(vb.quantity), 0);
+  const totalIRQty = matchingIRs.reduce((sum, ir) => sum + parseInt(ir.quantity), 0);
+
+  log.debug("Filtered VB Quantity:", totalVBQty);
+  log.debug("Filtered IR Quantity:", totalIRQty);
+
+  if (totalVBQty === totalIRQty) {
+    const vbIds = matchingVBs.map(vb => vb.vbinternalid);
+    const irIds = matchingIRs.map(ir => ir.internalid);
+
+    log.debug("Linking VB Ids:", vbIds);
+    log.debug("Linking IR Ids:", irIds);
+
+    // Pass all VB and IR ids
+    partialIRVbLink(vbIds, irIds);
+    matchFound = true;
+  }
+}
+
+
+
+function partialIRVbLink(vbIds, irIds) {
+  try {
+    log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
+    log.debug('VB Ids:', vbIds);
+    log.debug('IR Ids:', irIds);
+
+    // Link each VB with all IRs
+    for (let i = 0; i < vbIds.length; i++) {
+      const vbId = vbIds[i];
+      record.submitFields({
+        type: record.Type.VENDOR_BILL,
+        id: vbId,
+        values: {
+          custbody_ada_linked_record: irIds // link all IRs to this VB
+        },
+        options: {
+          enableSourcing: false,
+          ignoreMandatoryFields: true
         }
+      });
+      enableCheck(vbId);
     }
 
-    function partialIRVbLink(vbinternalid, irinternalid, vbidArr, iridArr, finalinternalidarr) {
-        try {
-            log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
-            log.debug('vbIdArr->>', 'vbIdArr->>>' + vbidArr);
-            log.debug('irIdArr->>', 'irIdArr->>>' + iridArr);
-            log.debug('finalIdArr->>', 'finaIdArr->>>' + finalinternalidarr);
-
-            if (iridArr.length > vbidArr.length) {
-                log.debug("if Ir greater vb triggered");
-                var vb_save = record.submitFields({
-                    type: record.Type.VENDOR_BILL,
-                    id: vbinternalid,
-                    values: {
-                        custbody_ada_linked_record: finalinternalidarr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-                if (vb_save) {
-                    enableCheck(vbinternalid);
-                }
-                log.debug("VB set successfully");
-                for (var w = 0; w < finalinternalidarr.length; w++) {
-                    var ir_save = record.submitFields({
-                        type: record.Type.ITEM_RECEIPT,
-                        id: finalinternalidarr[w],
-                        values: {
-                            custbody_ada_linked_record: vbinternalid
-                        },
-                        options: {
-                            enableSourcing: false,
-                            ignoreMandatoryFields: true
-                        }
-                    });
-                    log.debug("ir set successfully");
-                }
-            } else {
-                log.debug("partial else triggered");
-                for (var v = 0; v < finalinternalidarr.length; v++) {
-                    var vbId = finalinternalidarr[v];
-
-                    var vb_save = record.submitFields({
-                        type: record.Type.VENDOR_BILL,
-                        id: vbId,
-                        values: {
-                            custbody_ada_linked_record: irinternalid
-                        },
-                        options: {
-                            enableSourcing: false,
-                            ignoreMandatoryFields: true
-                        }
-                    });
-                    if (vb_save) {
-                        enableCheck(vbId);
-                    }
-                }
-                log.debug("IR set successfully");
-                var ir_save = record.submitFields({
-                    type: record.Type.ITEM_RECEIPT,
-                    id: irinternalid,
-                    values: {
-                        custbody_ada_linked_record: finalinternalidarr
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields: true
-                    }
-                });
-                log.debug("IR set successfully");
-            }
-        } catch (error) {
-            log.debug("Error in PartialIrLink function:", error.message);
+    // Link each IR with all VBs
+    for (let j = 0; j < irIds.length; j++) {
+      const irId = irIds[j];
+      record.submitFields({
+        type: record.Type.ITEM_RECEIPT,
+        id: irId,
+        values: {
+          custbody_ada_linked_record: vbIds // link all VBs to this IR
+        },
+        options: {
+          enableSourcing: false,
+          ignoreMandatoryFields: true
         }
+      });
     }
-1	View	Debug	Error in PartialIrLink function:	5/6/2025	3:22 am	-System-	Transaction type specified is incorrect.
+
+    log.debug("Linking complete");
+  } catch (error) {
+    log.debug("Error in partialIRVbLink function:", error.message);
+  }
+}
+
+
