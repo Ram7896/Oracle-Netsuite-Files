@@ -1,28 +1,130 @@
 else if (
-  vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc &&
-  vendorBillarr[i].item === itemReceiptarr[j].item
-) {
-    const currentPODoc = vendorBillarr[i].poDoc;
-    const currentItem = vendorBillarr[i].item;
+                            vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc &&
+                            vendorBillarr[i].item === itemReceiptarr[j].item
+                          ) {
+                              const currentPODoc = vendorBillarr[i].poDoc;
+                              const currentItem = vendorBillarr[i].item;
+                          
+                              // Filter vendor bills and item receipts for current PO and item
+                              const matchingVBs = vendorBillarr.filter(vb => vb.poDoc === currentPODoc && vb.item === currentItem);
+                              const matchingIRs = itemReceiptarr.filter(ir => ir.poDoc === currentPODoc && ir.item === currentItem);
+                          
+                              const totalVBQty = matchingVBs.reduce((sum, vb) => sum + parseInt(vb.quantity), 0);
+                              const totalIRQty = matchingIRs.reduce((sum, ir) => sum + parseInt(ir.quantity), 0);
+                          
+                              log.debug("Filtered VB Quantity:", totalVBQty);
+                              log.debug("Filtered IR Quantity:", totalIRQty);
+                          
+                              if (totalVBQty === totalIRQty) {
+                                  const vbIds = matchingVBs.map(vb => vb.vbinternalid);
+                                  const irIds = matchingIRs.map(ir => ir.internalid);
+                          
+                                  log.debug("Linking VB Ids:", vbIds);
+                                  log.debug("Linking IR Ids:", irIds);
+                          
+                                  partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIds, irIds, vbIds); 
+                                  matchFound = true;
+                              }
+                          }
 
-    // Filter vendor bills and item receipts for current PO and item
-    const matchingVBs = vendorBillarr.filter(vb => vb.poDoc === currentPODoc && vb.item === currentItem);
-    const matchingIRs = itemReceiptarr.filter(ir => ir.poDoc === currentPODoc && ir.item === currentItem);
-
-    const totalVBQty = matchingVBs.reduce((sum, vb) => sum + parseInt(vb.quantity), 0);
-    const totalIRQty = matchingIRs.reduce((sum, ir) => sum + parseInt(ir.quantity), 0);
-
-    log.debug("Filtered VB Quantity:", totalVBQty);
-    log.debug("Filtered IR Quantity:", totalIRQty);
-
-    if (totalVBQty === totalIRQty) {
-        const vbIds = matchingVBs.map(vb => vb.vbinternalid);
-        const irIds = matchingIRs.map(ir => ir.internalid);
-
-        log.debug("Linking VB Ids:", vbIds);
-        log.debug("Linking IR Ids:", irIds);
-
-        partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIds, irIds, vbIds); // you can change third param if needed
-        matchFound = true;
+                        else {
+                            log.debug("item comparison else triggered");
+                            log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
+                            log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
+                            log.debug("Else If Item Receipt array:", itemReceiptarr);
+                            log.debug("Else If vendorbill array:", vendorBillarr);
+                            if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc) {
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                            }
+                        }
+                    } else {
+                        log.debug("It's not linked condition else triggered");
+                        log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
+                        log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
+                        if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc) {
+                            enableCheck(vendorBillarr[i].vbinternalid);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            log.debug("Error in itemComparsion:", error.message);
+        }
     }
-}
+
+    function partialIRVbLink(vbinternalid, irinternalid, vbidArr, iridArr, finalinternalidarr) {
+        try {
+            log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
+            log.debug('vbIdArr->>', 'vbIdArr->>>' + vbidArr);
+            log.debug('irIdArr->>', 'irIdArr->>>' + iridArr);
+            log.debug('finalIdArr->>', 'finaIdArr->>>' + finalinternalidarr);
+
+            if (iridArr.length > vbidArr.length) {
+                log.debug("if Ir greater vb triggered");
+                var vb_save = record.submitFields({
+                    type: record.Type.VENDOR_BILL,
+                    id: vbinternalid,
+                    values: {
+                        custbody_ada_linked_record: finalinternalidarr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                if (vb_save) {
+                    enableCheck(vbinternalid);
+                }
+                log.debug("VB set successfully");
+                for (var w = 0; w < finalinternalidarr.length; w++) {
+                    var ir_save = record.submitFields({
+                        type: record.Type.ITEM_RECEIPT,
+                        id: finalinternalidarr[w],
+                        values: {
+                            custbody_ada_linked_record: vbinternalid
+                        },
+                        options: {
+                            enableSourcing: false,
+                            ignoreMandatoryFields: true
+                        }
+                    });
+                    log.debug("ir set successfully");
+                }
+            } else {
+                log.debug("partial else triggered");
+                for (var v = 0; v < finalinternalidarr.length; v++) {
+                    var vbId = finalinternalidarr[v];
+
+                    var vb_save = record.submitFields({
+                        type: record.Type.VENDOR_BILL,
+                        id: vbId,
+                        values: {
+                            custbody_ada_linked_record: irinternalid
+                        },
+                        options: {
+                            enableSourcing: false,
+                            ignoreMandatoryFields: true
+                        }
+                    });
+                    if (vb_save) {
+                        enableCheck(vbId);
+                    }
+                }
+                log.debug("IR set successfully");
+                var ir_save = record.submitFields({
+                    type: record.Type.ITEM_RECEIPT,
+                    id: irinternalid,
+                    values: {
+                        custbody_ada_linked_record: finalinternalidarr
+                    },
+                    options: {
+                        enableSourcing: false,
+                        ignoreMandatoryFields: true
+                    }
+                });
+                log.debug("IR set successfully");
+            }
+        } catch (error) {
+            log.debug("Error in PartialIrLink function:", error.message);
+        }
+    }
