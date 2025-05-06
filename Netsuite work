@@ -1,75 +1,84 @@
-else if (
-  vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc &&
-  vendorBillarr[i].item === itemReceiptarr[j].item
-) {
-  const currentPODoc = vendorBillarr[i].poDoc;
-  const currentItem = vendorBillarr[i].item;
-
-  const matchingVBs = vendorBillarr.filter(
-    vb => vb.poDoc === currentPODoc && vb.item === currentItem
-  );
-  const matchingIRs = itemReceiptarr.filter(
-    ir => ir.poDoc === currentPODoc && ir.item === currentItem
-  );
-
-  const totalVBQty = matchingVBs.reduce((sum, vb) => sum + parseInt(vb.quantity), 0);
-  const totalIRQty = matchingIRs.reduce((sum, ir) => sum + parseInt(ir.quantity), 0);
-
-  log.debug("Filtered VB Quantity:", totalVBQty);
-  log.debug("Filtered IR Quantity:", totalIRQty);
-
-  if (totalVBQty === totalIRQty) {
-    const vbIds = matchingVBs.map(vb => vb.vbinternalid);
-    const irIds = matchingIRs.map(ir => ir.internalid);
-
-    log.debug("Linking VB Ids:", vbIds);
-    log.debug("Linking IR Ids:", irIds);
-
-    // Pass all VB and IR ids
-    partialIRVbLink(vbIds, irIds);
-    matchFound = true;
-  }
-}
-
-
-
 function partialIRVbLink(vbIds, irIds) {
   try {
     log.debug('partialIRVbLink->>', 'partialIRVbLink->>>');
     log.debug('VB Ids:', vbIds);
     log.debug('IR Ids:', irIds);
 
-    // Link each VB with all IRs
-    for (let i = 0; i < vbIds.length; i++) {
-      const vbId = vbIds[i];
-      record.submitFields({
-        type: record.Type.VENDOR_BILL,
-        id: vbId,
-        values: {
-          custbody_ada_linked_record: irIds // link all IRs to this VB
-        },
-        options: {
-          enableSourcing: false,
-          ignoreMandatoryFields: true
-        }
-      });
-      enableCheck(vbId);
-    }
+    if (irIds.length > vbIds.length) {
+      log.debug("Condition: IRs > VBs triggered");
 
-    // Link each IR with all VBs
-    for (let j = 0; j < irIds.length; j++) {
-      const irId = irIds[j];
-      record.submitFields({
-        type: record.Type.ITEM_RECEIPT,
-        id: irId,
-        values: {
-          custbody_ada_linked_record: vbIds // link all VBs to this IR
-        },
-        options: {
-          enableSourcing: false,
-          ignoreMandatoryFields: true
-        }
-      });
+      // Each IR is linked to all VBs
+      for (let i = 0; i < irIds.length; i++) {
+        const irId = irIds[i];
+        record.submitFields({
+          type: record.Type.ITEM_RECEIPT,
+          id: irId,
+          values: {
+            custbody_ada_linked_record: vbIds
+          },
+          options: {
+            enableSourcing: false,
+            ignoreMandatoryFields: true
+          }
+        });
+        log.debug("IR linked to VBs:", { irId, vbIds });
+      }
+
+      // Each VB is linked to its corresponding IR (optional: use first IR or all)
+      for (let j = 0; j < vbIds.length; j++) {
+        const vbId = vbIds[j];
+        record.submitFields({
+          type: record.Type.VENDOR_BILL,
+          id: vbId,
+          values: {
+            custbody_ada_linked_record: irIds
+          },
+          options: {
+            enableSourcing: false,
+            ignoreMandatoryFields: true
+          }
+        });
+        enableCheck(vbId);
+        log.debug("VB linked to IRs:", { vbId, irIds });
+      }
+
+    } else {
+      log.debug("Condition: VBs >= IRs triggered");
+
+      // Each VB is linked to all IRs
+      for (let i = 0; i < vbIds.length; i++) {
+        const vbId = vbIds[i];
+        record.submitFields({
+          type: record.Type.VENDOR_BILL,
+          id: vbId,
+          values: {
+            custbody_ada_linked_record: irIds
+          },
+          options: {
+            enableSourcing: false,
+            ignoreMandatoryFields: true
+          }
+        });
+        enableCheck(vbId);
+        log.debug("VB linked to IRs:", { vbId, irIds });
+      }
+
+      // Each IR is linked to all VBs
+      for (let j = 0; j < irIds.length; j++) {
+        const irId = irIds[j];
+        record.submitFields({
+          type: record.Type.ITEM_RECEIPT,
+          id: irId,
+          values: {
+            custbody_ada_linked_record: vbIds
+          },
+          options: {
+            enableSourcing: false,
+            ignoreMandatoryFields: true
+          }
+        });
+        log.debug("IR linked to VBs:", { irId, vbIds });
+      }
     }
 
     log.debug("Linking complete");
@@ -77,5 +86,3 @@ function partialIRVbLink(vbIds, irIds) {
     log.debug("Error in partialIRVbLink function:", error.message);
   }
 }
-
-
