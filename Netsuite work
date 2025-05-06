@@ -1,1 +1,111 @@
-https://mylearn.oracle.com/ou/learning-path/become-an-oracle-fusion-cloud-applications-erp-foundations-associate/146907
+else if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].item == itemReceiptarr[j].item) {
+                            log.debug('else if execute in term partial IRBill', 'else if execute in term partial IRBill->>');
+                            log.debug(" Else Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
+                            log.debug("Else Item receipt internalid:", itemReceiptarr[i].internalid);
+                            var totalQuantity = 0;
+                            let finalIds;
+                            if (vendorBillarr.length > itemReceiptarr.length) {
+                                vbSumQty += parseInt(vendorBillarr[i].quantity);
+                                for (var z = 0; z < vendorBillarr.length; z++) {
+                                    totalQuantity += parseInt(vendorBillarr[z].quantity);
+                                    log.debug("Sum Of VB Quantity:", totalQuantity);
+                                }
+                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
+                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
+                                }
+                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
+                                    irIdArr.push(itemReceiptarr[j]);
+                                }
+                                log.debug("VB Sum Quantity Array:", vendorBillarr);
+                                log.debug("IR Sum Quantity:", itemReceiptarr);
+                                log.debug("vendor bill Item:", vendorBillarr[z].item);
+                                log.debug("Item Receipt Item:", itemReceiptarr[j].item);
+                                log.debug("vendor bill Quantity:", vendorBillarr[z].quantity);
+                                log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
+                                // Compare vendor bill quantity to item receipt quantity
+                                if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
+                                    log.debug('all set to link->>', 'all set to link->>');
+                                    finalIds = vendorBillarr.map(vb => vb.vbinternalid);
+                                    log.debug("Matched VB Ids:", parseInt(finalIds));
+                                    partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, irIdArr, finalIds);
+                                    vbSumQty = 0;
+                                    totalQuantity = 0;
+                                    matchFound = true;
+                                }
+                            }
+                            else if (itemReceiptarr.length > vendorBillarr.length) {
+                                log.debug("Length Item Receipt arr:", itemReceiptarr);
+                                log.debug("Item Receipt Quantity:", itemReceiptarr[j].quantity);
+                                for (var k = 0; k < itemReceiptarr.length; k++) {
+                                    totalQuantity += parseInt(itemReceiptarr[k].quantity);
+                                    log.debug("Sum Of IR Quantity:", totalQuantity);
+                                }
+                                log.debug("VB Sum Quantity Array:", vendorBillarr);
+                                log.debug("IR Sum Quantity:", itemReceiptarr);
+                                vbSumQty = parseInt(vendorBillarr[i].quantity);
+                                if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
+                                    vbIdArr.push(vendorBillarr[i].vbinternalid);
+                                }
+                                if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
+                                    irIdArr.push(itemReceiptarr[j].internalid);
+                                }
+                                // Compare vendor bill quantity to item receipt quantity
+                                if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
+                                    log.debug('all set to link->>', 'all set to link->>');
+                                    finalIds = itemReceiptarr.map(ir => ir.internalid);
+                                    log.debug("Matched Ir Ids:", parseInt(finalIds));
+                                    partialIRVbLink(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, irIdArr, finalIds);
+                                    vbSumQty = 0;
+                                    totalQuantity = 0;
+                                }
+                            }
+                            else {
+                                if (vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc) {
+
+                                    log.debug("Else Length Item Receipt arr:", itemReceiptarr);
+                                    log.debug("Else Item Receipt Quantity:", itemReceiptarr[j].quantity);
+                                    for (var z = 0; z < itemReceiptarr.length; z++) {
+                                        if(vendorBillarr[i].poDoc === itemReceiptarr[z].poDoc){
+                                        totalQuantity += parseInt(itemReceiptarr[z].quantity);
+                                        log.debug("else Sum Of IR Quantity:", totalQuantity);
+                                        }
+                                    }
+                                    log.debug("VB Sum Quantity Array:", vendorBillarr);
+                                    log.debug("IR Sum Quantity:", itemReceiptarr);
+                                    vbSumQty = parseInt(vendorBillarr[i].quantity);
+                                    if (vbIdArr.indexOf(vendorBillarr[i].vbinternalid) == '-1') {
+                                        vbIdArr.push(vendorBillarr[i].vbinternalid);
+                                    }
+                                    if (irIdArr.indexOf(itemReceiptarr[j].internalid) == '-1') {
+                                        irIdArr.push(itemReceiptarr[j].internalid);
+                                    }
+                                    // Compare vendor bill quantity to item receipt quantity
+                                    if (vendorBillarr[i].item == itemReceiptarr[j].item && vbSumQty == totalQuantity) {
+                                        log.debug('else all set to link->>', 'all set to link->>');
+                                        finalIds = itemReceiptarr.map(ir => ir.internalid);
+                                        log.debug("else Matched Ir Ids:", parseInt(finalIds));
+                                        partialIRVbLink(vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid, vbIdArr, irIdArr, finalIds);
+                                        vbSumQty = 0;
+                                        totalQuantity = 0;
+                                    }
+                                }
+                            }Purchase Order:1
+Item A: Quantity 6
+1st Vendor Bill:
+Item A: Quantity 2
+(Store Item Receipt transaction # in a custom field on Vendor Bill)
+2 nd Vendor Bill:
+Item A: Quantity 2
+1st Item Receipt:
+Item A: Quantity 2
+Purchase Order: 2
+Item A quantity 6
+  
+Vendor Bill
+Item A quantity 6
+ 
+1st Item Receipt
+Item A quantity 3
+ 
+2nd Item Receipt
+Item A quantity 3 in purchase order 1 first vendor bill is working fine but 2 vendor bill is tagged to the item receipt its working but purchase order 2 item receipt is tagged to the purchase order 1 item receipt and this vendor bill is tagged in purchase order 2 vendor bill please crct the code
