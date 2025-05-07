@@ -1,29 +1,20 @@
-      // Create a new array to collect only valid Vendor Bills
-            let filteredVendorBills = [];
+for (let i = 0; i < vendorBillResponse.length; i++) {
+    let currentVB = vendorBillResponse[i];
+    let skipVB = false;
 
-            // First, filter vendor bills that are eligible
-            for (let i = 0; i < vendorBillResponse.length; i++) {
-                let canProcess = true;
+    for (let j = 0; j < itemReceiptResponse.length; j++) {
+        let currentIR = itemReceiptResponse[j];
 
-                for (let j = 0; j < itemReceiptResponse.length; j++) {
-                    if (vendorBillResponse[i].poDoc == itemReceiptResponse[j].poDoc) {
-                        if (itemReceiptResponse[j].datecreated < vendorBillResponse[i].datecreated) {
-                            log.debug("IR created first for PO " + vendorBillResponse[i].poDoc + ". Skipping this Vendor Bill.");
-                            canProcess = false;
-                            //break; // No need to check more
-                        }
-                    }
-                }
-
-                if (canProcess) {
-                    filteredVendorBills.push(vendorBillResponse[i]);
-                    log.debug("Filtered Vendor Bills:", filteredVendorBills);
-                }
+        if (currentVB.poDoc == currentIR.poDoc) {
+            if (currentIR.datecreated < currentVB.datecreated) {
+                log.debug("IR created first for PO " + currentVB.poDoc + ". Skipping processing for this Vendor Bill.");
+                skipVB = true;
+                break; // Exit early since VB should be skipped
             }
+        }
+    }
 
-            // Now only call itemComparsion on eligible vendor bills
-            if (filteredVendorBills.length > 0) {
-                itemComparsion(filteredVendorBills, itemReceiptResponse);
-            } else {
-                log.debug("No eligible Vendor Bills to process after date check.");
-            }
+    if (!skipVB) {
+        itemComparsion([currentVB], itemReceiptResponse);
+    }
+}
