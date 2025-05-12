@@ -1,20 +1,124 @@
 for (let i = 0; i < vendorBillResponse.length; i++) {
-    let currentVB = vendorBillResponse[i];
-    let skipVB = false;
-
-    for (let j = 0; j < itemReceiptResponse.length; j++) {
-        let currentIR = itemReceiptResponse[j];
-
-        if (currentVB.poDoc == currentIR.poDoc) {
-            if (currentIR.datecreated < currentVB.datecreated) {
-                log.debug("IR created first for PO " + currentVB.poDoc + ". Skipping processing for this Vendor Bill.");
-                skipVB = true;
-                break; // Exit early since VB should be skipped
+                for (let j = 0; j < itemReceiptResponse.length; j++) {
+                    var vbdateTimeParts = vendorBillResponse[i].datecreated.split(' ');
+                    var vbtimePart = vbdateTimeParts[1] + ' ' + vbdateTimeParts[2];
+                        log.debug("If VB date and time:", vbtimePart);
+                        var irdateTimeParts = itemReceiptResponse[j].datecreated.split(' ');
+                        var irtimePart = irdateTimeParts[1] + ' ' + irdateTimeParts[2];
+                        log.debug('IR Time and Date:', irtimePart);
+                    if (itemReceiptResponse[j].datecreated < vendorBillResponse[i].datecreated && irtimePart < vbtimePart) {
+                        log.debug("IR is created first,We unable process further.");
+                    }
+                    else {
+                        if (vendorBillResponse[i].poDoc == itemReceiptResponse[j].poDoc) {
+                            itemComparsion(vendorBillResponse, itemReceiptResponse);
+                            log.debug("Item Comparison triggered");
+                        }
+                    }
+                }
             }
-        }
-    }
 
-    if (!skipVB) {
-        itemComparsion([currentVB], itemReceiptResponse);
-    }
-}
+function itemComparsion(vendorBillarr, itemReceiptarr) {
+        try {
+            var vbSumQty = 0;
+            var IRSumQty = 0;
+            var vbIdArr = [];
+            var irIdArr = [];
+            log.debug("Function Item Comparison triggered");
+
+            for (var i = 0; i < vendorBillarr.length; i++) {
+                let matchFound = false;
+                if (AlreadyLinked(vendorBillarr[i].vbinternalid)) {
+                    log.debug(" Vb is already linked to the Ir Skipping " + vendorBillarr[i].vbinternalid + " the iteration.");
+                    continue;
+                }
+                for (var j = 0; j < itemReceiptarr.length; j++) {
+                    if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
+                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity && vendorBillarr[i].department == itemReceiptarr[j].department) {
+                            log.debug("if Vendor bill arr:", vendorBillarr);
+                            log.debug("if itemreceipt arr:", itemReceiptarr);
+                            log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
+                            log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
+                            log.debug("Linking process started");
+                            var vb_save = record.submitFields({
+                                type: record.Type.VENDOR_BILL,
+                                id: vendorBillarr[i].vbinternalid,
+                                values: {
+                                    custbody_ada_linked_record: itemReceiptarr[j].internalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
+                            if (vb_save) {
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                            }
+                            var ir_save = record.submitFields({
+                                type: record.Type.ITEM_RECEIPT,
+                                id: itemReceiptarr[j].internalid,
+                                values: {
+                                    custbody_ada_linked_record: vendorBillarr[i].vbinternalid
+                                },
+                                options: {
+                                    enableSourcing: false,
+                                    ignoreMandatoryFields: true
+                                }
+                            });
+                            matchFound = true;
+                            log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
+
+                        } else if (
+                            vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc &&
+                            vendorBillarr[i].item === itemReceiptarr[j].item
+                        ) {
+                            const currentPODoc = vendorBillarr[i].poDoc;
+                            const currentItem = vendorBillarr[i].item;
+
+                            const matchingVBs = vendorBillarr.filter(
+                                vb => vb.poDoc === currentPODoc && vb.item === currentItem
+                            );
+                            const matchingIRs = itemReceiptarr.filter(
+                                ir => ir.poDoc === currentPODoc && ir.item === currentItem
+                            );
+
+                            const totalVBQty = matchingVBs.reduce((sum, vb) => sum + parseInt(vb.quantity), 0);
+                            const totalIRQty = matchingIRs.reduce((sum, ir) => sum + parseInt(ir.quantity), 0);
+
+                            log.debug("Filtered VB Quantity:", totalVBQty);
+                            log.debug("Filtered IR Quantity:", totalIRQty);
+
+                            if (totalVBQty === totalIRQty && vendorBillarr[i].department == itemReceiptarr[j].department) {
+                                const vbIds = matchingVBs.map(vb => vb.vbinternalid);
+                                const irIds = matchingIRs.map(ir => ir.internalid);
+
+                                log.debug("Linking VB Ids:", vbIds);
+                                log.debug("Linking IR Ids:", irIds);
+
+                                // Pass all VB and IR ids
+                                partialIRVbLink(vbIds, irIds);
+                                matchFound = true;
+                            }
+                        } else {
+                            log.debug("item comparison else triggered");
+                            //log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
+                            //log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
+                            log.debug("Else If Item Receipt array:", itemReceiptarr);
+                            log.debug("Else If vendorbill array:", vendorBillarr);
+                            if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].department == itemReceiptarr[j].department) {
+                                enableCheck(vendorBillarr[i].vbinternalid);
+                            }
+                        }
+                    } else {
+                        log.debug("It's not linked condition else triggered");
+                        log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
+                        if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].department == itemReceiptarr[j].department) {
+                            enableCheck(vendorBillarr[i].vbinternalid);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            log.debug("Error in itemComparsion:", error.message);
+        }
+    }if i have 2 purchase order in first purchase order item a quantity 2,item b quantity 1 and vendor bill 1 quantity 2, item receipt quantity 2 , vendor bill 2 quantity 1, item receipt quantity 1 in this case working but purchase order 2 item A quantity 2 but in thus case ir created first then vb but script unable to identifying excute two pos at a time its taaging i don't want tagging ir created first then vb.
