@@ -1,124 +1,156 @@
-for (let i = 0; i < vendorBillResponse.length; i++) {
-                for (let j = 0; j < itemReceiptResponse.length; j++) {
-                    var vbdateTimeParts = vendorBillResponse[i].datecreated.split(' ');
-                    var vbtimePart = vbdateTimeParts[1] + ' ' + vbdateTimeParts[2];
-                        log.debug("If VB date and time:", vbtimePart);
-                        var irdateTimeParts = itemReceiptResponse[j].datecreated.split(' ');
-                        var irtimePart = irdateTimeParts[1] + ' ' + irdateTimeParts[2];
-                        log.debug('IR Time and Date:', irtimePart);
-                    if (itemReceiptResponse[j].datecreated < vendorBillResponse[i].datecreated && irtimePart < vbtimePart) {
-                        log.debug("IR is created first,We unable process further.");
-                    }
-                    else {
-                        if (vendorBillResponse[i].poDoc == itemReceiptResponse[j].poDoc) {
-                            itemComparsion(vendorBillResponse, itemReceiptResponse);
-                            log.debug("Item Comparison triggered");
-                        }
-                    }
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ * @NModuleScope SameAccount
+ */
+define([], function() {
+    function beforeLoad(context) {
+        var form = context.form;
+        var record = context.newRecord;
+
+        // Add the "Upload" button
+        form.addButton({
+            id: 'custpage_upload_button',
+            label: 'Upload',
+            functionName: 'triggerFileUpload()' // This will call the Client Script function
+        });
+      form.clientScriptModulePath = './Client Scriptt.js '; // Path to client script
+    }
+
+    return {
+        beforeLoad: beforeLoad
+    };
+});
+
+
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ * @NModuleScope SameAccount
+ */
+define(['N/url', 'N/log', 'N/currentRecord'], function(url, log, currentRecord) {
+    function pageInit(context) {
+        log.debug({
+            title: 'Client Script Loaded',
+            details: 'Mode: ' + context.mode + ', Record ID: ' + context.currentRecord.id
+        });
+    }
+
+    function triggerFileUpload() {
+         alert("Button Clicked");
+        var recordobj = currentRecord.get();
+        var out_put = recordobj.id;
+                if (out_put) {
+                    // alert('redirect suitelet triggered');
+                    var output = url.resolveScript({
+                        scriptId: 'customscript1466',
+                        deploymentId: 'customdeploy1',
+                        params:{journalEntryId: out_put},
+                        returnExternalUrl: false
+                    });
+                    window.open(output, 'width=500,height=400,scrollbars=no');
+   
                 }
+    }
+    return {
+        pageInit: pageInit,
+        triggerFileUpload: triggerFileUpload
+    };
+});
+
+
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ * @NModuleScope SameAccount
+ */
+define(['N/ui/serverWidget', 'N/record', 'N/file', 'N/log', 'N/redirect'], function(ui, record, file, log, redirect) {
+    function onRequest(context) {
+        var request = context.request;
+        var response = context.response;
+
+        if (request.method === 'GET') {
+            // Create the file upload form
+            var form = ui.createForm({
+                title: 'Upload File to Journal Entry'
+            });
+
+            // Add file upload field
+            form.addField({
+                id: 'custpage_upload_file',
+                type: ui.FieldType.FILE,
+                label: 'Select File'
+            });
+
+            // Add hidden field for Journal Entry ID
+            var jeId = request.parameters.journalEntryId;
+            form.addField({
+                id: 'custpage_je_id',
+                type: ui.FieldType.TEXT,
+                label: 'Journal Entry ID'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.HIDDEN
+            }).defaultValue = jeId;
+
+            // Add submit button
+            form.addSubmitButton({
+                label: 'Upload and Attach'
+            });
+
+            log.debug({
+                title: 'Form Rendered',
+                details: 'JE ID: ' + jeId
+            });
+
+            response.writePage(form);
+        } else if (request.method === 'POST') {
+            // Handle the file upload and attachment
+            var uploadedFile = request.files.custpage_upload_file;
+            var jeId = request.parameters.custpage_je_id;
+
+            log.debug({
+                title: 'POST Request Received',
+                details: 'JE ID: ' + jeId + ', File: ' + (uploadedFile ? uploadedFile.name : 'None')
+            });
+
+            if (!uploadedFile) {
+                response.write('No file provided.');
+                return;
             }
 
-function itemComparsion(vendorBillarr, itemReceiptarr) {
-        try {
-            var vbSumQty = 0;
-            var IRSumQty = 0;
-            var vbIdArr = [];
-            var irIdArr = [];
-            log.debug("Function Item Comparison triggered");
+            try {
+                // Temporarily save the file to the File Cabinet
+                uploadedFile.folder = 1120272; // Temporary Files folder
+                var fileId = uploadedFile.save();
 
-            for (var i = 0; i < vendorBillarr.length; i++) {
-                let matchFound = false;
-                if (AlreadyLinked(vendorBillarr[i].vbinternalid)) {
-                    log.debug(" Vb is already linked to the Ir Skipping " + vendorBillarr[i].vbinternalid + " the iteration.");
-                    continue;
-                }
-                for (var j = 0; j < itemReceiptarr.length; j++) {
-                    if (!isAlreadyLinked(vendorBillarr[i].vbinternalid, itemReceiptarr[j].internalid)) {
-                        if (vendorBillarr[i].item == itemReceiptarr[j].item && vendorBillarr[i].quantity == itemReceiptarr[j].quantity && vendorBillarr[i].department == itemReceiptarr[j].department) {
-                            log.debug("if Vendor bill arr:", vendorBillarr);
-                            log.debug("if itemreceipt arr:", itemReceiptarr);
-                            log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
-                            log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
-                            log.debug("Linking process started");
-                            var vb_save = record.submitFields({
-                                type: record.Type.VENDOR_BILL,
-                                id: vendorBillarr[i].vbinternalid,
-                                values: {
-                                    custbody_ada_linked_record: itemReceiptarr[j].internalid
-                                },
-                                options: {
-                                    enableSourcing: false,
-                                    ignoreMandatoryFields: true
-                                }
-                            });
-                            if (vb_save) {
-                                enableCheck(vendorBillarr[i].vbinternalid);
-                            }
-                            var ir_save = record.submitFields({
-                                type: record.Type.ITEM_RECEIPT,
-                                id: itemReceiptarr[j].internalid,
-                                values: {
-                                    custbody_ada_linked_record: vendorBillarr[i].vbinternalid
-                                },
-                                options: {
-                                    enableSourcing: false,
-                                    ignoreMandatoryFields: true
-                                }
-                            });
-                            matchFound = true;
-                            log.debug("Linking successful: VB ID " + vb_save + " - IR ID " + ir_save);
-
-                        } else if (
-                            vendorBillarr[i].poDoc === itemReceiptarr[j].poDoc &&
-                            vendorBillarr[i].item === itemReceiptarr[j].item
-                        ) {
-                            const currentPODoc = vendorBillarr[i].poDoc;
-                            const currentItem = vendorBillarr[i].item;
-
-                            const matchingVBs = vendorBillarr.filter(
-                                vb => vb.poDoc === currentPODoc && vb.item === currentItem
-                            );
-                            const matchingIRs = itemReceiptarr.filter(
-                                ir => ir.poDoc === currentPODoc && ir.item === currentItem
-                            );
-
-                            const totalVBQty = matchingVBs.reduce((sum, vb) => sum + parseInt(vb.quantity), 0);
-                            const totalIRQty = matchingIRs.reduce((sum, ir) => sum + parseInt(ir.quantity), 0);
-
-                            log.debug("Filtered VB Quantity:", totalVBQty);
-                            log.debug("Filtered IR Quantity:", totalIRQty);
-
-                            if (totalVBQty === totalIRQty && vendorBillarr[i].department == itemReceiptarr[j].department) {
-                                const vbIds = matchingVBs.map(vb => vb.vbinternalid);
-                                const irIds = matchingIRs.map(ir => ir.internalid);
-
-                                log.debug("Linking VB Ids:", vbIds);
-                                log.debug("Linking IR Ids:", irIds);
-
-                                // Pass all VB and IR ids
-                                partialIRVbLink(vbIds, irIds);
-                                matchFound = true;
-                            }
-                        } else {
-                            log.debug("item comparison else triggered");
-                            //log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
-                            //log.debug("Item receipt internalid:", itemReceiptarr[i].internalid);
-                            log.debug("Else If Item Receipt array:", itemReceiptarr);
-                            log.debug("Else If vendorbill array:", vendorBillarr);
-                            if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].department == itemReceiptarr[j].department) {
-                                enableCheck(vendorBillarr[i].vbinternalid);
-                            }
-                        }
-                    } else {
-                        log.debug("It's not linked condition else triggered");
-                        log.debug("Vendor Bill internalid:", vendorBillarr[j].vbinternalid);
-                        if (vendorBillarr[i].poDoc == itemReceiptarr[j].poDoc && vendorBillarr[i].department == itemReceiptarr[j].department) {
-                            enableCheck(vendorBillarr[i].vbinternalid);
-                        }
-                    }
-                }
+                log.debug({
+                    title: 'File Temporarily Saved',
+                    details: 'File ID: ' + fileId
+                });
+              // Attach file to Record
+                record.attach({
+                    record: { type: 'file', id: fileId },
+                    to: { type: 'journalentry', id: jeId}
+                });
+                log.debug({
+                    title: 'File Attached',
+                    details: 'File ID: ' + fileId + ' attached to JE ID: ' + jeId
+                });
+                // Redirect back to the Journal Entry Record
+                redirect.toRecord({ type: 'journalentry', id: jeId});
+            } catch (e) {
+                log.error({
+                    title: 'Suitelet Error',
+                    details: 'Error: ' + e.message
+                });
+                response.write('Error: ' + e.message);
             }
-        } catch (error) {
-            log.debug("Error in itemComparsion:", error.message);
         }
-    }if i have 2 purchase order in first purchase order item a quantity 2,item b quantity 1 and vendor bill 1 quantity 2, item receipt quantity 2 , vendor bill 2 quantity 1, item receipt quantity 1 in this case working but purchase order 2 item A quantity 2 but in thus case ir created first then vb but script unable to identifying excute two pos at a time its taaging i don't want tagging ir created first then vb.
+    }
+
+    return {
+        onRequest: onRequest
+    };
+});
