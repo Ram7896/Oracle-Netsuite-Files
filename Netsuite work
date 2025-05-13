@@ -1,1 +1,176 @@
-2. The solution should address all users who do not have EDIT permission to posted transactions, not only users with read/view only permission
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ * @NModuleScope SameAccount
+ */
+define(['N/ui/serverWidget', 'N/record', 'N/file', 'N/log', 'N/redirect'], function(ui, record, file, log, redirect) {
+    function onRequest(context) {
+        var request = context.request;
+        var response = context.response;
+
+        if (request.method === 'GET') {
+            // Create the file upload form
+            var form = ui.createForm({
+                title: 'Upload File to Journal Entry'
+            });
+
+            // Add file upload field
+            form.addField({
+                id: 'custpage_upload_file',
+                type: ui.FieldType.FILE,
+                label: 'Select File'
+            });
+
+            // Add hidden field for Journal Entry ID
+            var jeId = request.parameters.journalEntryId;
+            var recordType = request.parameters.recordType;
+            form.addField({
+                id: 'custpage_je_id',
+                type: ui.FieldType.TEXT,
+                label: 'Journal Entry ID'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.HIDDEN
+            }).defaultValue = jeId;
+
+            // Add hidden field for Record Type
+            form.addField({
+                id: 'custpage_record_type',
+                type: ui.FieldType.TEXT,
+                label: 'Record Type'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.HIDDEN
+            }).defaultValue = recordType;
+
+            // Add submit button
+            form.addSubmitButton({
+                label: 'Upload and Attach'
+            });
+
+            log.debug({
+                title: 'Form Rendered',
+                details: 'JE ID: ' + jeId + ', Record Type: ' + recordType
+            });
+
+            response.writePage(form);
+        } else if (request.method === 'POST') {
+            // Handle the file upload and attachment
+            var uploadedFile = request.files.custpage_upload_file;
+            var jeId = request.parameters.custpage_je_id;
+            var recordType = request.parameters.custpage_record_type;
+
+            log.debug({
+                title: 'POST Request Received',
+                details: 'JE ID: ' + jeId + ', File: ' + (uploadedFile ? uploadedFile.name : 'None') + ', Record Type: ' + recordType
+            });
+
+            if (!uploadedFile) {
+                response.write('No file provided.');
+                return;
+            }
+
+            try {
+                // Temporarily save the file to the File Cabinet
+                uploadedFile.folder = 772; // Temporary Files folder
+                var fileId = uploadedFile.save();
+
+                log.debug({
+                    title: 'File Temporarily Saved',
+                    details: 'File ID: ' + fileId
+                });
+
+                // Attach file to Record
+                record.attach({
+                    record: { type: 'file', id: fileId },
+                    to: { type: recordType, id: jeId }
+                });
+
+                log.debug({
+                    title: 'File Attached',
+                    details: 'File ID: ' + fileId + ' attached to JE ID: ' + jeId
+                });
+
+                // Redirect back to the Journal Entry Record
+                redirect.toRecord({ type: recordType, id: jeId });
+            } catch (e) {
+                log.error({
+                    title: 'Suitelet Error',
+                    details: 'Error: ' + e.message
+                });
+                response.write('Error: ' + e.message);
+            }
+        }
+    }
+
+    return {
+        onRequest: onRequest
+    };
+});
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ * @NModuleScope SameAccount
+ */
+define(['N/url', 'N/log', 'N/currentRecord'], function(url, log, currentRecord) {
+    function pageInit(context) {
+        log.debug({
+            title: 'Client Script Loaded',
+            details: 'Mode: ' + context.mode + ', Record ID: ' + context.currentRecord.id
+        });
+    }
+
+    function triggerFileUpload() {
+         alert("Button Clicked");
+        var recordobj = currentRecord.get();
+        var out_put = recordobj.id;
+      var type = recordobj.type;
+      alert("record type:"+type);
+                if (out_put) {
+                    // alert('redirect suitelet triggered');
+                    var output = url.resolveScript({
+                        scriptId: 'customscript812',
+                        deploymentId: 'customdeploy1',
+                        params:{journalEntryId: out_put,
+                               recordType:type
+                         },
+                       returnExternalUrl: false
+                    });
+                   // window.open(output, 'width=500,height=400,scrollbars=no');
+                   window.location.href = output;
+                }
+    }
+    return {
+        pageInit: pageInit,
+        triggerFileUpload: triggerFileUpload
+    };
+});
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ * @NModuleScope SameAccount
+ */
+define(['N/record', 'N/runtime'], function(record, runtime) {
+    function beforeLoad(context) {
+        var form = context.form;
+        var user = runtime.getCurrentUser();
+        var recordType = context.newRecord.type;
+
+        // Check if the user has EDIT permission to the record type
+        var hasEditPermission = user.getPermission(recordType) >= runtime.Permission.EDIT;
+         log.debug("User permission:",hasEditPermission);
+        // Add the "Upload" button only if the user does not have EDIT permission
+        //if (!hasEditPermission) {
+            form.addButton({
+                id: 'custpage_upload_button',
+                label: 'Upload',
+                functionName: 'triggerFileUpload()'
+            });
+            form.clientScriptModulePath = './[CS]_entrypoints.js';
+       // }
+    }
+
+    return {
+        beforeLoad: beforeLoad
+    };
+});
