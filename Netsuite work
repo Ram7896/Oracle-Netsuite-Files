@@ -1,11 +1,113 @@
-Prevent Payment on Newly Created Bills until Received
-On Vendor Bill creation, WF/Script logic to check a custom field on the Bill called "Waiting Receipt Match" if the PO: Qty Received < PO: Qty Billed for at least 1 Bill Line
-This checkbox would be used to hide the Make Payment button or otherwise prevent payment until matched to a Receipt
-Release Held/Unmatched Bills after Item Receipt creation
-This could maybe be a User Event script on Item Receipt creation, but probably Scheduled or Map/Reduce script (maybe scheduled every 30 minutes or 1 hour)
-Script would look at Bills with "Waiting Receipt Match" = T for the PO that the newly or recently created Item Receipt(s) are linked to (linked via PO)
-If {PO Qty Received} - {PO Qty Billed} >= 0 for all PO lines, Release all Held Bills for that PO
-Script would calculate an "Unallocated Received Qty" for each PO Line that has a Bill "Waiting Receipt Match"
-Unallocated Received Qty = PO Qty Received - (PO Qty Billed - Sum(Bill Qty of Held Bills))
-*This allows you to separate the PO Qty Received that has already been allocated/matched to one or more previous Bills
-If Unallocated Rec Qty >= 0, check If Bill Qty <= Unallocated Rec Qty on earliest Bill, Then release Hold. Proceed down the list of Held Bills, reducing Unallocated Rec Qty each time a Bill is release, until Unallocated Rec Qty < Bill Qty for at least 1 line of the Bill
+/** 
+ * @NApiVersion 2.x
+ * @NScriptType Restlet
+*/
+define(['N/search', 'N/runtime', 'N/record'],
+    function (search, runtime, record) {
+        function _post(context) {
+            let res = {
+                timeStamp: new Date(),
+            };
+            var soRec = record.create({
+                type: "salesorder"
+            });
+            soRec.setValue({
+                fieldId: "customform",
+                value: context.form,
+            });
+            soRec.setValue({
+                fieldId: "entity",
+                value: context.entity,
+            });
+            soRec.setValue({
+                fieldId: 'subsidiary',
+                value: context.subsidiary
+            });
+            soRec.setValue({
+                fieldId: "externalid",
+                value: context.externalId,
+            });
+            var cust_date = getFormattedDate(context.date);
+            soRec.setValue({
+                fieldId: "custbody_appf_daterequired",
+                value: new Date(cust_date),
+            });
+            soRec.setValue({
+                fieldId: "location",
+                value: context.location
+            });
+            soRec.setValue({
+                fieldId: "orderstatus",
+                value: context.status
+            });
+            let categorylist = [];
+            context.errorstatus.forEach((list) => {
+                log.debug('category list:', list);
+                categorylist.push(list);
+                log.debug('Category List:', categorylist);
+            });
+            soRec.setValue({
+                fieldId: "custbody_323323",
+                value: categorylist
+            });
+
+            for (let i = 0; i < context.items.length; i++) {
+                const element = context.items[i];
+                log.debug("Item Count:", element);
+
+                soRec.selectNewLine({
+                    sublistId: "item",
+                });
+                soRec.setCurrentSublistValue({
+                    sublistId: "item",
+                    fieldId: "item",
+                    value: element.item,
+                });
+                soRec.setCurrentSublistValue({
+                    sublistId: "item",
+                    fieldId: "quantity",
+                    value: element.quantity,
+                });
+                soRec.setCurrentSublistValue({
+                    sublistId: "item",
+                    fieldId: "amount",
+                    value: element.amount,
+                });
+                soRec.setCurrentSublistValue({
+                    sublistId: "item",
+                    fieldId: "taxcode",
+                    value: element.taxcode,
+                });
+                soRec.commitLine({
+                    sublistId: "item",
+                });
+            }
+            var RecID = soRec.save({
+                enableSourcing: true,
+                ignoreMandatoryFields: true,
+            });
+
+            res.message = "Sale Order Successfully created in NS";
+            res.soCreated = true;
+            res.txnStatus = "SUCCESS";
+            res.saleOrderDocumentNumber = RecID
+        }
+        // Formatting the date in MM-DD-YYYY
+        function getFormattedDate(date) {
+            try {
+                var date_format = new Date(date);
+                var month = (1 + date_format.getMonth()).toString();
+                var day = date_format.getDate().toString();
+                var year = date_format.getFullYear();
+                return month + "/" + day + "/" + year;
+            } catch (error) {
+                log.error(
+                    "Error encountered while formatting the order date",
+                    error.message
+                );
+            }
+        }
+        return {
+            post: _post
+        };
+    });
