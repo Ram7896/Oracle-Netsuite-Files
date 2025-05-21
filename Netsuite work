@@ -1,113 +1,71 @@
-/** 
- * @NApiVersion 2.x
- * @NScriptType Restlet
-*/
-define(['N/search', 'N/runtime', 'N/record'],
-    function (search, runtime, record) {
-        function _post(context) {
-            let res = {
-                timeStamp: new Date(),
-            };
-            var soRec = record.create({
-                type: "salesorder"
-            });
-            soRec.setValue({
-                fieldId: "customform",
-                value: context.form,
-            });
-            soRec.setValue({
-                fieldId: "entity",
-                value: context.entity,
-            });
-            soRec.setValue({
-                fieldId: 'subsidiary',
-                value: context.subsidiary
-            });
-            soRec.setValue({
-                fieldId: "externalid",
-                value: context.externalId,
-            });
-            var cust_date = getFormattedDate(context.date);
-            soRec.setValue({
-                fieldId: "custbody_appf_daterequired",
-                value: new Date(cust_date),
-            });
-            soRec.setValue({
-                fieldId: "location",
-                value: context.location
-            });
-            soRec.setValue({
-                fieldId: "orderstatus",
-                value: context.status
-            });
-            let categorylist = [];
-            context.errorstatus.forEach((list) => {
-                log.debug('category list:', list);
-                categorylist.push(list);
-                log.debug('Category List:', categorylist);
-            });
-            soRec.setValue({
-                fieldId: "custbody_323323",
-                value: categorylist
-            });
+<soapenv:Envelope
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:platformCore="urn:core_2021_2.platform.webservices.netsuite.com"
+    xmlns:platformMsgs="urn:messages_2021_2.platform.webservices.netsuite.com"
+    xmlns:tranSales="urn:sales_2021_2.transactions.webservices.netsuite.com">
 
-            for (let i = 0; i < context.items.length; i++) {
-                const element = context.items[i];
-                log.debug("Item Count:", element);
+    <soapenv:Header>
+        <platformMsgs:tokenPassport>
+            <platformCore:account>{{account}}</platformCore:account>
+            <platformCore:consumerKey>{{consumerKey}}</platformCore:consumerKey>
+            <platformCore:token>{{tokenId}}</platformCore:token>
+            <platformCore:nonce>{{nonce}}</platformCore:nonce>
+            <platformCore:timestamp>{{timestamp}}</platformCore:timestamp>
+            <platformCore:signature algorithm="HMAC_SHA256">{{signature}}</platformCore:signature>
+        </platformMsgs:tokenPassport>
+    </soapenv:Header>
 
-                soRec.selectNewLine({
-                    sublistId: "item",
-                });
-                soRec.setCurrentSublistValue({
-                    sublistId: "item",
-                    fieldId: "item",
-                    value: element.item,
-                });
-                soRec.setCurrentSublistValue({
-                    sublistId: "item",
-                    fieldId: "quantity",
-                    value: element.quantity,
-                });
-                soRec.setCurrentSublistValue({
-                    sublistId: "item",
-                    fieldId: "amount",
-                    value: element.amount,
-                });
-                soRec.setCurrentSublistValue({
-                    sublistId: "item",
-                    fieldId: "taxcode",
-                    value: element.taxcode,
-                });
-                soRec.commitLine({
-                    sublistId: "item",
-                });
-            }
-            var RecID = soRec.save({
-                enableSourcing: true,
-                ignoreMandatoryFields: true,
-            });
+    <soapenv:Body>
+        <platformMsgs:add>
+            <platformMsgs:record xsi:type="tranSales:SalesOrder">
+                <!-- Customer Reference -->
+                <tranSales:entity internalId="323" xsi:type="platformCore:RecordRef"/>
 
-            res.message = "Sale Order Successfully created in NS";
-            res.soCreated = true;
-            res.txnStatus = "SUCCESS";
-            res.saleOrderDocumentNumber = RecID
-        }
-        // Formatting the date in MM-DD-YYYY
-        function getFormattedDate(date) {
-            try {
-                var date_format = new Date(date);
-                var month = (1 + date_format.getMonth()).toString();
-                var day = date_format.getDate().toString();
-                var year = date_format.getFullYear();
-                return month + "/" + day + "/" + year;
-            } catch (error) {
-                log.error(
-                    "Error encountered while formatting the order date",
-                    error.message
-                );
-            }
-        }
-        return {
-            post: _post
-        };
-    });
+                <!-- Subsidiary Reference -->
+                <tranSales:subsidiary internalId="2" xsi:type="platformCore:RecordRef"/>
+
+                <!-- Transaction Date -->
+                <tranSales:tranDate>2025-02-12T00:00:00.000Z</tranSales:tranDate>
+
+                <!-- Custom Field List with Multi-Select -->
+                <tranSales:customFieldList>
+                    <platformCore:customField xsi:type="platformCore:MultiSelectCustomFieldRef" scriptId="custbody1">
+                        <platformCore:value internalId="757"/>
+                    </platformCore:customField>
+                    <platformCore:customField xsi:type="platformCore:MultiSelectCustomFieldRef" scriptId="custbody1">
+                        <platformCore:value internalId="860"/>
+                    </platformCore:customField>
+                </tranSales:customFieldList>
+
+                <!-- Item List -->
+                <tranSales:itemList>
+                    <tranSales:item>
+                        <tranSales:item internalId="17" xsi:type="platformCore:RecordRef"/>
+                        <tranSales:quantity>2</tranSales:quantity>
+                        <tranSales:amount>300.00</tranSales:amount>
+                    </tranSales:item>
+                </tranSales:itemList>
+            </platformMsgs:record>
+        </platformMsgs:add>
+    </soapenv:Body>
+</soapenv:Envelope>
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <soapenv:Body>
+        <soapenv:Fault>
+            <faultcode>soapenv:Server.userException</faultcode>
+            <faultstring>An unexpected error occurred.</faultstring>
+            <detail>
+                <platformFaults:invalidCredentialsFault xmlns:platformFaults="urn:faults_2021_2.platform.webservices.netsuite.com">
+                    <platformFaults:code>UNEXPECTED_ERROR</platformFaults:code>
+                    <platformFaults:message>An unexpected error occurred.</platformFaults:message>
+                </platformFaults:invalidCredentialsFault>
+                <ns1:hostname xmlns:ns1="http://xml.apache.org/axis/">partners111</ns1:hostname>
+            </detail>
+        </soapenv:Fault>
+    </soapenv:Body>
+</soapenv:Envelope>
