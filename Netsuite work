@@ -33,8 +33,6 @@
                 <tranSales:customFieldList>
                     <platformCore:customField xsi:type="platformCore:MultiSelectCustomFieldRef" scriptId="custbody1">
                         <platformCore:value internalId="757"/>
-                    </platformCore:customField>
-                    <platformCore:customField xsi:type="platformCore:MultiSelectCustomFieldRef" scriptId="custbody1">
                         <platformCore:value internalId="860"/>
                     </platformCore:customField>
                 </tranSales:customFieldList>
@@ -49,23 +47,5 @@
                 </tranSales:itemList>
             </platformMsgs:record>
         </platformMsgs:add>
-    </soapenv:Body>
-</soapenv:Envelope>
-
-
-<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <soapenv:Body>
-        <soapenv:Fault>
-            <faultcode>soapenv:Server.userException</faultcode>
-            <faultstring>An unexpected error occurred.</faultstring>
-            <detail>
-                <platformFaults:invalidCredentialsFault xmlns:platformFaults="urn:faults_2021_2.platform.webservices.netsuite.com">
-                    <platformFaults:code>UNEXPECTED_ERROR</platformFaults:code>
-                    <platformFaults:message>An unexpected error occurred.</platformFaults:message>
-                </platformFaults:invalidCredentialsFault>
-                <ns1:hostname xmlns:ns1="http://xml.apache.org/axis/">partners111</ns1:hostname>
-            </detail>
-        </soapenv:Fault>
     </soapenv:Body>
 </soapenv:Envelope>
