@@ -1,51 +1,72 @@
-<soapenv:Envelope
-    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-    xmlns:platformCore="urn:core_2021_2.platform.webservices.netsuite.com"
-    xmlns:platformMsgs="urn:messages_2021_2.platform.webservices.netsuite.com"
-    xmlns:tranSales="urn:sales_2021_2.transactions.webservices.netsuite.com">
 
-    <soapenv:Header>
-        <platformMsgs:tokenPassport>
-            <platformCore:account>{{account}}</platformCore:account>
-            <platformCore:consumerKey>{{consumerKey}}</platformCore:consumerKey>
-            <platformCore:token>{{tokenId}}</platformCore:token>
-            <platformCore:nonce>{{nonce}}</platformCore:nonce>
-            <platformCore:timestamp>{{timestamp}}</platformCore:timestamp>
-            <platformCore:signature algorithm="HMAC_SHA256">{{signature}}</platformCore:signature>
-        </platformMsgs:tokenPassport>
-    </soapenv:Header>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:core="urn:core_2024_1.platform.webservices.netsuite.com"
+                  xmlns:msg="urn:messages_2024_1.platform.webservices.netsuite.com"
+                  xmlns:rec="urn:relationships_2024_1.lists.webservices.netsuite.com"
+                  xmlns:tranSales="urn:sales_2024_1.transactions.webservices.netsuite.com"
+                  xmlns:platformCore="urn:core_2024_1.platform.webservices.netsuite.com"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+   <soapenv:Header>
+      <msg:tokenPassport>
+         <core:account>{{account}}</core:account>
+         <core:consumerKey>{{consumerKey}}</core:consumerKey>
+         <core:token>{{tokenId}}</core:token>
+         <core:nonce>{{nonce}}</core:nonce>
+         <core:timestamp>{{timeStamp}}</core:timestamp>
+         <core:signature algorithm="HMAC_SHA256">{{signature}}</core:signature>
+      </msg:tokenPassport>
+   </soapenv:Header>
+   <soapenv:Body>
+      <msg:add>
+         <msg:record xsi:type="tranSales:SalesOrder">
+            <tranSales:customForm internalId="285"/>
+            <tranSales:entity internalId="1200"/>
+            <tranSales:subsidiary internalId="1"/>
+            <tranSales:location internalId="82"/>
+            <tranSales:orderStatus>_pendingApproval</tranSales:orderStatus>
+            <platformCore:customField xsi:type="platformCore:DateCustomFieldRef" scriptId="custbody_appf_daterequired">
+                 <platformCore:value>2025-05-21T00:00:00.000Z</platformCore:value>
+                </platformCore:customField>
+            <!-- Custom Fields -->
+            <tranSales:customFieldList>
+               <platformCore:customField xsi:type="platformCore:MultiSelectCustomFieldRef" scriptId="custbody_323323">
+                  <platformCore:value internalId="1"/>
+                  <platformCore:value internalId="2"/>
+               </platformCore:customField>
+            </tranSales:customFieldList>
 
-    <soapenv:Body>
-        <platformMsgs:add>
-            <platformMsgs:record xsi:type="tranSales:SalesOrder">
-                <!-- Customer Reference -->
-                <tranSales:entity internalId="323" xsi:type="platformCore:RecordRef"/>
-
-                <!-- Subsidiary Reference -->
-                <tranSales:subsidiary internalId="2" xsi:type="platformCore:RecordRef"/>
-
-                <!-- Transaction Date -->
-                <tranSales:tranDate>2025-02-12T00:00:00.000Z</tranSales:tranDate>
-
-                <!-- Custom Field List with Multi-Select -->
-                <tranSales:customFieldList>
-                    <platformCore:customField xsi:type="platformCore:MultiSelectCustomFieldRef" scriptId="custbody1">
-                        <platformCore:value internalId="757"/>
-                        <platformCore:value internalId="860"/>
-                    </platformCore:customField>
-                </tranSales:customFieldList>
-
-                <!-- Item List -->
-                <tranSales:itemList>
-                    <tranSales:item>
-                        <tranSales:item internalId="17" xsi:type="platformCore:RecordRef"/>
-                        <tranSales:quantity>2</tranSales:quantity>
-                        <tranSales:amount>300.00</tranSales:amount>
-                    </tranSales:item>
-                </tranSales:itemList>
-            </platformMsgs:record>
-        </platformMsgs:add>
-    </soapenv:Body>
+            <!-- Item List -->
+            <tranSales:itemList>
+               <tranSales:item>
+                  <tranSales:item xsi:type="platformCore:RecordRef" internalId="3753"/>
+                  <tranSales:quantity>10</tranSales:quantity>
+                  <tranSales:amount>100</tranSales:amount>
+                  <tranSales:taxcode>4016</tranSales:taxcode>
+               </tranSales:item>
+            </tranSales:itemList>
+         </msg:record>
+      </msg:add>
+   </soapenv:Body>
 </soapenv:Envelope>
+
+
+
+// Fixed typo in environment variable name
+let account = 'TD2982546';
+let consumerKey = '930b6a214277f9979f7c5786387cdfc669b1445e5bee85bf75427820df77c1f8';
+let consumerSecret = '425795c463e124bf41205176f4f8c5ff91d7cc7f87f3894b85e92c5df3cb0266';
+let tokenId = 'd10c056c8633f43bc56c8086860547bdbf58fed658a8644b9993900651843c04';
+let tokenSecret = 'd8057d5a57c67f715881b79e86293d219ad0d69f5f18bce6a4a852a073c1f26d';
+let timeStamp = new Date().getTime().toString().substring(0,10);
+let nonce = Math.floor(Math.random() * 1000000);
+var baseString = account + '&' + consumerKey + '&' + tokenId + '&' + nonce + '&' + timeStamp;
+var key = consumerSecret + '&' + tokenSecret;
+var signature = CryptoJS.HmacSHA256(baseString, key).toString(CryptoJS.enc.Base64);
+pm.environment.set('signature', signature);
+pm.environment.set('account',account);
+pm.environment.set('nonce', nonce);
+pm.environment.set('timeStamp', timeStamp);
+pm.environment.set('tokenId',tokenId);
+pm.environment.set('tokenSecret',tokenSecret);
+pm.environment.set('consumerKey',consumerKey);
+pm.environment.set('consumerSecret',consumerSecret);
