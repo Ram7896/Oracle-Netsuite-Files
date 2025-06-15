@@ -1,18 +1,4 @@
-/*************************************************************************************************************************************
- * Script Name          :   ADA Mulesoft Integration RESTlet
- * Author               :   Karamjeet Kaur
- * Creation date        :   25th July 2023
- * Company              :   Capgemini India
- * Description          :   This script is used to maintain the REST APIs for MuleSoft - NetSuite Integration
- *                    -> Sales Order Creation Function added
- *                    -> Basic response setup for all REST calls wherein we return the received request in the response.
- * Change Log           :   ||    Changed By    ||    Date     ||            Description           ||
-                      ||  Manthan Laad    ||  23/12/2023 || Moved Search outside item for loop reducing number of search execution from number of items on SO to a single search  ||
-                      ||  Manthan Laad    ||  02/02/2024 || Reworked on script due to changes to inbound JSON ||
-                      ||  Manthan Laad    ||  28/02/2024 || Changes to values in inbound JSON for campaignCode and shippingMethod and removed StripeaReferenceNumber ||
-                      ||  Rashmi Desai    ||  28/03/2024 || Tax line is only added if Tax Amount is greater than 0 || 
-                      |  Rama Sudhakar   ||  18/04/2024 || Payment option check and ||  
- *************************************************************************************************************************************/
+
 
 /**
  * RestLet to create a Sales Order Record
@@ -174,3 +160,86 @@ define([
     post: doPost,
   };
 });
+{
+    "messageHeader": {
+      "correlationId": "2022-02-28T07:37:00.011Z",
+      "action": "CreateSalesOrder",
+      "commandName": "inbound"
+    },
+    "messageContent": {
+      "amsCustomerId": "00001442",
+      "firstName": "CDT",
+      "lastName": "Cust",
+      "userEmail": "ada2@test.com",
+      "externalOrderId": "123413-124322-314222-454233-245351-CDT26", 
+      "orderId": "454", 
+      "companyId": "16745",
+      "companyName": "Test Company",
+      "orderDate": "01/30/2024",
+      "poNumber": "TestPO1234",
+      "memo": "Test Memo",
+      "employeeId": "1234567892",
+      "orderSource": "Web",
+      "campaignCode": ["23201A"],
+      "taxAmount": 100,
+      "shippingMethod": 7126,
+      "shippingCost": "100",
+      "shippingTaxAmount": 60,
+      "paymentOption": "CC",
+      "lastFourDigit":"9999",
+      "cardType":"CC",
+      "billToAttention": "John Smith",
+      "billToAddressee": "Test Dental Office",
+      "billToPhone": "999999999",
+      "billAddress1": "47 W 13th St",
+      "billAddress2": "Apt 214",
+      "billCity": "New York",
+      "billState": "NY",
+      "billZip": "10011",
+      "billCountry": "US",
+      "shipToAttention": "John Smith",
+      "shipToAddressee": "Test Dental Office",
+      "shipToPhone": "999999999",
+      "shipAddress1": "47 W Street",
+      "shipAddress2": "Apt 111",
+      "shipCity": "New York",
+      "shipState": "NY",
+      "shipZip": "100114",
+      "shipCountry": "US",
+      "items": [
+        {
+          "externalLineId": "1",
+          "name": "CDT2023",
+          "quantity": 1,
+          "unitPrice": 100,
+          "unitDiscount": 20,
+          "rate": 80,
+          "amount": 160,
+          "itemTaxAmount": 20,
+          "smartPracticePId": "1234B3D24L42E35"
+        },
+        {
+          "externalLineId": "2",
+          "name": "CDT2022",
+          "quantity": 1,
+          "unitPrice": 100,
+          "unitDiscount": 20,
+          "rate": 80,
+          "amount": 160,
+          "itemTaxAmount": 20,
+          "smartPracticePId": "1234B3D24L42E35"
+        },
+        {
+          "externalLineId": "3",
+          "name": "AS CDT Test Item",
+          "quantity": 1,
+          "unitPrice": 100,
+          "unitDiscount": 20,
+          "rate": 80,
+          "amount": 160,
+          "itemTaxAmount": 20,
+          "smartPracticePId": "1234B3D24L42E35"
+        }
+      ]
+    }
+  }
