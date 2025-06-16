@@ -1,63 +1,146 @@
-<html>
-<head>
-  <style type="text/css">
-    body { font-family: Helvetica, sans-serif; font-size: 11px; margin: 40px; }
-    .container { width: 100%; }
-    .company-info, .client-info { width: 100%; margin-bottom: 20px; }
-    .company-info h2 { margin: 0; }
-    .invoice-table, .totals-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    .invoice-table th, .invoice-table td, .totals-table td {
-      border: 1px solid #ccc; padding: 8px; text-align: left;
+/**
+*@NApiVersion 2.1
+*@NScriptType UserEventScript
+*/
+define(['N/record', 'N/runtime', 'N/email'],
+    function (record, runtime, email) {
+        function beforeLoad(context) {
+            try {
+                var recordObj = context.newRecord;
+
+                log.debug('recordObj=', recordObj);
+                log.debug({
+                    title: 'Debug Entry',
+                    details: 'beforeLoad Triggered'
+                });
+                //set pending Approval internal id = 1
+                recordObj.setValue({
+                    fieldId: 'custbody_approval_status',
+                    value: '3',
+                    ignoreFieldChange: true
+                });
+                recordObj.setValue({
+                    fieldId: 'custbodysfdcintegrationstatus',
+                    value: '1',
+                    ignoreFieldChange: true
+                });
+            }
+            catch (e) {
+                log.error({
+                    title: 'Error Code',
+                    details: e
+                });
+            }
+        }
+        function beforeSubmit(context) {
+            try {
+                var recordObj2 = context.newRecord;
+                log.debug({
+                    title: 'Debug Entry',
+                    details: 'beforeSubmit Triggered'
+                });
+                var totalAmount = recordObj2.getValue({
+                    fieldId: 'total',
+                });
+                log.debug({
+                    title: 'totalAmount',
+                    details: totalAmount
+                });
+                 if (totalAmount > 100 && totalAmount < 900) {
+                    log.debug('totalAmount 1', totalAmount);
+
+                    recordObj2.setValue({
+                        fieldId: 'custbody_approval_status',
+                        value: '2'//rejected
+                    });
+                }
+                var tot_val_string2 = 'In Before Submit Value=' + totalAmount;
+                recordObj2.setValue({
+                    fieldId: 'memo',
+                    value: tot_val_string2,
+                    ignoreFieldChange: true
+                });
+            }
+            catch (e) {
+                log.error({
+                    title: 'Error code',
+                    details: e
+                });
+            }
+        }
+       function afterSubmit(context) {
+            try {
+                var recordObj = context.newRecord;
+                log.debug({
+                    title: 'Debug Entry',
+                    details: 'afterSubmit Triggered'
+                });
+                var RecordId = recordObj.id;
+                //PO type
+                var type = recordObj.type;
+
+                var objRecord = record.load({
+                    type: record.Type.PURCHASE_ORDER,
+                    id: RecordId,
+                    isDynamic: true
+                });
+                var total_value = objRecord.getValue({
+                    fieldId: 'total'
+                });
+                var complete_Str = 'After Submit =' + total_value
+                objRecord.setValue({
+                    fieldId: 'memo',
+                    value: complete_Str,
+                    ignoreFieldChange: true
+                });
+                var recordId = objRecord.save({
+                    enableSourcing: true,
+                    ignoreMandatoryFields: true
+                });
+                log.debug('recordId', recordId);
+                var currentUser = runtime.getCurrentUser();
+                log.debug('currentUser', currentUser);
+                if (context.type === context.UserEventType.CREATE) {
+                    log.debug('context.type entered');
+                    var senderId = currentUser.id;
+                    var recipientId = currentUser.id;
+                    email.send({
+                        author: senderId,
+                        //recipients: recipientId,
+                      recipients: '757',
+                        subject: 'Testing Email Module',
+                        body: 'email body'
+                    });
+                    log.debug("Email Sent Successfully");
+                }
+            } catch (e) {
+                log.error({
+                    title: 'Error Code',
+                    details: e
+                });
+            }
+        }
+        return {
+            beforeLoad: beforeLoad,
+            beforeSubmit: beforeSubmit,
+            afterSubmit: afterSubmit
+        };
     }
-    .invoice-table th { background-color: #f0f0f0; }
-    .totals-table { margin-top: 10px; }
-    .totals-table td:last-child { text-align: right; }
-    .note { margin-top: 30px; font-style: italic; }
-    .footer { text-align: center; font-size: 10px; margin-top: 40px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="company-info">
-      <h2>${companyInformation.companyname}</h2>
-      <p>${companyInformation.address1}, ${companyInformation.city}, ${companyInformation.state}</p>
-    </div>
+);
 
-    <div class="client-info">
-      <p><strong>Invoice:</strong> ${record.tranid}</p>
-      <p><strong>Date:</strong> ${record.trandate}</p>
-      <p><strong>Due Date:</strong> ${record.duedate}</p>
-      <p><strong>Customer:</strong> ${record.entity}</p>
-    </div>
 
-    <table class="invoice-table">
-      <tr>
-        <th>Description</th>
-        <th>Qty</th>
-        <th>Rate</th>
-        <th>Total</th>
-      </tr>
-      <#list record.item as item>
-        <tr>
-          <td>${item.description}</td>
-          <td>${item.quantity}</td>
-          <td>${item.rate}</td>
-          <td>${item.amount}</td>
-        </tr>
-      </#list>
-    </table>
 
-    <table class="totals-table">
-      <tr><td>Subtotal</td><td>${record.subtotal}</td></tr>
-      <tr><td>Tax</td><td>${record.taxtotal}</td></tr>
-      <tr><td><strong>Total</strong></td><td><strong>${record.total}</strong></td></tr>
-    </table>
 
-    <p class="note">Note: This invoice is valid as per Article 774 of the Commercial Code. Late payments may incur interest.</p>
+/***************************************
+ * Task
 
-    <div class="footer">
-      Printed by ${companyInformation.companyname} using NetSuite
-    </div>
-  </div>
-</body>
-</html>
+Create a User Event Script that triggers on Sales Order creation.
+Generate a CSV file containing the following fields:
+Customer
+Date
+Exchange Rate
+Currency
+Status
+Sales Representative
+Save the CSV file in the File Cabinet, using the Sales Order internal ID as the filename.
+ */
