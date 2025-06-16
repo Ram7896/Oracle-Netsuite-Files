@@ -1,297 +1,63 @@
-[23/05, 5:01 pm] ~: <!-- ........................................................free marker .................................... -->
-        <!-- ..1.keep_after(" ")
-        2.keep_before(" ")
-        3.replace("","")
-        4.contains("")
-        5.keep_after_last("")
-        6.keep_before_last("")
-        7.split("") 
-        8.<#if record.customform = "GPC Purchase Order - WMS Role" || record.customform = "GPC Purchase Order - Purchasing Role">
-        9.has_content
-        10.convert amount from int to decimal i.e
-              a.1200 to 1200.00 use this free marker   ex:amount?string("0.00");
-              a.500 to 500.000 use this free marker   ex:amount?string("0.000")
-        11.Replace:
-         ex:${ record.billaddress?replace("<br />", " ")}
-        TEST_CUST001
-        Unit 1, Tower 1
-        Penny Lane
-        Makati City 1400
-        Philippines
-        output:TEST_CUST001 Unit 1, Tower 1 Penny
-        Lane Makati City 1400 Philippines
-        12.convert amount with currency symbol to only number
-        ex: num=php20000
-        record.num?string.number
-        o/p :20000
-        13.date difference
-            (.now?long / 86400000)?round- (line.datecol?long / 86400000)?round
-             o/p :we will get no.of.days
-       14.
- ..-->
-
-
-<#-- Define your JSON data -->
-<#assign jsonData = '{"name": "Nag", "age": 25, "city": "chodavaram"}'>
-
-<#-- Parse JSON data -->
-<#assign parsedData = jsonData?eval>
-
-<#-- Access JSON values -->
-<p>
-Name: ${parsedData.name}  // Nag
-Age: ${parsedData.age}    // 24
-City: ${parsedData.city}  // chodavaram
-
-O/p:
-Name: Nag
-Age: 24
-City: chodavaram
-</p>
-[23/05, 5:01 pm] ~: <?xml version="1.0"?><!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
-<pdf>
+<html>
 <head>
-	<link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}" src-bold="${nsfont.NotoSans_Bold}" src-italic="${nsfont.NotoSans_Italic}" src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
-	<#if .locale == "zh_CN">
-		<link name="NotoSansCJKsc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKsc_Regular}" src-bold="${nsfont.NotoSansCJKsc_Bold}" bytes="2" />
-	<#elseif .locale == "zh_TW">
-		<link name="NotoSansCJKtc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKtc_Regular}" src-bold="${nsfont.NotoSansCJKtc_Bold}" bytes="2" />
-	<#elseif .locale == "ja_JP">
-		<link name="NotoSansCJKjp" type="font" subtype="opentype" src="${nsfont.NotoSansCJKjp_Regular}" src-bold="${nsfont.NotoSansCJKjp_Bold}" bytes="2" />
-	<#elseif .locale == "ko_KR">
-		<link name="NotoSansCJKkr" type="font" subtype="opentype" src="${nsfont.NotoSansCJKkr_Regular}" src-bold="${nsfont.NotoSansCJKkr_Bold}" bytes="2" />
-	<#elseif .locale == "th_TH">
-		<link name="NotoSansThai" type="font" subtype="opentype" src="${nsfont.NotoSansThai_Regular}" src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
-	</#if>
-        <macrolist>
-<!--************************************************************ HEADER ***********************************************************************************-->
-        <macro id="nlheader">
-            <table style="width: 100%; font-size: 10pt;">
-                <tr>
-                    <td style="padding: 0;" width="20%">
-                    <#if companyInformation.logoUrl?length !=0><img src="${companyInformation.logoUrl}" style=" height: 50px; width: 130px;align:left;" /> </#if>         
-                        <br />${companyInformation.companyName}<br />${companyInformation.addressText}
-                    </td>
-                    <td align="center" style="padding: 0;" width="80%" ><span style="font-size: 28pt;">${record@title}</span></td>
-                </tr>
-            </table>
-        </macro>
-          
-<!--************************************************************ FOOTER ***********************************************************************************-->
-        <macro id="nlfooter">
-            <table style="width: 100%; font-size: 8pt;">
-                <tr>
-                    <td style="padding: 0;">
-                        <barcode codetype="code128" showtext="true" value="${record.tranid}"/>
-                    </td>
-                    <td align="right" style="padding: 0;">
-                        <pagenumber/> of <totalpages/>
-                    </td>
-                </tr>
-            </table>
-        </macro>
-    </macrolist>
-                          
-<!--************************************************************  PRE DEFINED STYLES  ***********************************************************************************-->
-    <style type="text/css">* {
-		<#if .locale == "zh_CN">
-			font-family: NotoSans, NotoSansCJKsc, sans-serif;
-		<#elseif .locale == "zh_TW">
-			font-family: NotoSans, NotoSansCJKtc, sans-serif;
-		<#elseif .locale == "ja_JP">
-			font-family: NotoSans, NotoSansCJKjp, sans-serif;
-		<#elseif .locale == "ko_KR">
-			font-family: NotoSans, NotoSansCJKkr, sans-serif;
-		<#elseif .locale == "th_TH">
-			font-family: NotoSans, NotoSansThai, sans-serif;
-		<#else>
-			font-family: NotoSans, sans-serif;
-		</#if>
-		}
-		table {
-			font-size: 9pt;
-			table-layout: fixed;
-		}
-        th {
-            font-weight: bold;
-            font-size: 8pt;
-            vertical-align: middle;
-            padding: 5px 6px 3px;
-            background-color: #e3e3e3;
-            color: #333333;
-        }
-        td {
-            padding: 4px 6px;
-        }
-		td p { align:left }
-        b {
-            font-weight: bold;
-            color: #333333;
-        }
-        table.header td {
-            padding: 0;
-            font-size: 10pt;
-        }
-        table.footer td {
-            padding: 0;
-            font-size: 8pt;
-        }
-</style>
+  <style type="text/css">
+    body { font-family: Helvetica, sans-serif; font-size: 11px; margin: 40px; }
+    .container { width: 100%; }
+    .company-info, .client-info { width: 100%; margin-bottom: 20px; }
+    .company-info h2 { margin: 0; }
+    .invoice-table, .totals-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .invoice-table th, .invoice-table td, .totals-table td {
+      border: 1px solid #ccc; padding: 8px; text-align: left;
+    }
+    .invoice-table th { background-color: #f0f0f0; }
+    .totals-table { margin-top: 10px; }
+    .totals-table td:last-child { text-align: right; }
+    .note { margin-top: 30px; font-style: italic; }
+    .footer { text-align: center; font-size: 10px; margin-top: 40px; }
+  </style>
 </head>
-                                           <!--................................DEVELOPED BY SIRUSOLLA NAGARJUNA........................................................................-->
-               
-<!--************************************************************ BODY ***********************************************************************************-->
-                          
-<body header="nlheader" header-height="20%"  footer="nlfooter" footer-height="5%"  padding="0.5in 0.5in 0.5in 0.5in" size="Letter">
-  <!--...................................................................................................................................................-->
-  
-<table width="100%" border="1pt">
-<tr border-bottom="1">
-  <td>S.NO</td>
-  <td>ITEM</td> 
-  <td>UNITS</td>
-</tr>
-    <#assign loopcount=0><#list record.item as itms><#assign loopcount=loopcount+1>
-    <tr  >
-  <td>${loopcount}</td>
-  <td>${itms.item}</td> 
-  <td>${itms.unitsdisplay}</td>
-</tr>
-    </#list>
-  </table>
-<BR/><BR/> 
-      
-<!--...................................................................................................................................................-->
-      
-  <table width="100%" border="1pt">
-<tr border-bottom="1">
-  <td>S.NO</td>
-  <td>ITEM</td> 
-  <td>AMOUNT</td>
-</tr>
-    <#assign loop=0><#list porec.item as itm><#assign loop=loop+1>
-    <tr>
-  <td>${loop}</td>
-  <td>${itm.item}</td> 
-  <td>${itm.amount?string.number}</td>
-</tr>
-    </#list>
-  </table>  
-      
-<!--...................................................................................................................................................-->
-  <#--DIRECTIVES & RESERVED NAMES IN FMT-->  
-<p> (IF AND ELSE)<BR/>
-  testing :
-  <#if record.custbody2> YES<#else>NO</#if>
-</p>  
-<p>(IF ,ELSEIF ,ELSE)(GT,GTE,LT,LTE)<BR/>
-  testing:
-<#assign a=100>
-<#if a gt 150>
-a is greater than 100
-<#elseif a gte 100>
-a is equal or  greater than 100 
-<#else>
- not satisfying if or else if 
-</#if>
-</p>
-  
-  <#-- FMT-->  
-  <p>(to know filed type : date or string or number or boolean )</p>
-  <p>date :${record.trandate?is_date} </p>
-  <p>subsidiary:${record.subsidiary?is_string} </p>
-  <p>number fld:${record.custbody16?is_number} </p>
-  <p>check box fld :${record.custbody2?is_boolean} </p>
-  <#assign three="naga arjuna", four="  bye  man ">
-<p>trim : ${four?trim} : IT WILL REMOVE EMPTY SPACES STARTING AND ENDING</p>
-<p>replace : ${three?replace("arjuna","naga")} : IT WILL REPLACES SECOND  VALUE TO FIRST VALUE</p>    
-<p>contains : ${(record.custbody11)?contains("ARJUN")} :IT WILL RETURNS TRUE OR FALSE IF CONATAINS </p>
- <p>has_content : ${(record.custbody1)?has_content}: RETUNS TRUE IF VALUE IS THERE IN THE FLD </p>
-<p>keep_after : ${(record.custbody11)?keep_after("RJ")}  ${(record.custbody11)?keep_before("RJ")}  ${(record.custbody11)?keep_after_last("N")} ${(record.custbody11)?keep_before_last("N")}</p>
-<p>decimal places : ${(record.custbody16)?string("0.00")} //has to numeric fld// : ADDS DECIMAL PLACES</p>
+<body>
+  <div class="container">
+    <div class="company-info">
+      <h2>${companyInformation.companyname}</h2>
+      <p>${companyInformation.address1}, ${companyInformation.city}, ${companyInformation.state}</p>
+    </div>
 
-<!--...................................................................................................................................................-->
-      
-      <p>if we could not get any values while loading record we can fetch by using search and add these results to custom data source ,
-        by using custom data source whatever values we got in  script these values we can access in pdf here below i have mentioned how to access these values single and grouped values.
-      </p> 
-    <p>Custom data source single value access : ${data.lc}</p>
-    <p>Custom data source list values access:<#list data.abc as xyz>${xyz.val1}</#list> </p> 
+    <div class="client-info">
+      <p><strong>Invoice:</strong> ${record.tranid}</p>
+      <p><strong>Date:</strong> ${record.trandate}</p>
+      <p><strong>Due Date:</strong> ${record.duedate}</p>
+      <p><strong>Customer:</strong> ${record.entity}</p>
+    </div>
 
-<!-- refere below script for better understanding -->
-<!-- SCRIPT FOR REFERENCE
-/****************************
- * @NApiVersion 2.1
- * @NScriptType Suitelet
- **********************************/
-define(['N/render', 'N/record'], function (render, record) {
-    function onRequest(context) {
-            var response = context.response;
-            var parameters = context.request.parameters;
-            if (context.request.method === 'GET') {
-                var renderer = render.create();
-                renderer.setTemplateByScriptId({
-                    scriptId: "CUSTTMPL_114_TD2917847_148" // change here
-                });
-                var rec = record.load({
-                    type: "itemreceipt", // change here
-                    id: parameters.custom_record_id
-                });
-                var createdfrom = rec.getValue("createdfrom");
-                var porec = record.load({
-                    type: "purchaseorder", // change here
-                    id: createdfrom
-                });
-                renderer.addRecord({
-                    templateName: 'record',
-                    record: rec
-                });
-                renderer.addRecord({
-                    templateName: 'porec',
-                    record: porec
-                });
-                var linecount = rec.getLineCount({
-                    sublistId: 'item'
-                });
-                var arraygl = [];
-                for (var a = 0; a < linecount; a++) {
-                    var sublistFieldValue1 = rec.getSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'item',
-                        line: a
-                    });
-                    var sublistFieldValue2 = rec.getSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'quantity',
-                        line: a
-                    });
-                    arraygl.push({
-                        val1: sublistFieldValue1,
-                        val2: sublistFieldValue2
-                    });
-                }
-                renderer.addCustomDataSource({
-                    format: render.DataSource.OBJECT,
-                    alias: "data",
-                    data: {
-                        abc: arraygl,
-                        lc:linecount
-                    }
-                });
-                var pdf = renderer.renderAsPdf();
-                response.writeFile(pdf, true);
-            }      
-    }
-    return {
-        onRequest: onRequest
-    }
-}); -->    
+    <table class="invoice-table">
+      <tr>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Rate</th>
+        <th>Total</th>
+      </tr>
+      <#list record.item as item>
+        <tr>
+          <td>${item.description}</td>
+          <td>${item.quantity}</td>
+          <td>${item.rate}</td>
+          <td>${item.amount}</td>
+        </tr>
+      </#list>
+    </table>
 
-<!-- important notes to remember -->
-    
-1.USE SPACE TAG &nbsp;  FOR SMALL SPACES BETWEEN TABLES. FOR BIG SPACES USE BREAK TAG <BR/>
-2.WE CAN DEFINE PAGE SIZE AS  size="177mm 89mm" (WIDTH*HEIGHT) and for LANDSCAPE we have to use  size="Letter-LANDSCAPE"
-3. all pages header and footer would be same we cant chage for a particular page this is limitation in netsuite.
-4.
- </body>
-</pdf>
+    <table class="totals-table">
+      <tr><td>Subtotal</td><td>${record.subtotal}</td></tr>
+      <tr><td>Tax</td><td>${record.taxtotal}</td></tr>
+      <tr><td><strong>Total</strong></td><td><strong>${record.total}</strong></td></tr>
+    </table>
+
+    <p class="note">Note: This invoice is valid as per Article 774 of the Commercial Code. Late payments may incur interest.</p>
+
+    <div class="footer">
+      Printed by ${companyInformation.companyname} using NetSuite
+    </div>
+  </div>
+</body>
+</html>
