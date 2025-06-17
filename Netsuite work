@@ -1,4 +1,18 @@
-  Netsuite Extensions 
+/***************************************
+ * Task
+
+Create a User Event Script that triggers on Sales Order creation.
+Generate a CSV file containing the following fields:
+Customer
+Date
+Exchange Rate
+Currency
+Status
+Sales Representative
+Save the CSV file in the File Cabinet, using the Sales Order internal ID as the filename.
+ */
+
+Netsuite Extensions 
 NetSuite  extensions explanation : https://www.vnmtsolutions.com/top-7-netsuite-chrome-extensions-to-boost-developers-productivity/
 
 NetSuite: Search Export : https://chrome.google.com/webstore/detail/netsuite-search-export/gglbgdfbkaelbjpjkiepdmfaihdokglp
