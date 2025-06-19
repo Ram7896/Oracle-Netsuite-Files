@@ -1,205 +1,27 @@
-/** 
-*@NApiVersion 2.1
-*@NScriptType ClientScript 
-*/
+/**
+ * @NApiVersion 2.x
+ * @NScriptType ClientScript
+ */
+define(['N/currentRecord', 'N/record', 'N/search'], function(currentRecord, record, search) {
 
-define(['N/currentRecord', 'N/error'],
-    function (currentRecord, error) {
-        function pageInit(context) {
-            try {
-                alert('context.mode=' + context.mode);
-                if (context.mode == 'create') {
-                    var currentRecObj = context.currentRecord;
-                    currentRecObj.setValue({
-                        fieldId: 'entity',
-                        value: '323'
+    function pageInit(context) {
+            var currentRec = currentRecord.get();
+            var subsidiaryId = currentRec.getValue({ fieldId: 'subsidiary' });
+            alert('subsidiary Id:'+subsidiaryId);
+            if (subsidiaryId) {
+                // Assuming there's a custom field on Subsidiary that stores the due date
+                var dueDate = currentRec.getValue({ fieldId: 'duedate' });
+                alert("duedate"+ dueDate);
+                if (dueDate) {
+                    currentRec.setValue({
+                        fieldId: 'custbody_legacy_date', // Replace with your actual Legacy Date field ID
+                        value: dueDate
                     });
                 }
-            } catch (error) {
-                alert('Error in pageInit:' + error.message);
             }
-        }
-        function lineInit(context) {
-            try {
-                var currentRecObj = context.currentRecord;
-                var sublistName = context.sublistId;
-                if (sublistName === 'item')
-                    alert('lineInit Entered');
-                var val = 'Not Required';
-                log.debug('val', val);
-                currentRecObj.setCurrentSublistValue({
-                    sublistId: sublistName,
-                    fieldId: 'custcol_license_code',
-                    value: val
-                });
-            } catch (error) {
-                alert('Error in LineInit:' + error.message);
-            }
-        }
-        function saveRecord(context) {
-            try {
-                var currentRecObj = context.currentRecord;
-                var locValue = currentRecObj.getValue({
-                    fieldId: 'memo'
-                });
-                log.debug('locValue=', locValue);
-                if (!locValue) {
-                    throw error.create({
-                        name: 'MISSING_REQ_ARG',
-                        message: ('Please enter the memo  on purchase order before saving')
-                    });
-                }
-                return true;
-            } catch (error) {
-                alert('Error in saveRecord:' + error.message);
-            }
-        }
-        function validateField(context) {
-            try {
-                var currentRecord = context.currentRecord;
-                    var memo = currentRecord.getValue({
-                        fieldId: 'memo'
-                    });
-                    var memoLength = memo.length;
-                    log.debug('memoLength=', memoLength);
-                    if (memoLength < 6) {
-                        alert('Memo Name needs to be 6 or more characters');
-                        return false;
-                    }
-                return true;
-            } catch (error) {
-                alert("Error in ValidateFIeld:" + error.message);
-            }
-        }
-        function fieldChanged(context) {
-            try {
-                var currentRecObj = context.currentRecord;
-                var sublistName = context.sublistId;
-                log.debug('sublistName', sublistName);
-                var sublistFieldName = context.fieldId;
-                log.debug('sublistFieldName', sublistFieldName);
-                if (sublistName === 'item' && sublistFieldName === 'item')
-                    currentRecObj.setValue({
-                        fieldId: 'memo',
-                        value: 'Item: ' + currentRecObj.getCurrentSublistValue({
-                            sublistId: 'item',
-                            fieldId: 'item'
-                        }) + 'is selected'
-                    });
-            } catch (error) {
-                alert('Error in fieldChanged:' + error.message);
-            }
-        }
-        function postSourcing(context) {
-            try {
-                var currentRecord = context.currentRecord;
-                var sublistName = context.sublistId;
-                var sublistFieldName = context.fieldId;
-                var line = context.line;
-                if (sublistName === 'item' && sublistFieldName === 'item') {
-                    var item_val = currentRecord.getCurrentSublistValue({
-                        sublistId: sublistName,
-                        fieldId: sublistFieldName
-                    });
-                    log.debug('item_val', item_val);
-                    if (item_val === '345')
-                        var price_lv = currentRecord.getCurrentSublistValue({
-                            sublistId: sublistName,
-                            fieldId: 'quantity'
-                        });
-                    log.debug('price_lv', price_lv);
-                    if (price_lv !== '4')
-                        currentRecord.setCurrentSublistValue({
-                            sublistId: sublistName,
-                            fieldId: 'custcol_license_code',
-                            value: '4'
-                        });
-                }
-            } catch (error) {
-                alert("Error in postSourcing:" + error.message);
-            }
-        }
-        function validateDelete(context) {
-            try {
-                var currentRecord = context.currentRecord;
-                var sublistName = context.sublistId;
-                if (sublistName === 'item')
-                    alert('sublistName === item');
-                if (currentRecord.getCurrentSublistValue({
-                    sublistId: sublistName,
-                    fieldId: 'item'
-                }) !== '252') // particular item id
-                {
-                    currentRecord.setValue({
-                        fieldId: 'memo',
-                        value: 'Removing' + currentRecord.getCurrentSublistValue({
-                            sublistId: sublistName,
-                            fieldId: 'item'
-                        }) + 'Item'
-                    });
-                    return false;
-                }
-                alert('Removing BEDROOM : Handcrafted Queen Bed Item');
-                return true;
-            } catch (error) {
-                alert('Error in Validate Delete:' + error.message);
-            }
-        }
-       function validateInsert(context) {
-            try {
-                var currentRecObj = context.currentRecord;
-                log.debug('validateInsert');
-                alert('validateInsert');
-                var sublistName = context.sublistId;
-                if (sublistName === 'item')
-                    alert('sublistName === item');
-                if (currentRecObj.getCurrentSublistValue({
-                    sublistId: sublistName,
-                    fieldId: 'quantity'
-                }) >= '15') {
-                    currentRecObj.setValue({
-                        fieldId: 'memo',
-                        value: 'Quantity should not greater than or equal to 15'
-                    });
-                    return false;
-                }
-                return true;
-            } catch (e) {
-                alert('Error in Validate Insert:' + error.message);
-            }
-        }*/
-        function validateLine(context) {
-            try {
-                var currentRecord = context.currentRecord;
-                var sublistName = context.sublistId;
-                if (sublistName === 'item')
-                    alert('validateLine sublistName === item');
-                if (currentRecord.getCurrentSublistValue({
-                    sublistId: sublistName,
-                    fieldId: 'quantity'
-                }) <= '2') {
-                    alert('Quantity should be greater than 2');
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                alert('Error in Validate Line:' + error.message);
-            }
-        }
-        return {
-           /* pageInit: pageInit,
-           lineInit: lineInit,
-           saveRecord: saveRecord,
-            validateField: validateField,
-            fieldChanged: fieldChanged,
-             postSourcing: postSourcing,
-              validateDelete: validateDelete,
-            validateInsert: validateInsert,*/
-            validateLine: validateLine,
-            
-        };
     }
-); 
-/******************
- Create a custom button labeled 'Approve' and a field named 'ApprovalStatus' (of type List/Record with values 'Approved' and 'Rejected') this custom button displayed in view mode only.
-  When the 'Approve' button is clicked, the status should change to 'Approved'*/ 
+
+    return {
+        pageInit:pageInit
+    };
+});
