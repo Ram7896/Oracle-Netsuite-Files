@@ -1,10 +1,133 @@
-[24/06, 1:26 pm] Rajesh Netsuite Bro: Integrated various transaction types, including Sales Orders, , ItemFulfilments, and Refunds, into NetSuite using the Celigo IO Tool. Mapped both custom and standard fields in Celigo IO to ensure accurate data flow between systems.
-[24/06, 1:27 pm] Rajesh Netsuite Bro: Project Description:
-This project involves integrating Parcel Pro, a secure logistics and shipping platform, with NetSuite ERP using Celigo Integrator.io to streamline shipment tracking and fulfillment processes. The integration leverages Parcel Pro's REST APIs to pull real-time shipping details and push them into NetSuite's Sales Orders, Item Fulfillments, and Tracking Information records.
-Objective:
-To automate the data exchange between Parcel Pro and NetSuite, eliminate manual entry of tracking details, improve shipment visibility, and ensure timely updates of fulfillment records in NetSuite.
-Scope
-    ◦    Pull tracking numbers, shipping carrier, and status from Parcel Pro.
-    ◦    Update NetSuite Item Fulfillment records with real-time tracking data.
-    ◦
-[24/06, 1:27 pm] Rajesh Netsuite Bro: Push NetSuite Sales Orders or Fulfillment requests to Parcel Pro to initiate
+/***
+ * In Demo just load a CSV file into NetSuite via a Suitelet (Suitelet should have 1 document field called “Upload Rewards Liability File”, a “Journal Date” date field, a “Journal Name” text field, and a Submit button) Set the fields to mandatory.
+When submitted, the script should add the CSV File to the file cabinet in a specific folder (Rewards Liability To be Processed – 'Folder" in Demo )
+Once file created Use this field Upload Rewards File,Journal Date,Journal Name you need to create the custom record.
+ */
+
+
+/**
+*@NApiVersion 2.1
+*@NScriptType  ScheduledScript
+*/
+define(['N/search', 'N/record', 'N/runtime', 'N/email'],
+  function (search, record, runtime, email) {
+    function execute(context) {
+      var runtimesample = runtime.getCurrentScript().deploymentId;
+      log.debug("runtimesample:", runtimesample);
+      //log.debug("context type",context.type);
+      if (runtimesample == 'customdeploy_scheduled_task') {
+        try {
+
+          var employeeSearch = search.create({
+            type: "employee",
+            filters:
+              [
+                ["isinactive", "is", "F"]
+              ],
+            columns:
+              [
+                search.createColumn({ name: "entityid", label: "Name" }),
+                search.createColumn({ name: "email", label: "Email" }),
+                search.createColumn({ name: "phone", label: "Phone" }),
+                search.createColumn({ name: "supervisor", label: "Supervisor" }),
+                search.createColumn({ name: "title", label: "Job Title" })
+              ]
+          });
+          var searchResultSet = employeeSearch.run().getRange({
+            start: 0,
+            end: 1000
+          });
+          log.debug('search created successfully');
+          for (var index = 0; index < searchResultSet.length; index++) {
+            var Name = searchResultSet[index].getValue('entityid');
+            log.debug('Name:', Name);
+            var Job_tit = searchResultSet[index].getValue('title');
+            log.debug('Job_title:', Job_tit);
+            var Email_add = searchResultSet[index].getValue('email');
+            log.debug('Email_add:', Email_add);
+            var FSupervisors = searchResultSet[index].getValue('supervisor');
+            log.debug('Supervisiors:', FSupervisors);
+            var customRecord = record.create({
+              type: 'customrecord_track_employee'
+            });
+            var SetName = customRecord.setValue({
+              fieldId: 'name',
+              value: Name
+            });
+            var SetJob_tit = customRecord.setValue({
+              fieldId: 'custrecord11',
+              value: Job_tit
+            });
+            customRecord.setValue({
+              fieldId: 'custrecord12',
+              value: Email_add
+            });
+            var SetSupervisior = customRecord.setValue({
+              fieldId: 'custrecord13',
+              value: FSupervisors
+            });
+            var custRecord = customRecord.save({
+              enablesourcing: true,
+              ignoreMandatoryFields: true
+            });
+            var currentUser = runtime.getCurrentUser();
+            log.debug('currentUser', currentUser);
+            //if (context.type === context.UserEventType.CREATE) {
+            log.debug('context.type entered');
+            var senderId = currentUser.id;
+            log.debug('sender id:', senderId);
+            //var recipientId = currentUser.id;
+            email.send({
+              author: '-5',
+              recipients: '757',
+              subject: 'Testing Email Module',
+              body: 'Name:' + SetName + 'Job_tit:' + SetJob_tit + 'Supervisior:' + SetSupervisior
+            });
+            // }
+          }
+        } catch (error) {
+          log.error('Error in scheduled script assignment ', error);
+        }
+      }
+
+      try {
+        if (runtimesample == 'customdeploy_del_scheduled_task') {
+          var recordType = 'customrecord_track_employee';
+          var customrecord_track_employeeSearchObj = search.create({
+            type: "customrecord_track_employee",
+
+          });
+          var searchResultCount = customrecord_track_employeeSearchObj.runPaged().count;
+          log.debug("searchresultcount:",searchResultCount);
+          var searchResultSet = customrecord_track_employeeSearchObj.run().getRange({
+            start: 0,
+            end: 1000
+          });
+          log.debug("Del search result:", searchResultSet);
+          while (searchResultSet.length > 0) {
+            for (var i = 0; i < searchResultSet.length; i++) {
+              var recordId = searchResultSet[i].id;
+              log.debug("del record id:", recordId);
+              record.delete({
+                type: recordType,
+                id: recordId
+              });
+
+            }
+
+          }
+        }
+      }
+      catch (error) {
+        log.error('Error in deletion', error);
+      }
+    }
+    return {
+      execute: execute
+    };
+  }
+);
+
+
+/*****
+ * To automate the sales order process in NetSuite, create a scheduled script that generates item fulfillments for sales orders with the status 'Pending Approval'. */
