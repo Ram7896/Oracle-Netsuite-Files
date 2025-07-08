@@ -1,68 +1,16 @@
-/**
- * @NApiVersion 2.1
- * @NScriptType UserEventScript
- */
-define(['N/url'], (url) => {
-
-    const BUTTON_ID   = 'custpage_download_invoice_pdf';
-    const BUTTON_NAME = 'Download PDF';
-
-    function afterLoad(context) {
-        if (context.type !== context.UserEventType.VIEW) return;   // show only in view mode
-
-        const form      = context.form;
-        const invoiceId = context.newRecord.id;
-
-        const suiteletUrl = url.resolveScript({
-            scriptId     : 'customscript_invoice_pdf_slet',   // ↖ create these in step 2
-            deploymentId : 'customdeploy_invoice_pdf_slet',
-            params       : { invoiceId }                      // ?invoiceId=123
-        });
-
-        form.addButton({
-            id           : BUTTON_ID,
-            label        : BUTTON_NAME,
-            functionName : `window.open('${suiteletUrl}','_blank')`
-        });
-    }
-
-    return { afterLoad };
-});
-
-
-
-/**
- * @NApiVersion 2.1
- * @NScriptType Suitelet
- */
-define(['N/render'], (render) => {
-
-    function onRequest(context) {
-        const invoiceId = context.request.parameters.invoiceId;
-        if (!invoiceId) {
-            context.response.write('Missing invoiceId parameter');
-            return;
-        }
-
-        // Generate the PDF (uses the invoice’s Advanced PDF/HTML template or the legacy form PDF)
-        const pdfFile = render.transaction({
-            entityId  : invoiceId,
-            printMode : render.PrintMode.PDF      // ⇨ returns an N/file.File object
-        });
-
-        // Stream it back
-        context.response.setHeader({
-            name  : 'Content-Type',
-            value : 'application/pdf'
-        });
-        context.response.setHeader({
-            name  : 'Content-Disposition',
-            value : `inline; filename=Invoice_${invoiceId}.pdf`
-        });
-
-        context.response.writeFile(pdfFile, true);  // true = isInline
-    }
-
-    return { onRequest };
-});
-
+{
+   type: "error.SuiteScriptError",
+   name: "WRONG_PARAMETER_TYPE",
+   message: "Wrong parameter type: options.entityId is expected as number. ",
+   id: null,
+   stack: [
+      "Error",
+      "    at Object.onRequest (/SuiteScripts/[SU]_pur_status_pendingapproval.js:16:32)"
+   ],
+   cause: {
+      name: "WRONG_PARAMETER_TYPE",
+      message: "Wrong parameter type: options.entityId is expected as number. "
+   },
+   notifyOff: false,
+   userFacing: true
+}
