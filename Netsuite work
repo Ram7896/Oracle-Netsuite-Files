@@ -1,16 +1,1 @@
-{
-   type: "error.SuiteScriptError",
-   name: "WRONG_PARAMETER_TYPE",
-   message: "Wrong parameter type: options.entityId is expected as number. ",
-   id: null,
-   stack: [
-      "Error",
-      "    at Object.onRequest (/SuiteScripts/[SU]_pur_status_pendingapproval.js:16:32)"
-   ],
-   cause: {
-      name: "WRONG_PARAMETER_TYPE",
-      message: "Wrong parameter type: options.entityId is expected as number. "
-   },
-   notifyOff: false,
-   userFacing: true
-}
+functionName: `window.location.href='${pdfUrl}'`
