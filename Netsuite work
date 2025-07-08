@@ -2,25 +2,67 @@
  * @NApiVersion 2.1
  * @NScriptType UserEventScript
  */
-define(['N/url', 'N/record'], function (url, record) {
+define(['N/url'], (url) => {
+
+    const BUTTON_ID   = 'custpage_download_invoice_pdf';
+    const BUTTON_NAME = 'Download PDF';
 
     function afterLoad(context) {
-        if (context.type !== context.UserEventType.VIEW) return;
+        if (context.type !== context.UserEventType.VIEW) return;   // show only in view mode
 
-        const newRecord = context.newRecord;
-        const invoiceId = newRecord.id;
+        const form      = context.form;
+        const invoiceId = context.newRecord.id;
 
-        // Generate URL for system-generated PDF (this is NetSuite's native print URL)
-        const pdfUrl = `/app/accounting/transactions/transaction.nl?id=${invoiceId}&trantype=custinvc&whence=&printtype=transaction`;
+        const suiteletUrl = url.resolveScript({
+            scriptId     : 'customscript_invoice_pdf_slet',   // ↖ create these in step 2
+            deploymentId : 'customdeploy_invoice_pdf_slet',
+            params       : { invoiceId }                      // ?invoiceId=123
+        });
 
-        context.form.addButton({
-            id: 'custpage_download_invoice_pdf',
-            label: 'Download PDF',
-            functionName: `window.open('${pdfUrl}', '_blank')`
+        form.addButton({
+            id           : BUTTON_ID,
+            label        : BUTTON_NAME,
+            functionName : `window.open('${suiteletUrl}','_blank')`
         });
     }
 
-    return {
-        afterLoad: afterLoad
-    };
+    return { afterLoad };
 });
+
+
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ */
+define(['N/render'], (render) => {
+
+    function onRequest(context) {
+        const invoiceId = context.request.parameters.invoiceId;
+        if (!invoiceId) {
+            context.response.write('Missing invoiceId parameter');
+            return;
+        }
+
+        // Generate the PDF (uses the invoice’s Advanced PDF/HTML template or the legacy form PDF)
+        const pdfFile = render.transaction({
+            entityId  : invoiceId,
+            printMode : render.PrintMode.PDF      // ⇨ returns an N/file.File object
+        });
+
+        // Stream it back
+        context.response.setHeader({
+            name  : 'Content-Type',
+            value : 'application/pdf'
+        });
+        context.response.setHeader({
+            name  : 'Content-Disposition',
+            value : `inline; filename=Invoice_${invoiceId}.pdf`
+        });
+
+        context.response.writeFile(pdfFile, true);  // true = isInline
+    }
+
+    return { onRequest };
+});
+
