@@ -1,34 +1,78 @@
 /**
- * @NApiVersion 2.x
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ */
+define(['N/render', 'N/log'], function (render, log) {
+
+    function onRequest(context) {
+        try {
+            const request = context.request;
+            const invoiceId = parseInt(request.parameters.invoiceId);
+            const docNumber = request.parameters.docNumber || 'Invoice';
+
+            if (!invoiceId) {
+                context.response.write('Missing invoiceId parameter');
+                return;
+            }
+
+            const pdfFile = render.transaction({
+                entityId: invoiceId,
+                printMode: render.PrintMode.PDF
+            });
+
+            context.response.setHeader({
+                name: 'Content-Type',
+                value: 'application/pdf'
+            });
+            context.response.setHeader({
+                name: 'Content-Disposition',
+                value: `attachment; filename="${docNumber}.pdf"`
+            });
+
+            context.response.writeFile(pdfFile, false); // false = not inline, triggers download
+        } catch (e) {
+            log.debug("Error in Suitlet:", e.message);
+        }
+    }
+
+    return { onRequest };
+});
+//To download invoice directly with this button
+
+
+/**
+ * @NApiVersion 2.1
  * @NScriptType UserEventScript
  */
-define(['N/ui/serverWidget', 'N/log'], function(serverWidget, log) {
+define(['N/url'], function (url) {
 
     function beforeLoad(context) {
-        if (context.type !== context.UserEventType.VIEW) return;
+        try {
+            if (context.type !== context.UserEventType.VIEW) return;
 
-        var form = context.form;
-        var rec = context.newRecord;
-        var recordId = rec.id;
+            const form = context.form;
+            const invoiceRecord = context.newRecord;
+            const invoiceId = invoiceRecord.id;
+            const docNumber = invoiceRecord.getValue({ fieldId: 'tranid' });
 
-        var formNumber = 186; // Your Advanced PDF template ID
-        var pdfUrl = '/app/accounting/print/hotprint.nl?regular=T&sethotprinter=T' +
-                     '&formnumber=' + formNumber +
-                     '&trantype=custinvc' +
-                     '&id=' + recordId +
-                     '&label=Invoice&printtype=transaction';
+            const suiteletUrl = url.resolveScript({
+                scriptId: 'customscript874',
+                deploymentId: 'customdeploy1',
+                params: {
+                    invoiceId: invoiceId,
+                    docNumber: docNumber
+                }
+            });
 
-        log.debug('PDF URL', pdfUrl);
-
-        // Use inline JS that dynamically creates an <a> tag and triggers download
-       form.addButton({
-    id: 'custpage_print_pdf_button',
-    label: 'Download PDF',
-    functionName: "var link = document.createElement('a'); link.href='" + pdfUrl + "'; link.download='Invoice_" + recordId + ".pdf'; document.body.appendChild(link); link.click(); document.body.removeChild(link);"
-});
-
-
-        log.debug('Download Button Added', 'custpage_download_pdf_button');
+            form.addButton({
+                id: 'custpage_download_invoice_pdf',
+                label: 'Download PDF',
+                functionName: `function downloadPDF() { window.location.href = '${suiteletUrl}'; } downloadPDF();`
+            });
+        }
+        catch (e) {
+            log.debug("Error in UserEventScript:", e.message);
+        }
     }
 
     return {
