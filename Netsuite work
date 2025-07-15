@@ -2,7 +2,8 @@
  * @NApiVersion 2.1
  * @NScriptType ClientScript
  */
-define(['N/url', 'N/record', 'N/currentRecord'], function(url, record, currentRecord) {
+define(['N/url', 'N/currentRecord'], function(url, currentRecord) {
+
     function fieldChanged(context) {
         if (context.sublistId === 'item' && context.fieldId === 'custcol_open_suitelet_checkbox') {
             var rec = currentRecord.get();
@@ -15,18 +16,17 @@ define(['N/url', 'N/record', 'N/currentRecord'], function(url, record, currentRe
             });
 
             if (checked) {
-                // Load your Suitelet URL
                 var suiteletUrl = url.resolveScript({
                     scriptId: 'customscript_your_suitelet_scriptid',
                     deploymentId: 'customdeploy_your_suitelet_deploymentid',
                     params: {
-                        line: line,
-                        recordId: rec.id
+                        recordId: rec.id || '',
+                        line: line
                     }
                 });
 
-                // Open in new tab
-                window.open(suiteletUrl, '_blank');
+                // Open Suitelet in a popup window
+                window.open(suiteletUrl, 'SuiteletPopup', 'width=600,height=400,resizable=yes,scrollbars=yes');
             }
         }
     }
