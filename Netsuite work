@@ -1,13 +1,37 @@
-Detail...
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
+define(['N/url', 'N/record', 'N/currentRecord'], function(url, record, currentRecord) {
+    function fieldChanged(context) {
+        if (context.sublistId === 'item' && context.fieldId === 'custcol_open_suitelet_checkbox') {
+            var rec = currentRecord.get();
+            var line = context.line;
 
-   The following has evaluated to null or missing:
-==> purchaseorder [in template "ID: 101" at line 120, column 20]
+            var checked = rec.getSublistValue({
+                sublistId: 'item',
+                fieldId: 'custcol_open_suitelet_checkbox',
+                line: line
+            });
 
-----
-Tip: If the failing expression is known to legally refer to something that's sometimes null or missing, either specify a default value like myOptionalVar!myDefault, or use <#if myOptionalVar??>when-present<#else>when-missing</#if>. (These only cover the last step of the expression; to cover the whole expression, use parenthesis: (myOptionalVar.foo)!myDefault, (myOptionalVar.foo)??
-----
+            if (checked) {
+                // Load your Suitelet URL
+                var suiteletUrl = url.resolveScript({
+                    scriptId: 'customscript_your_suitelet_scriptid',
+                    deploymentId: 'customdeploy_your_suitelet_deploymentid',
+                    params: {
+                        line: line,
+                        recordId: rec.id
+                    }
+                });
 
-----
-FTL stack trace ("~" means nesting-related):
-- Failed at: #list purchaseorder as item [in template "ID: 101" at line 120, column 13]
-----
+                // Open in new tab
+                window.open(suiteletUrl, '_blank');
+            }
+        }
+    }
+
+    return {
+        fieldChanged: fieldChanged
+    };
+});
