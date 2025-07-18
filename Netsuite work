@@ -1,37 +1,76 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType ClientScript
+ * @NScriptType ScheduledScript
  */
-define(['N/url', 'N/currentRecord'], function(url, currentRecord) {
+define(['N/search', 'N/email', 'N/format'], function(search, email, format) {
 
-    function fieldChanged(context) {
-        if (context.sublistId === 'item' && context.fieldId === 'custcol_open_suitelet_checkbox') {
-            var rec = currentRecord.get();
-            var line = context.line;
+    function execute(context) {
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
 
-            var checked = rec.getSublistValue({
-                sublistId: 'item',
-                fieldId: 'custcol_open_suitelet_checkbox',
-                line: line
-            });
+        const todayStr = format.format({ value: today, type: format.Type.DATE });
+        const tomorrowStr = format.format({ value: tomorrow, type: format.Type.DATE });
 
-            if (checked) {
-                var suiteletUrl = url.resolveScript({
-                    scriptId: 'customscript_your_suitelet_scriptid',
-                    deploymentId: 'customdeploy_your_suitelet_deploymentid',
-                    params: {
-                        recordId: rec.id || '',
-                        line: line
-                    }
-                });
+        const employeeSearch = search.create({
+            type: search.Type.EMPLOYEE,
+            filters: [
+                ['isinactive', 'is', 'F'],
+                'AND',
+                ['email', 'isnotempty', 'T']
+            ],
+            columns: [
+                'entityid',
+                'email',
+                'custentity_license_expiry',
+                'custentity_passport_expiry',
+                'custentity_aadhaar_expiry'
+            ]
+        });
 
-                // Open Suitelet in a popup window
-                window.open(suiteletUrl, 'SuiteletPopup', 'width=600,height=400,resizable=yes,scrollbars=yes');
+        employeeSearch.run().each(function(result) {
+            const name = result.getValue('entityid');
+            const emailAddress = result.getValue('email');
+            const licenseExpiry = result.getValue('custentity_license_expiry');
+            const passportExpiry = result.getValue('custentity_passport_expiry');
+            const aadhaarExpiry = result.getValue('custentity_aadhaar_expiry');
+
+            let messageBody = '';
+            let subject = '';
+
+            // First Reminder: expires tomorrow
+            if (licenseExpiry === tomorrowStr || passportExpiry === tomorrowStr || aadhaarExpiry === tomorrowStr) {
+                subject = 'Upcoming Document Expiry Reminder';
+                messageBody += `Hi ${name},<br/><br/>The following document(s) will expire tomorrow:<br/>`;
+                if (licenseExpiry === tomorrowStr) messageBody += `- License<br/>`;
+                if (passportExpiry === tomorrowStr) messageBody += `- Passport<br/>`;
+                if (aadhaarExpiry === tomorrowStr) messageBody += `- Aadhaar<br/>`;
+                messageBody += `<br>Please renew or update the documents.`;
             }
-        }
+
+            // Second Reminder: expires today
+            if (licenseExpiry === todayStr || passportExpiry === todayStr || aadhaarExpiry === todayStr) {
+                subject = 'Final Reminder: Document Expiring Today';
+                messageBody += `Hi ${name},<br/><br/>The following document(s) are expiring today:<br/>`;
+                if (licenseExpiry === todayStr) messageBody += `- License<br/>`;
+                if (passportExpiry === todayStr) messageBody += `- Passport<br/>`;
+                if (aadhaarExpiry === todayStr) messageBody += `- Aadhaar<br/>`;
+                messageBody += `<br>Please take immediate action.`;
+            }
+
+            // Send if we found anything
+            if (subject && messageBody) {
+                email.send({
+                    author: -5,
+                    recipients: emailAddress,
+                    subject: subject,
+                    body: messageBody
+                });
+            }
+
+            return true;
+        });
     }
 
-    return {
-        fieldChanged: fieldChanged
-    };
+    return { execute };
 });
