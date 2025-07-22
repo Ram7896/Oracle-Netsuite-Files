@@ -1,123 +1,212 @@
+//File is Existed Doesn't upload the file redirect to record only
 /**
  * @NApiVersion 2.1
- * @NScriptType ScheduledScript
+ * @NScriptType Suitelet
+ * @NModuleScope SameAccount
  */
-define(['N/search', 'N/email', 'N/format', 'N/runtime', 'N/log'], function (search, email, format, runtime, log) {
+define(['N/ui/serverWidget', 'N/record', 'N/file', 'N/log', 'N/redirect','N/search','N/url'], function (ui, record, file, log, redirect,search,url) {
+    function onRequest(context) {
+        var request = context.request;
+        var response = context.response;
 
-    function execute(context) {
-        try {
-            const today = new Date();
-            const todayStr = format.format({ value: today, type: format.Type.DATE });
-
-            const script = runtime.getCurrentScript();
-            const twoweeksbefore = parseInt(script.getParameter({ name: "custscript_days" }), 10);
-
-            log.debug("Two Weeks Before (days):", twoweeksbefore);
-
-            const employeeSearch = search.create({
-                type: search.Type.EMPLOYEE,
-                filters: [
-                    ['isinactive', 'is', 'F'],
-                    'AND',
-                    ['email', 'isnotempty', 'T']
-                ],
-                columns: [
-                    'entityid',
-                    'email',
-                    'custentity2',
-                    'custentity_driver_declaration',
-                    'custentity_driver_license',
-                    'custentity_first_aid',
-                    'custentity_aid_11'
-                ]
+        if (request.method === 'GET') {
+            // Create the file upload form
+            var form = ui.createForm({
+                title: 'Upload File to Transactions'
             });
 
-            const results = employeeSearch.run().getRange({ start: 0, end: 1000 });
+            // Add file upload field
+            form.addField({
+                id: 'custpage_upload_file',
+                type: ui.FieldType.FILE,
+                label: 'Select File'
+            });
 
-            if (!results || results.length === 0) {
-                log.error("No employee records found with valid email.");
+            // Add hidden field for Journal Entry ID
+            var jeId = request.parameters.journalEntryId;
+            var recordType = request.parameters.recordType;
+            form.addField({
+                id: 'custpage_je_id',
+                type: ui.FieldType.TEXT,
+                label: 'Transaction ID'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.HIDDEN
+            }).defaultValue = jeId;
+
+            // Add hidden field for Record Type
+            form.addField({
+                id: 'custpage_record_type',
+                type: ui.FieldType.TEXT,
+                label: 'Record Type'
+            }).updateDisplayType({
+                displayType: ui.FieldDisplayType.HIDDEN
+            }).defaultValue = recordType;
+
+            // Add submit button
+            form.addSubmitButton({
+                label: 'Upload and Attach'
+            });
+
+            log.debug({
+                title: 'Form Rendered',
+                details: 'Transaction ID: ' + jeId + ', Record Type: ' + recordType
+            });
+
+            response.writePage(form);
+        }
+        else if (request.method === 'POST') {
+    var uploadedFile = request.files.custpage_upload_file;
+    var jeId = request.parameters.custpage_je_id;
+    var recordType = request.parameters.custpage_record_type;
+
+    if (!uploadedFile) {
+        response.write('No file provided.');
+        return;
+    }
+
+    try {
+        // Search for existing file with the same name
+        var fileSearch = search.create({
+            type: 'file',
+            filters: [['name', 'is', uploadedFile.name]],
+            columns: ['internalid']
+        });
+
+        var searchResult = fileSearch.run().getRange({ start: 0, end: 1 });
+
+        if (searchResult.length > 0) {
+            // File with same name exists
+            var outputUrl = url.resolveRecord({
+                recordType: recordType,
+                recordId: jeId
+                //isEditMode: false
+            });
+
+            var html = '<script>alert("A file with the same name already exists."); window.location.href="' + outputUrl + '";</script>';
+            response.write(html);
+            return;
+        }
+
+        // Save and attach the file
+        uploadedFile.folder = 773; // Temporary Files folder
+        var fileId = uploadedFile.save();
+
+        record.attach({
+            record: { type: 'file', id: fileId },
+            to: { type: recordType, id: jeId }
+        });
+
+        redirect.toRecord({ type: recordType, id: jeId });
+
+    } catch (e) {
+        log.error({
+            title: 'Suitelet Error',
+            details: 'Error: ' + e.message
+        });
+        response.write('Error: ' + e.message);
+    }
+}
+
+    }
+    return {
+        onRequest: onRequest
+    };
+});
+
+
+
+//File existed delete the file and replace this updated file
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ * @NModuleScope SameAccount
+ */
+define(['N/ui/serverWidget', 'N/record', 'N/file', 'N/log', 'N/redirect', 'N/search', 'N/url'], 
+function (ui, record, file, log, redirect, search, url) {
+    function onRequest(context) {
+        var request = context.request;
+        var response = context.response;
+
+        if (request.method === 'GET') {
+            var form = ui.createForm({ title: 'Upload File to Transactions' });
+
+            form.addField({
+                id: 'custpage_upload_file',
+                type: ui.FieldType.FILE,
+                label: 'Select File'
+            });
+
+            var jeId = request.parameters.journalEntryId;
+            var recordType = request.parameters.recordType;
+
+            form.addField({
+                id: 'custpage_je_id',
+                type: ui.FieldType.TEXT,
+                label: 'Transaction ID'
+            }).updateDisplayType({ displayType: ui.FieldDisplayType.HIDDEN }).defaultValue = jeId;
+
+            form.addField({
+                id: 'custpage_record_type',
+                type: ui.FieldType.TEXT,
+                label: 'Record Type'
+            }).updateDisplayType({ displayType: ui.FieldDisplayType.HIDDEN }).defaultValue = recordType;
+
+            form.addSubmitButton({ label: 'Upload and Attach' });
+
+            response.writePage(form);
+        } else if (request.method === 'POST') {
+            var uploadedFile = request.files.custpage_upload_file;
+            var jeId = request.parameters.custpage_je_id;
+            var recordType = request.parameters.custpage_record_type;
+
+            if (!uploadedFile) {
+                response.write('No file provided.');
                 return;
             }
 
-            results.forEach(result => {
-                try {
-                  log.debug("result loop entred");
-                    const name = result.getValue('entityid');
-                    const emailAddress = result.getValue('email');
-                    handleTwoWeeksBeforeExpiry(result, today, emailAddress, name, twoweeksbefore);
-                } catch (innerErr) {
-                    log.error("Error processing employee", innerErr);
+            try {
+                var fileIdToAttach;
+
+                // Search for existing file with the same name
+                var fileSearch = search.create({
+                    type: 'file',
+                    filters: [['name', 'is', uploadedFile.name]],
+                    columns: ['internalid']
+                });
+
+                var searchResult = fileSearch.run().getRange({ start: 0, end: 1 });
+
+                if (searchResult.length > 0) {
+                    // File exists — delete it
+                    var existingFileId = searchResult[0].getValue({ name: 'internalid' });
+
+                    file.delete({ id: existingFileId });
+
+                    log.debug('File Deleted', 'File ID: ' + existingFileId);
                 }
-            });
 
-        } catch (err) {
-            log.error("Script Execution Error", err);
-        }
-    }
+                // Save new file with same name
+                uploadedFile.folder = 773; // Replace with your actual folder ID
+                fileIdToAttach = uploadedFile.save();
 
-    function handleTwoWeeksBeforeExpiry(result, today, emailAddress, name, daysBefore) {
-        try {
-          log.debug("two weeks function entred");
-            const documents = getDocumentFields();
-            const matchedDocs = [];
+                log.debug('New File Saved', 'File ID: ' + fileIdToAttach);
 
-            const targetDate = new Date(today);
-            targetDate.setDate(today.getDate() + daysBefore);
+                // Attach the file to the transaction
+                record.attach({
+                    record: { type: 'file', id: fileIdToAttach },
+                    to: { type: recordType, id: jeId }
+                });
 
-            const targetDateStr = format.format({ value: targetDate, type: format.Type.DATE });
-            log.debug("target date str:",targetDateStr);
-          
-            documents.forEach(doc => {
-                const dateStr = result.getValue(doc.field);
-              log.debug("current date:",dateStr);
-                if (dateStr === targetDateStr) {
-                    matchedDocs.push({ label: doc.label, date: dateStr });
-                }
-            });
+                redirect.toRecord({ type: recordType, id: jeId });
 
-            if (matchedDocs.length > 0) {
-                sendSummaryEmail(emailAddress, name, matchedDocs);
+            } catch (e) {
+                log.error({ title: 'Suitelet Error', details: 'Error: ' + e.message });
+                response.write('Error: ' + e.message);
             }
-        } catch (err) {
-            log.error("Error in handleTwoWeeksBeforeExpiry", err);
         }
     }
 
-    function sendSummaryEmail(emailAddress, name, documents) {
-        try {
-            const docList = documents.map(doc =>
-                `${doc.label} - <strong>${doc.date}</strong>`
-            ).join('<br/>');
-
-            const body = `
-                Hi ${name},<br/><br/>
-                This is a reminder that the following documents are expiring in ${documents.length > 1 ? 'the coming days' : 'the coming day'}:<br/><br/>
-                ${docList}<br/><br/>
-                Please take immediate action to renew or update them.<br/><br/>
-                Thanks,<br/>NetSuite Admin
-            `;
-
-            email.send({
-                author: -5,
-                recipients: emailAddress,
-                subject: `Reminder: Upcoming Document Expiry Notification`,
-                body: body
-            });
-
-        } catch (err) {
-            log.error("Error sending email", err);
-        }
-    }
-
-    function getDocumentFields() {
-        return [
-            { field: 'custentity2', label: 'AI Induction' },
-            { field: 'custentity_driver_declaration', label: 'Driver Declaration' },
-            { field: 'custentity_driver_license', label: 'Driving License' },
-            { field: 'custentity_first_aid', label: 'First Aid #009' },
-            { field: 'custentity_aid_11', label: 'First Aid #011' }
-        ];
-    }
-
-    return { execute };
+    return {
+        onRequest: onRequest
+    };
 });
