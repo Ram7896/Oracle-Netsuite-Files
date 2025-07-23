@@ -1,212 +1,48 @@
-//File is Existed Doesn't upload the file redirect to record only
-/**
- * @NApiVersion 2.1
- * @NScriptType Suitelet
- * @NModuleScope SameAccount
- */
-define(['N/ui/serverWidget', 'N/record', 'N/file', 'N/log', 'N/redirect','N/search','N/url'], function (ui, record, file, log, redirect,search,url) {
-    function onRequest(context) {
-        var request = context.request;
-        var response = context.response;
+<soapenv:Envelope
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:platformCore="urn:core_2021_2.platform.webservices.netsuite.com"
+    xmlns:platformMsgs="urn:messages_2021_2.platform.webservices.netsuite.com"
+    xmlns:tranSales="urn:sales_2021_2.transactions.webservices.netsuite.com"
+    xmlns:platformCommon="urn:common_2021_2.platform.webservices.netsuite.com">
 
-        if (request.method === 'GET') {
-            // Create the file upload form
-            var form = ui.createForm({
-                title: 'Upload File to Transactions'
-            });
+    <soapenv:Header>
+        <platformMsgs:tokenPassport>
+            <platformCore:account>{{account}}</platformCore:account>
+            <platformCore:consumerKey>{{consumerKey}}</platformCore:consumerKey>
+            <platformCore:token>{{tokenId}}</platformCore:token>
+            <platformCore:nonce>{{nonce}}</platformCore:nonce>
+            <platformCore:timestamp>{{timeStamp}}</platformCore:timestamp>
+            <platformCore:signature algorithm="HMAC_SHA256">{{signature}}</platformCore:signature>
+        </platformMsgs:tokenPassport>
+    </soapenv:Header>
+    <soapenv:Body>       
+<platformMsgs:getAll>
+         <platformMsgs:record>
+            <platformCore:recordType>currency</platformCore:recordType>
+         </platformMsgs:record>
+      </platformMsgs:getAll>
 
-            // Add file upload field
-            form.addField({
-                id: 'custpage_upload_file',
-                type: ui.FieldType.FILE,
-                label: 'Select File'
-            });
+    </soapenv:Body>
+</soapenv:Envelope>
 
-            // Add hidden field for Journal Entry ID
-            var jeId = request.parameters.journalEntryId;
-            var recordType = request.parameters.recordType;
-            form.addField({
-                id: 'custpage_je_id',
-                type: ui.FieldType.TEXT,
-                label: 'Transaction ID'
-            }).updateDisplayType({
-                displayType: ui.FieldDisplayType.HIDDEN
-            }).defaultValue = jeId;
-
-            // Add hidden field for Record Type
-            form.addField({
-                id: 'custpage_record_type',
-                type: ui.FieldType.TEXT,
-                label: 'Record Type'
-            }).updateDisplayType({
-                displayType: ui.FieldDisplayType.HIDDEN
-            }).defaultValue = recordType;
-
-            // Add submit button
-            form.addSubmitButton({
-                label: 'Upload and Attach'
-            });
-
-            log.debug({
-                title: 'Form Rendered',
-                details: 'Transaction ID: ' + jeId + ', Record Type: ' + recordType
-            });
-
-            response.writePage(form);
-        }
-        else if (request.method === 'POST') {
-    var uploadedFile = request.files.custpage_upload_file;
-    var jeId = request.parameters.custpage_je_id;
-    var recordType = request.parameters.custpage_record_type;
-
-    if (!uploadedFile) {
-        response.write('No file provided.');
-        return;
-    }
-
-    try {
-        // Search for existing file with the same name
-        var fileSearch = search.create({
-            type: 'file',
-            filters: [['name', 'is', uploadedFile.name]],
-            columns: ['internalid']
-        });
-
-        var searchResult = fileSearch.run().getRange({ start: 0, end: 1 });
-
-        if (searchResult.length > 0) {
-            // File with same name exists
-            var outputUrl = url.resolveRecord({
-                recordType: recordType,
-                recordId: jeId
-                //isEditMode: false
-            });
-
-            var html = '<script>alert("A file with the same name already exists."); window.location.href="' + outputUrl + '";</script>';
-            response.write(html);
-            return;
-        }
-
-        // Save and attach the file
-        uploadedFile.folder = 773; // Temporary Files folder
-        var fileId = uploadedFile.save();
-
-        record.attach({
-            record: { type: 'file', id: fileId },
-            to: { type: recordType, id: jeId }
-        });
-
-        redirect.toRecord({ type: recordType, id: jeId });
-
-    } catch (e) {
-        log.error({
-            title: 'Suitelet Error',
-            details: 'Error: ' + e.message
-        });
-        response.write('Error: ' + e.message);
-    }
-}
-
-    }
-    return {
-        onRequest: onRequest
-    };
-});
-
-
-
-//File existed delete the file and replace this updated file
-/**
- * @NApiVersion 2.1
- * @NScriptType Suitelet
- * @NModuleScope SameAccount
- */
-define(['N/ui/serverWidget', 'N/record', 'N/file', 'N/log', 'N/redirect', 'N/search', 'N/url'], 
-function (ui, record, file, log, redirect, search, url) {
-    function onRequest(context) {
-        var request = context.request;
-        var response = context.response;
-
-        if (request.method === 'GET') {
-            var form = ui.createForm({ title: 'Upload File to Transactions' });
-
-            form.addField({
-                id: 'custpage_upload_file',
-                type: ui.FieldType.FILE,
-                label: 'Select File'
-            });
-
-            var jeId = request.parameters.journalEntryId;
-            var recordType = request.parameters.recordType;
-
-            form.addField({
-                id: 'custpage_je_id',
-                type: ui.FieldType.TEXT,
-                label: 'Transaction ID'
-            }).updateDisplayType({ displayType: ui.FieldDisplayType.HIDDEN }).defaultValue = jeId;
-
-            form.addField({
-                id: 'custpage_record_type',
-                type: ui.FieldType.TEXT,
-                label: 'Record Type'
-            }).updateDisplayType({ displayType: ui.FieldDisplayType.HIDDEN }).defaultValue = recordType;
-
-            form.addSubmitButton({ label: 'Upload and Attach' });
-
-            response.writePage(form);
-        } else if (request.method === 'POST') {
-            var uploadedFile = request.files.custpage_upload_file;
-            var jeId = request.parameters.custpage_je_id;
-            var recordType = request.parameters.custpage_record_type;
-
-            if (!uploadedFile) {
-                response.write('No file provided.');
-                return;
-            }
-
-            try {
-                var fileIdToAttach;
-
-                // Search for existing file with the same name
-                var fileSearch = search.create({
-                    type: 'file',
-                    filters: [['name', 'is', uploadedFile.name]],
-                    columns: ['internalid']
-                });
-
-                var searchResult = fileSearch.run().getRange({ start: 0, end: 1 });
-
-                if (searchResult.length > 0) {
-                    // File exists — delete it
-                    var existingFileId = searchResult[0].getValue({ name: 'internalid' });
-
-                    file.delete({ id: existingFileId });
-
-                    log.debug('File Deleted', 'File ID: ' + existingFileId);
-                }
-
-                // Save new file with same name
-                uploadedFile.folder = 773; // Replace with your actual folder ID
-                fileIdToAttach = uploadedFile.save();
-
-                log.debug('New File Saved', 'File ID: ' + fileIdToAttach);
-
-                // Attach the file to the transaction
-                record.attach({
-                    record: { type: 'file', id: fileIdToAttach },
-                    to: { type: recordType, id: jeId }
-                });
-
-                redirect.toRecord({ type: recordType, id: jeId });
-
-            } catch (e) {
-                log.error({ title: 'Suitelet Error', details: 'Error: ' + e.message });
-                response.write('Error: ' + e.message);
-            }
-        }
-    }
-
-    return {
-        onRequest: onRequest
-    };
-});
+// Fixed typo in environment variable name
+let account = 'TD2982546';
+let consumerKey = '930b6a214277f9979f7c5786387cdfc669b1445e5bee85bf75427820df77c1f8';
+let consumerSecret = '425795c463e124bf41205176f4f8c5ff91d7cc7f87f3894b85e92c5df3cb0266';
+let tokenId = 'd10c056c8633f43bc56c8086860547bdbf58fed658a8644b9993900651843c04';
+let tokenSecret = 'd8057d5a57c67f715881b79e86293d219ad0d69f5f18bce6a4a852a073c1f26d';
+let timeStamp = new Date().getTime().toString().substring(0,10);
+let nonce = Math.floor(Math.random() * 1000000);
+var baseString = account + '&' + consumerKey + '&' + tokenId + '&' + nonce + '&' + timeStamp;
+var key = consumerSecret + '&' + tokenSecret;
+var signature = CryptoJS.HmacSHA256(baseString, key).toString(CryptoJS.enc.Base64);
+pm.environment.set('signature', signature);
+pm.environment.set('account',account);
+pm.environment.set('nonce', nonce);
+pm.environment.set('timeStamp', timeStamp);
+pm.environment.set('tokenId',tokenId);
+pm.environment.set('tokenSecret',tokenSecret);
+pm.environment.set('consumerKey',consumerKey);
+pm.environment.set('consumerSecret',consumerSecret);
