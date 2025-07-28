@@ -1,48 +1,14 @@
-<soapenv:Envelope
-    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-    xmlns:platformCore="urn:core_2021_2.platform.webservices.netsuite.com"
-    xmlns:platformMsgs="urn:messages_2021_2.platform.webservices.netsuite.com"
-    xmlns:tranSales="urn:sales_2021_2.transactions.webservices.netsuite.com"
-    xmlns:platformCommon="urn:common_2021_2.platform.webservices.netsuite.com">
+<table class="footer" style="width: 100%;">
+                <tr>
+                  <td colspan="2" align="left" style="font-size: 8pt; color: #444;">
+                    <br/> ${record.entity@label}: ${record.entity}
+                  </td>      
+                 <td colspan="2" align="right" style="font-size: 9pt; color: #666;">
+                   <br/> Po# : ${record.tranid}
+                </td>
+                 </tr>
+            </table>
 
-    <soapenv:Header>
-        <platformMsgs:tokenPassport>
-            <platformCore:account>{{account}}</platformCore:account>
-            <platformCore:consumerKey>{{consumerKey}}</platformCore:consumerKey>
-            <platformCore:token>{{tokenId}}</platformCore:token>
-            <platformCore:nonce>{{nonce}}</platformCore:nonce>
-            <platformCore:timestamp>{{timeStamp}}</platformCore:timestamp>
-            <platformCore:signature algorithm="HMAC_SHA256">{{signature}}</platformCore:signature>
-        </platformMsgs:tokenPassport>
-    </soapenv:Header>
-    <soapenv:Body>       
-<platformMsgs:getAll>
-         <platformMsgs:record>
-            <platformCore:recordType>currency</platformCore:recordType>
-         </platformMsgs:record>
-      </platformMsgs:getAll>
 
-    </soapenv:Body>
-</soapenv:Envelope>
 
-// Fixed typo in environment variable name
-let account = 'TD2982546';
-let consumerKey = '930b6a214277f9979f7c5786387cdfc669b1445e5bee85bf75427820df77c1f8';
-let consumerSecret = '425795c463e124bf41205176f4f8c5ff91d7cc7f87f3894b85e92c5df3cb0266';
-let tokenId = 'd10c056c8633f43bc56c8086860547bdbf58fed658a8644b9993900651843c04';
-let tokenSecret = 'd8057d5a57c67f715881b79e86293d219ad0d69f5f18bce6a4a852a073c1f26d';
-let timeStamp = new Date().getTime().toString().substring(0,10);
-let nonce = Math.floor(Math.random() * 1000000);
-var baseString = account + '&' + consumerKey + '&' + tokenId + '&' + nonce + '&' + timeStamp;
-var key = consumerSecret + '&' + tokenSecret;
-var signature = CryptoJS.HmacSHA256(baseString, key).toString(CryptoJS.enc.Base64);
-pm.environment.set('signature', signature);
-pm.environment.set('account',account);
-pm.environment.set('nonce', nonce);
-pm.environment.set('timeStamp', timeStamp);
-pm.environment.set('tokenId',tokenId);
-pm.environment.set('tokenSecret',tokenSecret);
-pm.environment.set('consumerKey',consumerKey);
-pm.environment.set('consumerSecret',consumerSecret);
+ <td rowspan="3" align="left"><barcode codetype="qrcode" showtext="false" height="60" width="70" value="http://www.example.com/" /></td>
