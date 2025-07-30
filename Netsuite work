@@ -1,14 +1,65 @@
-<table class="footer" style="width: 100%;">
-                <tr>
-                  <td colspan="2" align="left" style="font-size: 8pt; color: #444;">
-                    <br/> ${record.entity@label}: ${record.entity}
-                  </td>      
-                 <td colspan="2" align="right" style="font-size: 9pt; color: #666;">
-                   <br/> Po# : ${record.tranid}
-                </td>
-                 </tr>
-            </table>
+/**
+ * Script: Retrieve Hidden Custom Fields from a Record
+ * Record Type: Sales Order (can be changed)
+ * Version: SuiteScript 2.1
+ */
 
+define(['N/record', 'N/log'], function(record, log) {
 
+    function execute(context) {
+        var recordType = record.Type.SALES_ORDER; // Change as needed
+        var recordId = 12345; // Replace with a real record ID
 
- <td rowspan="3" align="left"><barcode codetype="qrcode" showtext="false" height="60" width="70" value="http://www.example.com/" /></td>
+        try {
+            var rec = record.load({
+                type: recordType,
+                id: recordId
+            });
+
+            var allFields = rec.getFields();
+            var hiddenFields = {};
+
+            allFields.forEach(function(fieldId) {
+                // We're interested only in custom body fields (custbody_) or entity fields (custentity_)
+                if (fieldId.startsWith('custbody_') || fieldId.startsWith('custentity_')) {
+                    var value = rec.getValue({ fieldId: fieldId });
+                    hiddenFields[fieldId] = value;
+                }
+            });
+
+            // Log or return the hidden custom fields
+            log.debug('Hidden Custom Body Fields', hiddenFields);
+
+            // Now for sublist hidden fields (e.g., custcol_* on item sublist)
+            var lineCount = rec.getLineCount({ sublistId: 'item' });
+            var hiddenLineFields = {};
+
+            for (var i = 0; i < lineCount; i++) {
+                var lineFields = rec.getSublistFields({ sublistId: 'item' });
+
+                lineFields.forEach(function(fieldId) {
+                    if (fieldId.startsWith('custcol_')) {
+                        var value = rec.getSublistValue({
+                            sublistId: 'item',
+                            fieldId: fieldId,
+                            line: i
+                        });
+                        if (!hiddenLineFields[fieldId]) {
+                            hiddenLineFields[fieldId] = [];
+                        }
+                        hiddenLineFields[fieldId].push(value);
+                    }
+                });
+            }
+
+            log.debug('Hidden Custom Line Fields', hiddenLineFields);
+
+        } catch (e) {
+            log.error('Error retrieving hidden fields', e);
+        }
+    }
+
+    return {
+        execute: execute
+    };
+});
