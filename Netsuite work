@@ -2,707 +2,711 @@
  * @NApiVersion 2.x
  * @NScriptType Suitelet
  */
-define([ 'N/search','N/runtime','N/ui/serverWidget','N/record','N/file','N/encode','N/url',
-         './aiDeptClassLoc.js','./aiIDLibrary.js' ],
-  function( search,runtime,ui,record,file,encode,url,
-            dcl,idlib ) {
+define(['N/search', 'N/runtime', 'N/ui/serverWidget', 'N/record', 'N/file', 'N/encode', 'N/url',
+    './aiDeptClassLoc.js', './aiIDLibrary.js'],
+    function (search, runtime, ui, record, file, encode, url,
+        dcl, idlib) {
 
-  	var file_extensions = {
-      'BMPIMAGE': '.bmp',
-      'CSV': '.csv',
-      'EXCEL': '.xlsx',
-      'GIFIMAGE': '.gif',
-      'HTMLDOC': '.html',
-      'JAVASCRIPT': '.js',
-      'JPGIMAGE': '.jpg',
-      'MP3': '.mp3',
-      'MPEGMOVIE': '.mpeg',
-      'PDF': '.pdf',
-      'PJPGIMAGE': '.pjpg',
-      'PLAINTEXT': '.txt',
-      'PNGIMAGE': '.png',
-      'TIFFIMAGE': '.tiff',
-      'WORD': '.docx',
-      'XMLDOC': '.xml',
-      'ZIP': '.zip'
-    };
+        var file_extensions = {
+            'BMPIMAGE': '.bmp',
+            'CSV': '.csv',
+            'EXCEL': '.xlsx',
+            'GIFIMAGE': '.gif',
+            'HTMLDOC': '.html',
+            'JAVASCRIPT': '.js',
+            'JPGIMAGE': '.jpg',
+            'MP3': '.mp3',
+            'MPEGMOVIE': '.mpeg',
+            'PDF': '.pdf',
+            'PJPGIMAGE': '.pjpg',
+            'PLAINTEXT': '.txt',
+            'PNGIMAGE': '.png',
+            'TIFFIMAGE': '.tiff',
+            'WORD': '.docx',
+            'XMLDOC': '.xml',
+            'ZIP': '.zip'
+        };
 
-  	var asset_testing_no_fields = [];
-    var asset_testing_yes_fields = [
-      'custrecord_at_nxc_doors_intact',
-      'custrecord_at_nxc_locks_failsafe',
-      'custrecord_at_nxc_inspected_for_traps',
-      'custrecord_at_nxc_inspected_for_conform',
-      'custrecord_at_nxc_opening_force',
-      'custrecord_at_nxc_door_alignment',
-      'custrecord_at_nxc_motor_drive_checked',
-      'custrecord_at_nxc_fixings_secure',
-      'custrecord_at_nxc_comp_wir_clean_sec',
-      'custrecord_at_nxc_failsafe_ok',
-      'custrecord_at_nxc_secure_locking',
-      'custrecord_at_nxc_battery_functioning',
-      'custrecord_at_nxc_egress_devices_ok',
-      'custrecord_at_nxc_programmed_for_cust',
-      'custrecord_at_nxc_clean_stickers_fixed'
-    ];
-    var asset_comm_no_fields = [
-      'custrecord_cf_any_hazards'
-    ];
-    var asset_comm_yes_fields = [
-      'custrecord_cf_hung_correct',
-      'custrecord_cf_floor_clearance',
-      'custrecord_cf_door_slide',
-      'custrecord_cf_anti_rise',
-      'custrecord_cf_adjustments',
-      'custrecord_cf_mains_power_correct',
-      'custrecord_cf_secure_no_obstructions',
-      'custrecord_cf_sensors_suit',
-      'custrecord_cf_danger_protection_sensors',
-      'custrecord_cf_switch_fitting',
-      'custrecord_cf_failsafe_op_charging',
-      'custrecord_cf_self_reprogram_aft_pf',
-      'custrecord_cf_door_secure',
-      'custrecord_cf_slow_speed_boost_adjusted',
-      'custrecord_cf_open_close_speed_adjusted',
-      'custrecord_cf_safety_reversing_adjusted',
-      'custrecord_cf_reset_training',
-      'custrecord_cf_alarm_voltage_free',
-      'custrecord_cf_pelmet_secure_clean_fitted',
-      'custrecord_cf_service_alarm_access',
-      'custrecord_cf_usage_service_awareness',
-      'custrecord_cf_warranty_card',
-      'custrecord_cf_floorguide_clearance'
-    ];
+        var asset_testing_no_fields = [];
+        var asset_testing_yes_fields = [
+            'custrecord_at_nxc_doors_intact',
+            'custrecord_at_nxc_locks_failsafe',
+            'custrecord_at_nxc_inspected_for_traps',
+            'custrecord_at_nxc_inspected_for_conform',
+            'custrecord_at_nxc_opening_force',
+            'custrecord_at_nxc_door_alignment',
+            'custrecord_at_nxc_motor_drive_checked',
+            'custrecord_at_nxc_fixings_secure',
+            'custrecord_at_nxc_comp_wir_clean_sec',
+            'custrecord_at_nxc_failsafe_ok',
+            'custrecord_at_nxc_secure_locking',
+            'custrecord_at_nxc_battery_functioning',
+            'custrecord_at_nxc_egress_devices_ok',
+            'custrecord_at_nxc_programmed_for_cust',
+            'custrecord_at_nxc_clean_stickers_fixed'
+        ];
+        var asset_comm_no_fields = [
+            'custrecord_cf_any_hazards'
+        ];
+        var asset_comm_yes_fields = [
+            'custrecord_cf_hung_correct',
+            'custrecord_cf_floor_clearance',
+            'custrecord_cf_door_slide',
+            'custrecord_cf_anti_rise',
+            'custrecord_cf_adjustments',
+            'custrecord_cf_mains_power_correct',
+            'custrecord_cf_secure_no_obstructions',
+            'custrecord_cf_sensors_suit',
+            'custrecord_cf_danger_protection_sensors',
+            'custrecord_cf_switch_fitting',
+            'custrecord_cf_failsafe_op_charging',
+            'custrecord_cf_self_reprogram_aft_pf',
+            'custrecord_cf_door_secure',
+            'custrecord_cf_slow_speed_boost_adjusted',
+            'custrecord_cf_open_close_speed_adjusted',
+            'custrecord_cf_safety_reversing_adjusted',
+            'custrecord_cf_reset_training',
+            'custrecord_cf_alarm_voltage_free',
+            'custrecord_cf_pelmet_secure_clean_fitted',
+            'custrecord_cf_service_alarm_access',
+            'custrecord_cf_usage_service_awareness',
+            'custrecord_cf_warranty_card',
+            'custrecord_cf_floorguide_clearance'
+        ];
 
-  	var callout_to_item = {
-      '1': '2643',  // P1
-      '2': '2644',  // P2
-      '3': '2645',  // P3
-      '4': '2642'   // AH
-    };
+        var callout_to_item = {
+            '1': '2643',  // P1
+            '2': '2644',  // P2
+            '3': '2645',  // P3
+            '4': '2642'   // AH
+        };
 
-    function onRequest(context) {
+        function onRequest(context) {
 
-      try {
+            try {
 
-        if ( context.request.method == 'GET' ) {
+                if (context.request.method == 'GET') {
 
-          var case_id = context.request.parameters.case_id;
+                    var case_id = context.request.parameters.case_id;
 
-          var form = generateForm();
-          form.clientScriptFileId = '683484'; // processCaseToolClient.js
-          populateForm(form,case_id);
-          context.response.writePage(form);
+                    var form = generateForm();
+                    form.clientScriptFileId = '683484'; // processCaseToolClient.js
+                    populateForm(form, case_id);
+                    context.response.writePage(form);
 
-        } else {
+                } else {
 
-          var card = uploadJobcard( context.request );
-          var records_to_open = [];
-          records_to_open = records_to_open.concat( processCase( context.request, card ) );
-          records_to_open = records_to_open.concat( generateTransactions( context.request, card ) );
-          var response_string = constructResponseString(records_to_open);
-          context.response.write({ output: response_string });
+                    var card = uploadJobcard(context.request);
+                    var records_to_open = [];
+                    records_to_open = records_to_open.concat(processCase(context.request, card));
+                    records_to_open = records_to_open.concat(generateTransactions(context.request, card));
+                    var response_string = constructResponseString(records_to_open);
+                    context.response.write({ output: response_string });
 
-        }
+                }
 
-      } catch (e) {
-        log.error({
-          title: context.request.method+' REQUEST ERROR',
-          details: 'Case Id: '+context.request.parameters.case_id
-        });
-        log.error({
-          title: 'ERROR MESSAGE',
-          details: e.name + ' -- ' + e.message
-        });
-        log.error({
-          title: 'ERROR LOCATION',
-          details: 'File: '+e.fileName+', Line: '+e.lineNumber
-        });
-        log.error({
-          title: 'ERROR DETAILS',
-          details: JSON.stringify(e)
-        });
-        try {
-          var name = search.lookupFields({
-            type: 'customrecord_nx_asset',
-            id: context.request.parameters.asset_id,
-            columns: ['casenumber']
-          }).casenumber;
-          log.error({
-            title: 'ERROR DETAILS',
-            details: 'Case: '+name+', User: '+runtime.getCurrentUser().name
-          })
-        } catch (e) {
-          log.error({
-            title: 'ERROR GATHERING DETAILS',
-            details: e.message
-          });
-        }
-      }
+            } catch (e) {
+                log.error({
+                    title: context.request.method + ' REQUEST ERROR',
+                    details: 'Case Id: ' + context.request.parameters.case_id
+                });
+                log.error({
+                    title: 'ERROR MESSAGE',
+                    details: e.name + ' -- ' + e.message
+                });
+                log.error({
+                    title: 'ERROR LOCATION',
+                    details: 'File: ' + e.fileName + ', Line: ' + e.lineNumber
+                });
+                log.error({
+                    title: 'ERROR DETAILS',
+                    details: JSON.stringify(e)
+                });
+                try {
+                    var name = search.lookupFields({
+                        type: 'customrecord_nx_asset',
+                        id: context.request.parameters.asset_id,
+                        columns: ['casenumber']
+                    }).casenumber;
+                    log.error({
+                        title: 'ERROR DETAILS',
+                        details: 'Case: ' + name + ', User: ' + runtime.getCurrentUser().name
+                    })
+                } catch (e) {
+                    log.error({
+                        title: 'ERROR GATHERING DETAILS',
+                        details: e.message
+                    });
+                }
+            }
 
-    }; // End onRequest(context)
+        }; // End onRequest(context)
 
-    function generateForm() {
+        function generateForm() {
 
-      var form = ui.createForm({ title: 'Process Case' });
-      form.addSubmitButton({ label: 'Submit' });
+            var form = ui.createForm({ title: 'Process Case' });
+            form.addSubmitButton({ label: 'Submit' });
 
-      // Groups
-      form.addFieldGroup({
-        id: 'file_grp',
-        label: 'Upload Files'
-      }).isSingleColumn = true;
-      form.addFieldGroup({
-        id: 'main_grp',
-        label: 'Case Details'
-      }).isSingleColumn = true;
+            // Groups
+            form.addFieldGroup({
+                id: 'file_grp',
+                label: 'Upload Files'
+            }).isSingleColumn = true;
+            form.addFieldGroup({
+                id: 'main_grp',
+                label: 'Case Details'
+            }).isSingleColumn = true;
 
-      // Main Group
-      form.addField({
-        id: 'case_id',
-        label: 'Case',
-        type: ui.FieldType.SELECT,
-        source: record.Type.SUPPORT_CASE,
-        container: 'main_grp'
-      }).updateDisplayType({ displayType: ui.FieldDisplayType.INLINE });
-      form.addField({
-        id: 'date',
-        label: 'Date of Final Attendance',
-        type: ui.FieldType.DATE,
-        container: 'main_grp'
-      }).defaultValue = new Date();
-      form.addField({
-        id: 'suitelet_styles',
-        label: 'Suitelet Styles',
-        type: ui.FieldType.INLINEHTML,
-        container: 'main_grp'
-      }).defaultValue;
+            // Main Group
+            form.addField({
+                id: 'case_id',
+                label: 'Case',
+                type: ui.FieldType.SELECT,
+                source: record.Type.SUPPORT_CASE,
+                container: 'main_grp'
+            }).updateDisplayType({ displayType: ui.FieldDisplayType.INLINE });
+            form.addField({
+                id: 'date',
+                label: 'Date of Final Attendance',
+                type: ui.FieldType.DATE,
+                container: 'main_grp'
+            }).defaultValue = new Date();
+            form.addField({
+                id: 'suitelet_styles',
+                label: 'Suitelet Styles',
+                type: ui.FieldType.INLINEHTML,
+                container: 'main_grp'
+            }).defaultValue;
 
-      // File Group
-      form.addField({
-        id: 'jobcard',
-        label: 'Upload Jobcard',
-        type: ui.FieldType.FILE
-      }).isMandatory = true;
+            // File Group
+            form.addField({
+                id: 'jobcard',
+                label: 'Upload Jobcard',
+                type: ui.FieldType.FILE
+            }).isMandatory = true;
 
-      // Asset Testings Sublist
-      var tests = form.addSublist({
-        id: 'testings',
-        label: 'Asset Testings',
-        type: ui.SublistType.LIST
-      });
-      tests.addField({
-        id: 'asset',
-        label: 'Asset',
-        type: ui.FieldType.SELECT,
-        source: 'customrecord_nx_asset'
-      }).updateDisplayType({ displayType: ui.FieldDisplayType.INLINE });
-      tests.addField({
-        id: 'outcome',
-        label: 'Outcome',
-        type: ui.FieldType.SELECT,
-        source: 'customlist_pass_fail'
-      }).isMandatory = true;
-      tests.addField({
-        id: 'rating',
-        label: 'Rating',
-        type: ui.FieldType.SELECT,
-        source: 'customlist_nxc_door_rating'
-      });//.updateDisplayType({ displayType: ui.FieldDisplayType.DISABLED });
+            // Asset Testings Sublist
+            var tests = form.addSublist({
+                id: 'testings',
+                label: 'Asset Testings',
+                type: ui.SublistType.LIST
+            });
+            tests.addField({
+                id: 'asset',
+                label: 'Asset',
+                type: ui.FieldType.SELECT,
+                source: 'customrecord_nx_asset'
+            }).updateDisplayType({ displayType: ui.FieldDisplayType.INLINE });
+            tests.addField({
+                id: 'outcome',
+                label: 'Outcome',
+                type: ui.FieldType.SELECT,
+                source: 'customlist_pass_fail'
+            }).isMandatory = true;
+            tests.addField({
+                id: 'rating',
+                label: 'Rating',
+                type: ui.FieldType.SELECT,
+                source: 'customlist_nxc_door_rating'
+            });//.updateDisplayType({ displayType: ui.FieldDisplayType.DISABLED });
 
-      // Follow-Up Task Sublist
-      var tasks = form.addSublist({
-        id: 'tasks',
-        label: 'Follow-Up Tasks',
-        type: ui.SublistType.INLINEEDITOR
-      });
-      tasks.addField({
-        id: 'details',
-        label: 'Details',
-        type: ui.FieldType.TEXT
-      }).isMandatory = true;
-      tasks.addField({
-        id: 'type',
-        label: 'Task Type',
-        type: ui.FieldType.SELECT,
-        source: 'customrecord_nx_task_type'
-      }).defaultValue = '6'; // Pending Quote
-      tasks.addField({
-        id: 'assigned',
-        label: 'Assigned To',
-        type: ui.FieldType.SELECT,
-        source: record.Type.EMPLOYEE
-      }).defaultValue = '632'; // *Unassigned
+            // Follow-Up Task Sublist
+            var tasks = form.addSublist({
+                id: 'tasks',
+                label: 'Follow-Up Tasks',
+                type: ui.SublistType.INLINEEDITOR
+            });
+            tasks.addField({
+                id: 'details',
+                label: 'Details',
+                type: ui.FieldType.TEXT
+            }).isMandatory = true;
+            tasks.addField({
+                id: 'type',
+                label: 'Task Type',
+                type: ui.FieldType.SELECT,
+                source: 'customrecord_nx_task_type'
+            }).defaultValue = '6'; // Pending Quote
+            tasks.addField({
+                id: 'assigned',
+                label: 'Assigned To',
+                type: ui.FieldType.SELECT,
+                source: record.Type.EMPLOYEE
+            }).defaultValue = '632'; // *Unassigned
 
-      // Files To Attach Sublist
-      var files = form.addSublist({
-        id: 'files',
-        label: 'Additional Files',
-        type: ui.SublistType.INLINEEDITOR
-      });
-      files.addButton({
-        id: 'add_file_btn',
-        label: 'Attach File',
-        functionName: 'attachFile'
-      });
-      files.addField({
-        id: 'file_id',
-        label: 'File Id',
-        type: ui.FieldType.TEXT
-      }).updateDisplayType({ displayType: ui.FieldDisplayType.DISABLED });
-      files.addField({
-        id: 'file_name',
-        label: 'File Name',
-        type: ui.FieldType.TEXT
-      }).updateDisplayType({ displayType: ui.FieldDisplayType.DISABLED });
+            // Files To Attach Sublist
+            var files = form.addSublist({
+                id: 'files',
+                label: 'Additional Files',
+                type: ui.SublistType.INLINEEDITOR
+            });
+            files.addButton({
+                id: 'add_file_btn',
+                label: 'Attach File',
+                functionName: 'attachFile'
+            });
+            files.addField({
+                id: 'file_id',
+                label: 'File Id',
+                type: ui.FieldType.TEXT
+            }).updateDisplayType({ displayType: ui.FieldDisplayType.DISABLED });
+            files.addField({
+                id: 'file_name',
+                label: 'File Name',
+                type: ui.FieldType.TEXT
+            }).updateDisplayType({ displayType: ui.FieldDisplayType.DISABLED });
 
-      return form;
+            return form;
 
-    }; // End generateForm()
+        }; // End generateForm()
 
-    function populateForm(form,case_id) {
+        function populateForm(form, case_id) {
+            log.debug("Populate Form case id:", case_id);
+            if (case_id) {
+                form.getField({ id: 'case_id' }).defaultValue = case_id;
+                log.debug("If condition Case Id:", case_id);
+                var case_search = search.lookupFields({
+                    type: search.Type.SUPPORT_CASE,
+                    id: case_id,
+                    columns: ['company', 'custevent_nxc_sub_assets', 'custevent_nx_case_type']
+                });
+                var case_type = case_search.custevent_nx_case_type;
+                if (case_type) case_type = case_type[0].value;
+                var case_assets = case_search.custevent_nxc_sub_assets;
+                log.debug({ title: 'case_assets', details: JSON.stringify(case_assets) });
+                if (case_assets) {
+                    if (Array.isArray(case_assets)) {
+                        case_assets = case_assets.map(function (el) { return el.value; });
+                    } else {
+                        case_assets = case_assets.split(',');
+                    }
+                } else case_assets = [];
+                var project = case_search.company;
+                if (project) project = project[0].value;
+                var proj_assets = [];
+                if (project) {
+                    var project_search = search.lookupFields({
+                        type: search.Type.JOB,
+                        id: project,
+                        columns: ['custentity_nxc_sub_assets']
+                    });
+                    proj_assets = project_search.custentity_nxc_sub_assets;
+                    log.debug({ title: 'proj_assets', details: JSON.stringify(proj_assets) })
+                    if (!Array.isArray(proj_assets) && typeof proj_assets == 'object') {
+                        proj_assets = proj_assets.value;
+                    }
+                    if (proj_assets) {
+                        if (Array.isArray(proj_assets)) {
+                            proj_assets = proj_assets.map(function (el) { return el.value; });
+                        } else {
+                            proj_assets = proj_assets.split(',');
+                        }
+                    } else proj_assets = [];
+                    var asset_list = form.getSublist({ id: 'testings' });
+                }
+                var all_assets = [];
+                if (case_type == '1' || case_type == '6') { // Maintenance
+                    all_assets = proj_assets.concat(case_assets);
+                } else if (case_type == '4' || case_type == '3') { // Install/Commission
+                    all_assets = proj_assets;
+                } else { // Repair Breakdown
+                    all_assets = case_assets;
+                }
+                all_assets.forEach(function (asset, idx) {
+                    asset_list.setSublistValue({ id: 'asset', line: idx, value: asset });
+                    asset_list.setSublistValue({ id: 'outcome', line: idx, value: '1' }); // Pass
+                    asset_list.setSublistValue({ id: 'rating', line: idx, value: '3' }); // 3 - Good
+                });
+            } else {
+                log.debug("Case Id Not found");
+            }
 
-      form.getField({id:'case_id'}).defaultValue = case_id;
+        }; // End populateForm(form,asset_id)
 
-      var case_search = search.lookupFields({
-        type: search.Type.SUPPORT_CASE,
-        id: case_id,
-        columns: [ 'company', 'custevent_nxc_sub_assets', 'custevent_nx_case_type' ]
-      });
-      var case_type = case_search.custevent_nx_case_type;
-      if ( case_type ) case_type = case_type[0].value;
-      var case_assets = case_search.custevent_nxc_sub_assets;
-      log.debug({title:'case_assets',details:JSON.stringify(case_assets)});
-      if ( case_assets ) {
-        if ( Array.isArray( case_assets ) ) {
-          case_assets = case_assets.map( function(el) { return el.value; } );
-        } else {
-          case_assets = case_assets.split(',');
-        }
-      } else case_assets = [];
-      var project = case_search.company;
-      if ( project ) project = project[0].value;
-      var proj_assets = [];
-      if ( project ) {
-        var project_search = search.lookupFields({
-          type: search.Type.JOB,
-          id: project,
-          columns: [ 'custentity_nxc_sub_assets' ]
-        });
-        proj_assets = project_search.custentity_nxc_sub_assets;
-        log.debug({title:'proj_assets',details:JSON.stringify(proj_assets)})
-        if ( !Array.isArray(proj_assets) && typeof proj_assets == 'object' ) {
-          proj_assets = proj_assets.value;
-        }
-        if ( proj_assets ) {
-          if ( Array.isArray( proj_assets ) ) {
-            proj_assets = proj_assets.map( function(el) { return el.value; } );
-          } else {
-            proj_assets = proj_assets.split(',');
-          }
-        } else proj_assets = [];
-        var asset_list = form.getSublist({id:'testings'});
-      }
-      var all_assets = [];
-      if ( case_type == '1' || case_type == '6' ) { // Maintenance
-        all_assets = proj_assets.concat( case_assets );
-      } else if ( case_type == '4' || case_type == '3' ) { // Install/Commission
-        all_assets = proj_assets;
-      } else { // Repair Breakdown
-        all_assets = case_assets;
-      }
-      all_assets.forEach( function(asset,idx) {
-        asset_list.setSublistValue({ id: 'asset', line: idx, value: asset });
-        asset_list.setSublistValue({ id: 'outcome', line: idx, value: '1' }); // Pass
-        asset_list.setSublistValue({ id: 'rating', line: idx, value: '3' }); // 3 - Good
-      });
+        function uploadJobcard(request) {
 
-    }; // End populateForm(form,asset_id)
+            var new_file = request.files.jobcard;
+            if (!new_file) return null;
 
-  	function uploadJobcard( request ) {
+            // Detect file type
+            var ext = file_extensions[new_file.fileType];
+            if (!ext) ext = '';
 
-      var new_file = request.files.jobcard;
-      if ( !new_file ) return null;
+            // Rename & Set Folder
+            var case_search = search.lookupFields({
+                type: search.Type.SUPPORT_CASE,
+                id: request.parameters.case_id,
+                columns: ['casenumber', 'custevent_nx_case_asset']
+            });
+            var case_num = case_search.casenumber;
+            var asset_name = case_search.custevent_nx_case_asset[0].text;
+            new_file.name = case_num + ' - ' + asset_name + ' - ' + 'Jobcard' + ext;
+            new_file.folder = '12377'; // Dept_Admin & Accounts -> Job_Cards -> Contractor Job Cards - Do Not Delete
 
-      // Detect file type
-      var ext = file_extensions[new_file.fileType];
-      if ( !ext ) ext = '';
+            return new_file.save();
 
-      // Rename & Set Folder
-      var case_search = search.lookupFields({
-        type: search.Type.SUPPORT_CASE,
-        id: request.parameters.case_id,
-        columns: [ 'casenumber', 'custevent_nx_case_asset' ]
-      });
-      var case_num = case_search.casenumber;
-      var asset_name = case_search.custevent_nx_case_asset[0].text;
-      new_file.name = case_num + ' - ' + asset_name + ' - ' + 'Jobcard' + ext;
-      new_file.folder = '12377'; // Dept_Admin & Accounts -> Job_Cards -> Contractor Job Cards - Do Not Delete
+        }; // end uploadJobcard( request )
 
-      return new_file.save();
+        function processCase(request, jobcard_id) {
 
-    }; // end uploadJobcard( request )
+            var case_id = request.parameters.case_id;
+            var case_search = search.lookupFields({
+                type: search.Type.SUPPORT_CASE,
+                id: case_id,
+                columns: [
+                    'custevent_nx_customer',
+                    'custevent_nx_case_asset',
+                    'company',
+                    'custevent_nx_case_type'
+                ]
+            });
+            var case_proj = case_search.company[0].value;
+            var case_asset = case_search.custevent_nx_case_asset[0].value;
+            var case_cust = case_search.custevent_nx_customer[0].value;
+            var case_type = case_search.custevent_nx_case_type;
+            if (case_type) case_type = case_type[0].value;
 
-  	function processCase( request, jobcard_id ) {
+            var task_date = request.parameters.date;
+            task_date = task_date.split('/');
+            task_date = new Date(task_date[2], task_date[1] - 1, task_date[0]);
 
-      var case_id = request.parameters.case_id;
-      var case_search = search.lookupFields({
-        type: search.Type.SUPPORT_CASE,
-        id: case_id,
-        columns: [
-          'custevent_nx_customer',
-          'custevent_nx_case_asset',
-          'company',
-          'custevent_nx_case_type'
-        ]
-      });
-      var case_proj = case_search.company[0].value;
-      var case_asset = case_search.custevent_nx_case_asset[0].value;
-      var case_cust = case_search.custevent_nx_customer[0].value;
-      var case_type = case_search.custevent_nx_case_type;
-      if ( case_type ) case_type = case_type[0].value;
+            // Create visit task
+            var visit = record.create({
+                type: record.Type.TASK,
+                isDynamic: true
+            });
+            visit.setValue({ fieldId: 'customform', value: '121' }); // AI NXC Task Form
+            visit.setValue({ fieldId: 'custevent_nx_task_type', value: '1' }); // Visit
+            visit.setValue({ fieldId: 'status', value: 'COMPLETE' }); // Complete
+            visit.setValue({ fieldId: 'title', value: 'To Be Generated' });
+            visit.setValue({ fieldId: 'custevent_nx_task_asset', value: case_asset });
+            visit.setValue({ fieldId: 'company', value: case_proj });
+            visit.setValue({ fieldId: 'startdate', value: task_date });
+            visit.setValue({ fieldId: 'duedate', value: task_date });
+            visit.setValue({ fieldId: 'completeddate', value: task_date });
+            visit.setValue({ fieldId: 'custevent_nx_customer', value: case_cust });
+            visit.setValue({
+                fieldId: 'custevent_nx_actions_taken',
+                value: 'Works have been completed as per the jobcard attached to this case.'
+            });
+            visit.setValue({ fieldId: 'supportcase', value: case_id });
+            visit = visit.save();
 
-      var task_date = request.parameters.date;
-      task_date = task_date.split('/');
-      task_date = new Date( task_date[2], task_date[1]-1, task_date[0] );
+            // Create additional tasks
+            var num_adn_tasks = request.getLineCount({ group: 'tasks' });
+            var case_stay_open = false;
+            var holding_tasks = ['1', '5', '2', '6', '4'];
+            for (var i = 0; i < num_adn_tasks; i++) {
+                var new_task_type = request.getSublistValue({ group: 'tasks', name: 'type', line: i });
+                if (holding_tasks.indexOf(new_task_type) != -1) case_stay_open = true;
+                var new_task_details = request.getSublistValue({ group: 'tasks', name: 'details', line: i });
+                var new_task_assigned = request.getSublistValue({ group: 'tasks', name: 'assigned', line: i });
+                var new_task = record.create({
+                    type: record.Type.TASK,
+                    isDynamic: true
+                });
+                new_task.setValue({ fieldId: 'customform', value: '121' }); // AI NXC Task Form
+                new_task.setValue({ fieldId: 'custevent_nx_task_type', value: new_task_type });
+                new_task.setValue({ fieldId: 'title', value: 'To Be Generated' });
+                new_task.setValue({ fieldId: 'custevent_nx_task_asset', value: case_asset });
+                new_task.setValue({ fieldId: 'assigned', value: new_task_assigned });
+                new_task.setValue({ fieldId: 'company', value: case_proj });
+                new_task.setValue({ fieldId: 'custevent_nx_customer', value: case_cust });
+                new_task.setValue({ fieldId: 'message', value: new_task_details });
+                new_task.setValue({ fieldId: 'supportcase', value: case_id });
+                new_task.save();
+            }
 
-      // Create visit task
-      var visit = record.create({
-        type: record.Type.TASK,
-        isDynamic: true
-      });
-      visit.setValue({ fieldId: 'customform', value: '121' }); // AI NXC Task Form
-      visit.setValue({ fieldId: 'custevent_nx_task_type', value: '1' }); // Visit
-      visit.setValue({ fieldId: 'status', value: 'COMPLETE' }); // Complete
-      visit.setValue({ fieldId: 'title', value: 'To Be Generated' });
-      visit.setValue({ fieldId: 'custevent_nx_task_asset', value: case_asset });
-      visit.setValue({ fieldId: 'company', value: case_proj });
-      visit.setValue({ fieldId: 'startdate', value: task_date });
-      visit.setValue({ fieldId: 'duedate', value: task_date });
-      visit.setValue({ fieldId: 'completeddate', value: task_date });
-      visit.setValue({ fieldId: 'custevent_nx_customer', value: case_cust });
-      visit.setValue({
-        fieldId: 'custevent_nx_actions_taken',
-        value: 'Works have been completed as per the jobcard attached to this case.'
-      });
-      visit.setValue({ fieldId: 'supportcase', value: case_id });
-      visit = visit.save();
+            // Create asset testings
+            var num_testings = request.getLineCount({ group: 'testings' });
+            var testing_type = 'customrecord_nxc_asset_testing';
+            var testing_questions_yes = asset_testing_yes_fields;
+            var testing_questions_no = asset_testing_no_fields;
+            var test_field_prefix = 'custrecord_at_nxc_';
+            if (case_type == '3' || case_type == '4') { // Install/Commission
+                testing_type = 'customrecord_nxc_commissioning_form';
+                testing_questions_yes = asset_comm_yes_fields;
+                testing_questions_no = asset_comm_no_fields;
+                test_field_prefix = 'custrecord_cf_';
+            }
+            var failed_testings = [];
+            for (var i = 0; i < num_testings; i++) {
+                var new_test = record.create({
+                    type: testing_type,
+                    isDynamic: true
+                });
+                var new_test_outcome = request.getSublistValue({ group: 'testings', name: 'outcome', line: i });
+                var new_test_rating = request.getSublistValue({ group: 'testings', name: 'rating', line: i });
+                var new_test_asset = request.getSublistValue({ group: 'testings', name: 'asset', line: i });
+                new_test.setValue({ fieldId: test_field_prefix + 'case', value: case_id });
+                new_test.setValue({ fieldId: test_field_prefix + 'task', value: visit });
+                new_test.setValue({ fieldId: test_field_prefix + 'asset', value: new_test_asset });
+                if (testing_type == 'customrecord_nxc_asset_testing') {
+                    new_test.setValue({ fieldId: 'custrecord_at_nxc_rating', value: new_test_rating });
+                    new_test.setValue({ fieldId: 'custrecord_at_nxc_outcome', value: new_test_outcome });
+                }
+                testing_questions_yes.forEach(function (field_name) {
+                    new_test.setValue({ fieldId: field_name, value: '1' }); // Yes
+                });
+                testing_questions_no.forEach(function (field_name) {
+                    new_test.setValue({ fieldId: field_name, value: '2' }); // No
+                });
+                new_test = new_test.save();
+                if (new_test_outcome == '2') failed_testings.push(new_test); // Fail
+            }
 
-      // Create additional tasks
-      var num_adn_tasks = request.getLineCount({ group: 'tasks' });
-      var case_stay_open = false;
-      var holding_tasks = [ '1', '5', '2', '6', '4' ];
-      for ( var i = 0; i < num_adn_tasks; i++ ) {
-        var new_task_type = request.getSublistValue({ group: 'tasks', name: 'type', line: i });
-        if ( holding_tasks.indexOf(new_task_type) != -1 ) case_stay_open = true;
-        var new_task_details = request.getSublistValue({ group: 'tasks', name: 'details', line: i });
-        var new_task_assigned = request.getSublistValue({ group: 'tasks', name: 'assigned', line: i });
-        var new_task = record.create({
-          type: record.Type.TASK,
-          isDynamic: true
-        });
-        new_task.setValue({ fieldId: 'customform', value: '121' }); // AI NXC Task Form
-        new_task.setValue({ fieldId: 'custevent_nx_task_type', value: new_task_type });
-        new_task.setValue({ fieldId: 'title', value: 'To Be Generated' });
-        new_task.setValue({ fieldId: 'custevent_nx_task_asset', value: case_asset });
-        new_task.setValue({ fieldId: 'assigned', value: new_task_assigned });
-        new_task.setValue({ fieldId: 'company', value: case_proj });
-        new_task.setValue({ fieldId: 'custevent_nx_customer', value: case_cust });
-        new_task.setValue({ fieldId: 'message', value: new_task_details });
-        new_task.setValue({ fieldId: 'supportcase', value: case_id });
-        new_task.save();
-      }
+            // Attach jobcard & other files
+            if (jobcard_id) {
+                record.attach({
+                    record: { type: 'file', id: jobcard_id },
+                    to: { type: record.Type.SUPPORT_CASE, id: case_id }
+                });
+            }
+            var num_adn_files = request.getLineCount({ group: 'files' });
+            for (var i = 0; i < num_adn_files; i++) {
+                var file_id = request.getSublistValue({ group: 'files', name: 'file_id', line: i });
+                if (file_id) {
+                    record.attach({
+                        record: { type: 'file', id: file_id },
+                        to: { type: record.Type.SUPPORT_CASE, id: case_id }
+                    });
+                }
+            }
 
-      // Create asset testings
-      var num_testings = request.getLineCount({ group: 'testings' });
-      var testing_type = 'customrecord_nxc_asset_testing';
-      var testing_questions_yes = asset_testing_yes_fields;
-      var testing_questions_no = asset_testing_no_fields;
-      var test_field_prefix = 'custrecord_at_nxc_';
-      if ( case_type == '3' || case_type == '4' ) { // Install/Commission
-        testing_type = 'customrecord_nxc_commissioning_form';
-      	testing_questions_yes = asset_comm_yes_fields;
-        testing_questions_no = asset_comm_no_fields;
-      	test_field_prefix = 'custrecord_cf_';
-      }
-      var failed_testings = [];
-      for ( var i = 0; i < num_testings; i++ ) {
-        var new_test = record.create({
-          type: testing_type,
-          isDynamic: true
-        });
-        var new_test_outcome = request.getSublistValue({ group: 'testings', name: 'outcome', line: i });
-        var new_test_rating = request.getSublistValue({ group: 'testings', name: 'rating', line: i });
-        var new_test_asset = request.getSublistValue({ group: 'testings', name: 'asset', line: i });
-        new_test.setValue({ fieldId: test_field_prefix+'case', value: case_id });
-        new_test.setValue({ fieldId: test_field_prefix+'task', value: visit });
-        new_test.setValue({ fieldId: test_field_prefix+'asset', value: new_test_asset });
-        if ( testing_type == 'customrecord_nxc_asset_testing' ) {
-          new_test.setValue({ fieldId: 'custrecord_at_nxc_rating', value: new_test_rating });
-          new_test.setValue({ fieldId: 'custrecord_at_nxc_outcome', value: new_test_outcome });
-        }
-        testing_questions_yes.forEach( function(field_name) {
-          new_test.setValue({ fieldId: field_name, value: '1' }); // Yes
-        });
-        testing_questions_no.forEach( function(field_name) {
-          new_test.setValue({ fieldId: field_name, value: '2' }); // No
-        });
-        new_test = new_test.save();
-        if ( new_test_outcome == '2' ) failed_testings.push(new_test); // Fail
-      }
+            // Change status
+            var case_status = case_stay_open ? '2' : '5'; // In-Progress : Closed
+            record.submitFields({
+                type: record.Type.SUPPORT_CASE,
+                id: case_id,
+                values: {
+                    'status': case_status
+                }
+            });
 
-      // Attach jobcard & other files
-      if ( jobcard_id ) {
-        record.attach({
-          record: { type: 'file', id: jobcard_id },
-          to: { type: record.Type.SUPPORT_CASE, id: case_id }
-        });
-      }
-      var num_adn_files = request.getLineCount({ group: 'files' });
-      for ( var i = 0; i < num_adn_files; i++ ) {
-        var file_id = request.getSublistValue({ group: 'files', name: 'file_id', line: i });
-        if ( file_id ) {
-          record.attach({
-            record: { type: 'file', id: file_id },
-            to: { type: record.Type.SUPPORT_CASE, id: case_id }
-          });
-        }
-      }
+            return failed_testings.map(function (test_id) {
+                return { type: testing_type, id: test_id }
+            });
 
-      // Change status
-      var case_status = case_stay_open ? '2' : '5'; // In-Progress : Closed
-      record.submitFields({
-        type: record.Type.SUPPORT_CASE,
-        id: case_id,
-        values: {
-          'status': case_status
-        }
-      });
+        }; // end processCase( request, jobcard_id )
 
-      return failed_testings.map( function(test_id) {
-        return { type: testing_type, id: test_id }
-      });
+        function generateTransactions(request, jobcard_id) {
 
-    }; // end processCase( request, jobcard_id )
+            var case_id = request.parameters.case_id;
+            var case_search = search.lookupFields({
+                type: search.Type.SUPPORT_CASE,
+                id: case_id,
+                columns: [
+                    'custevent_nx_customer',
+                    'custevent_nx_case_asset',
+                    'company',
+                    'custevent_nx_case_purchaseorder',
+                    'custevent_nxc_subcontractor',
+                    'custevent_nx_case_type',
+                    'custevent_nxc_call_out_priority',
+                    'custevent1'
+                ]
+            });
+            var case_proj = case_search.company[0].value;
+            var case_cust = case_search.custevent_nx_customer[0].value;
+            var case_asset = case_search.custevent_nx_case_asset[0].value;
+            var case_po = case_search.custevent_nx_case_purchaseorder;
+            var case_vendor = case_search.custevent_nxc_subcontractor[0].value;
+            var case_type = case_search.custevent_nx_case_type[0].value;
+            var case_callout = case_search.custevent_nxc_call_out_priority;
+            if (case_callout && case_callout != '') case_callout = case_callout[0].value;
+            var case_proj_assets = case_search.custevent1;
+            log.debug({ title: 'case_proj_assets', details: JSON.stringify(case_proj_assets) })
+            log.debug({ title: 'type of case_proj_assets', details: typeof case_proj_assets });
+            if (!Array.isArray(case_proj_assets) && typeof case_proj_assets == 'object') {
+                case_proj_assets = case_proj_assets.value;
+            }
+            log.debug({ title: 'type of case_proj_assets', details: typeof case_proj_assets });
+            log.debug({ title: 'Array case_proj_assets', details: Array.isArray(case_proj_assets) });
+            if (Array.isArray(case_proj_assets)) {
+                case_proj_assets = case_proj_assets.map(function (el) { return el.value; });
+            } else {
+                case_proj_assets = case_proj_assets.split(',');
+            }
 
-  	function generateTransactions( request, jobcard_id ) {
+            var asset_dept = dcl.getAssetDepartment(case_asset);
 
-      var case_id = request.parameters.case_id;
-      var case_search = search.lookupFields({
-        type: search.Type.SUPPORT_CASE,
-        id: case_id,
-        columns: [
-          'custevent_nx_customer',
-          'custevent_nx_case_asset',
-          'company',
-          'custevent_nx_case_purchaseorder',
-          'custevent_nxc_subcontractor',
-          'custevent_nx_case_type',
-          'custevent_nxc_call_out_priority',
-          'custevent1'
-        ]
-      });
-      var case_proj = case_search.company[0].value;
-      var case_cust = case_search.custevent_nx_customer[0].value;
-      var case_asset = case_search.custevent_nx_case_asset[0].value;
-      var case_po = case_search.custevent_nx_case_purchaseorder;
-      var case_vendor = case_search.custevent_nxc_subcontractor[0].value;
-      var case_type = case_search.custevent_nx_case_type[0].value;
-      var case_callout = case_search.custevent_nxc_call_out_priority;
-      if ( case_callout && case_callout != '' ) case_callout = case_callout[0].value;
-      var case_proj_assets = case_search.custevent1;
-      log.debug({title:'case_proj_assets',details:JSON.stringify(case_proj_assets)})
-      log.debug({title:'type of case_proj_assets',details:typeof case_proj_assets});
-      if ( !Array.isArray(case_proj_assets) && typeof case_proj_assets == 'object' ) {
-        case_proj_assets = case_proj_assets.value;
-      }
-      log.debug({title:'type of case_proj_assets',details:typeof case_proj_assets});
-      log.debug({title:'Array case_proj_assets',details:Array.isArray(case_proj_assets)});
-      if ( Array.isArray(case_proj_assets) ) {
-        case_proj_assets = case_proj_assets.map( function(el) { return el.value; } );
-      } else {
-        case_proj_assets = case_proj_assets.split(',');
-      }
+            var existing_sales_orders = [];
+            var so_search = search.create({
+                type: search.Type.TRANSACTION,
+                filters: [
+                    { name: 'custbody_nx_case', operator: search.Operator.IS, values: case_id },
+                    { name: 'mainline', operator: search.Operator.IS, values: 'T' },
+                    { name: 'type', operator: search.Operator.IS, values: 'SalesOrd' }
+                ],
+                columns: [
+                    { name: 'internalid' },
+                    { name: 'type' }
+                ]
+            }).run().each(function (result) {
+                log.debug({ title: 'res_type', details: result.getValue({ name: 'type' }) });
+                existing_sales_orders.push(result.getValue({ name: 'internalid' }));
+                return true;
+            });
 
-      var asset_dept = dcl.getAssetDepartment(case_asset);
+            // Major or Minor Maintenance
+            if (case_type == '1' || case_type == '6' && existing_sales_orders.length == 0) {
+                var maint_costs = {};
+                var proj_search = search.create({
+                    type: search.Type.JOB,
+                    filters: [
+                        { name: 'custentity_nx_project_type', operator: search.Operator.IS, values: '6' }, // Under Contract
+                        { name: 'custentity_ai_parent_id', operator: search.Operator.IS, values: case_proj },
+                        { name: 'status', operator: search.Operator.NONEOF, values: ['1'] }, // Closed
+                        { name: 'isinactive', operator: search.Operator.IS, values: 'F' }
+                    ],
+                    columns: [
+                        { name: 'custentity_nxc_maint_charge' }
+                    ]
+                }).run().each(function (result) {
+                    var cost = result.getValue({ name: 'custentity_nxc_maint_charge' });
+                    if (!maint_costs[cost]) maint_costs[cost] = 1;
+                    else maint_costs[cost]++;
+                    return true;
+                });
+            }
 
-      var existing_sales_orders = [];
-      var so_search = search.create({
-        type: search.Type.TRANSACTION,
-        filters: [
-          { name: 'custbody_nx_case', operator: search.Operator.IS, values: case_id },
-          { name: 'mainline', operator: search.Operator.IS, values: 'T' },
-          { name: 'type', operator: search.Operator.IS, values: 'SalesOrd' }
-        ],
-        columns: [
-          { name: 'internalid' },
-          { name: 'type' }
-        ]
-      }).run().each( function(result) {
-        log.debug({title:'res_type',details:result.getValue({name:'type'})});
-        existing_sales_orders.push( result.getValue({name:'internalid'}) );
-        return true;
-      });
+            // Maintenance or Breakdown
+            if (case_type == '1' || case_type == '6' || case_type == '2' && existing_sales_orders.length == 0) {
+                // Create SO
+                var so_id = record.create({
+                    type: record.Type.SALES_ORDER,
+                    isDynamic: true
+                });
+                // Body Fields
+                so_id.setValue({ fieldId: 'customform', value: '174' }); // AI NXC Sales Order
+                so_id.setValue({ fieldId: 'entity', value: case_proj });
+                so_id.setValue({ fieldId: 'custbody_nx_customer', value: case_cust });
+                so_id.setValue({ fieldId: 'custbody_nx_asset', value: case_asset });
+                so_id.setValue({ fieldId: 'custbody_nx_case', value: case_id });
+                so_id.setValue({ fieldId: 'otherrefnum', value: case_po });
+                // Maintenance Items
+                if (case_type == idlib.CASE.TYPE.MAJOR_MAINT || case_type == idlib.CASE.TYPE.MINOR_MAINT) {
+                    for (var item in maint_costs) {
+                        so_id.selectNewLine({ sublistId: 'item' });
+                        so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: item });
+                        so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: maint_costs[item] });
+                        so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                        so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.MAINTENANCE });
+                        so_id.commitLine({ sublistId: 'item' });
+                    }
+                } else { // Breakdown Case
+                    so_id.selectNewLine({ sublistId: 'item' });
+                    log.debug({ title: 'case_callout', details: case_callout });
+                    log.debug({ title: 'callout', details: callout_to_item[case_callout] });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: callout_to_item[case_callout] });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1 });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.REPAIR });
+                    so_id.commitLine({ sublistId: 'item' });
+                    var labour_item = case_callout == '4' ? '2646' : '2647'; // If AH, adjust labour accordingly
+                    so_id.selectNewLine({ sublistId: 'item' });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: labour_item });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1 });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.REPAIR });
+                    so_id.commitLine({ sublistId: 'item' });
+                }
+                so_id = so_id.save();
+                // Attach Job Card
+                record.attach({
+                    record: { type: 'file', id: jobcard_id },
+                    to: { type: record.Type.SALES_ORDER, id: so_id }
+                });
+            }
 
-      // Major or Minor Maintenance
-      if ( case_type == '1' || case_type == '6' && existing_sales_orders.length == 0  ) {
-        var maint_costs = {};
-        var proj_search = search.create({
-          type: search.Type.JOB,
-          filters: [
-            { name: 'custentity_nx_project_type', operator: search.Operator.IS, values: '6' }, // Under Contract
-            { name: 'custentity_ai_parent_id', operator: search.Operator.IS, values: case_proj },
-            { name: 'status', operator: search.Operator.NONEOF, values: [ '1' ] }, // Closed
-            { name: 'isinactive', operator: search.Operator.IS, values: 'F' }
-          ],
-          columns: [
-            { name: 'custentity_nxc_maint_charge' }
-          ]
-        }).run().each( function(result) {
-          var cost = result.getValue({ name: 'custentity_nxc_maint_charge' });
-          if ( !maint_costs[cost] ) maint_costs[cost] = 1 ;
-          else maint_costs[cost]++;
-          return true;
-        });
-      }
+            // Create PO
+            var po_id = record.create({
+                type: record.Type.PURCHASE_ORDER,
+                isDynamic: true
+            });
+            // Body Fields
+            po_id.setValue({ fieldId: 'customform', value: '156' }); // AI Purchase Order
+            po_id.setValue({ fieldId: 'entity', value: case_vendor });
+            po_id.setValue({ fieldId: 'custbody_nx_customer', value: case_cust });
+            po_id.setValue({ fieldId: 'custbody_nx_asset', value: case_asset });
+            po_id.setValue({ fieldId: 'custbody_nx_case', value: case_id });
+            po_id.setValue({ fieldId: 'location', value: idlib.LOCATIONS.CONTRACTORS });
+            // Contractor Maintenance Items
+            if (case_type == idlib.CASE.TYPE.MAJOR_MAINT || case_type == idlib.CASE.TYPE.MINOR_MAINT) {
+                for (var item in maint_costs) {
+                    po_id.selectNewLine({ sublistId: 'item' });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2984' });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: maint_costs[item] });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'rate', value: '50' }); // $50 default
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.MAINTENANCE });
+                    po_id.commitLine({ sublistId: 'item' });
+                }
+            } else if (case_type == idlib.CASE.TYPE.REPAIR) {
+                po_id.selectNewLine({ sublistId: 'item' });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2981' }); //Contractor Callout
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1 });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.REPAIR });
+                po_id.commitLine({ sublistId: 'item' });
+                po_id.selectNewLine({ sublistId: 'item' });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2980' }); // Contractor Labour
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1 });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.REPAIR });
+                po_id.commitLine({ sublistId: 'item' });
+            } else { // Commission OR Install & Commission Case
+                // Add commission item
+                po_id.selectNewLine({ sublistId: 'item' });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2985' });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: case_proj_assets.length || 1 });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.OP_COMM });
+                po_id.commitLine({ sublistId: 'item' });
+                if (case_type == idlib.CASE.TYPE.INST_COMM) {
+                    // Add install item
+                    po_id.selectNewLine({ sublistId: 'item' });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2986' });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: case_proj_assets.length || 1 });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: asset_dept });
+                    po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.OP_COMM });
+                    po_id.commitLine({ sublistId: 'item' });
+                }
+            }
+            po_id = po_id.save();
 
-      // Maintenance or Breakdown
-      if ( case_type == '1' || case_type == '6' || case_type == '2' && existing_sales_orders.length == 0   ) {
-        // Create SO
-        var so_id = record.create({
-          type: record.Type.SALES_ORDER,
-          isDynamic: true
-        });
-        // Body Fields
-        so_id.setValue({ fieldId: 'customform', value: '174' }); // AI NXC Sales Order
-        so_id.setValue({ fieldId: 'entity', value: case_proj });
-        so_id.setValue({ fieldId: 'custbody_nx_customer', value: case_cust });
-        so_id.setValue({ fieldId: 'custbody_nx_asset', value: case_asset });
-        so_id.setValue({ fieldId: 'custbody_nx_case', value: case_id });
-        so_id.setValue({ fieldId: 'otherrefnum', value: case_po });
-        // Maintenance Items
-        if ( case_type == idlib.CASE.TYPE.MAJOR_MAINT || case_type == idlib.CASE.TYPE.MINOR_MAINT ) {
-          for ( var item in maint_costs ) {
-            so_id.selectNewLine({ sublistId: 'item' });
-            so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: item });
-            so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: maint_costs[item]  });
-            so_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-            so_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.MAINTENANCE });
-            so_id.commitLine({ sublistId: 'item' });
-          }
-        } else { // Breakdown Case
-          so_id.selectNewLine({ sublistId: 'item' });
-          log.debug({title:'case_callout',details:case_callout});
-          log.debug({title:'callout',details:callout_to_item[case_callout]});
-          so_id.setCurrentSublistValue({ sublistId:'item',fieldId:'item',value:callout_to_item[case_callout] });
-          so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1  });
-          so_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-          so_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.REPAIR });
-          so_id.commitLine({ sublistId: 'item' });
-          var labour_item = case_callout == '4' ? '2646': '2647'; // If AH, adjust labour accordingly
-          so_id.selectNewLine({ sublistId: 'item' });
-          so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: labour_item });
-          so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1  });
-          so_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-          so_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.REPAIR });
-          so_id.commitLine({ sublistId: 'item' });
-        }
-        so_id = so_id.save();
-        // Attach Job Card
-        record.attach({
-          record: { type: 'file', id: jobcard_id },
-          to: { type: record.Type.SALES_ORDER, id: so_id }
-        });
-      }
+            var trans = [];
+            if (so_id) trans.push({ type: record.Type.SALES_ORDER, id: so_id });
+            if (po_id) trans.push({ type: record.Type.PURCHASE_ORDER, id: po_id });
+            existing_sales_orders.forEach(function (order_id) {
+                trans.push({ type: record.Type.SALES_ORDER, id: order_id });
+            });
 
-      // Create PO
-	  var po_id = record.create({
-        type: record.Type.PURCHASE_ORDER,
-        isDynamic: true
-      });
-      // Body Fields
-      po_id.setValue({ fieldId: 'customform', value: '156' }); // AI Purchase Order
-      po_id.setValue({ fieldId: 'entity', value: case_vendor });
-      po_id.setValue({ fieldId: 'custbody_nx_customer', value: case_cust });
-      po_id.setValue({ fieldId: 'custbody_nx_asset', value: case_asset });
-      po_id.setValue({ fieldId: 'custbody_nx_case', value: case_id });
-      po_id.setValue({ fieldId: 'location', value: idlib.LOCATIONS.CONTRACTORS });
-      // Contractor Maintenance Items
-      if ( case_type == idlib.CASE.TYPE.MAJOR_MAINT || case_type == idlib.CASE.TYPE.MINOR_MAINT ) {
-        for ( var item in maint_costs ) {
-          po_id.selectNewLine({ sublistId: 'item' });
-          po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2984' });
-          po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: maint_costs[item]  });
-          po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'rate', value: '50'  }); // $50 default
-          po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-          po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.MAINTENANCE });
-          po_id.commitLine({ sublistId: 'item' });
-        }
-      } else if ( case_type == idlib.CASE.TYPE.REPAIR ) {
-        po_id.selectNewLine({ sublistId: 'item' });
-        po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2981' }); //Contractor Callout
-        po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1  });
-        po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-        po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.REPAIR });
-        po_id.commitLine({ sublistId: 'item' });
-        po_id.selectNewLine({ sublistId: 'item' });
-        po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2980' }); // Contractor Labour
-        po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: 1  });
-        po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-        po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.REPAIR });
-        po_id.commitLine({ sublistId: 'item' });
-      } else { // Commission OR Install & Commission Case
-        // Add commission item
-        po_id.selectNewLine({ sublistId: 'item' });
-        po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2985' });
-        po_id.setCurrentSublistValue({sublistId:'item',fieldId:'quantity',value:case_proj_assets.length||1});
-        po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-        po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.OP_COMM });
-        po_id.commitLine({ sublistId: 'item' });
-        if ( case_type == idlib.CASE.TYPE.INST_COMM ) {
-          // Add install item
-          po_id.selectNewLine({ sublistId: 'item' });
-          po_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: '2986' });
-          po_id.setCurrentSublistValue({sublistId:'item',fieldId:'quantity',value: case_proj_assets.length||1});
-          po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'department',value:asset_dept });
-          po_id.setCurrentSublistValue({ sublistId:'item',fieldId:'class',value:idlib.CLASS.OP_COMM });
-          po_id.commitLine({ sublistId: 'item' });
-        }
-      }
-      po_id = po_id.save();
+            return trans;
 
-      var trans = [];
-      if ( so_id ) trans.push( { type: record.Type.SALES_ORDER, id: so_id } );
-      if ( po_id ) trans.push( { type: record.Type.PURCHASE_ORDER, id: po_id } );
-      existing_sales_orders.forEach( function(order_id) {
-        trans.push( { type: record.Type.SALES_ORDER, id: order_id });
-      });
+        }; // end generateTransactions( request, jobcard_id )
 
-      return trans;
+        /* Given an array of objects representing Netsuite records { id: [internalId], type: [recordType] }
+         * creat a response string that will run a small script opening each record in a new tab before
+         * closing the currently open window.
+         **/
+        function constructResponseString(rec_arr) {
+            var response_string = '<script>';
+            response_string += 'var newWind = null;';
+            rec_arr.forEach(function (rec) {
+                var rec_url = url.resolveRecord({
+                    recordType: rec.type,
+                    recordId: rec.id,
+                    isEditMode: true
+                });
+                rec_url = rec_url.replace(/compid=/, 'ai_compid=');
+                response_string += 'window.open("' + rec_url + '","_blank");';
+            });
+            response_string += 'window.open("/app/common/search/searchresults.nl?searchid=1634&whence=","_self");</script>';
+            return response_string;
+        };
 
-    }; // end generateTransactions( request, jobcard_id )
-
-    /* Given an array of objects representing Netsuite records { id: [internalId], type: [recordType] }
-     * creat a response string that will run a small script opening each record in a new tab before
-     * closing the currently open window.
-     **/
-    function constructResponseString( rec_arr ) {
-      var response_string = '<script>';
-      response_string += 'var newWind = null;';
-      rec_arr.forEach( function(rec) {
-        var rec_url = url.resolveRecord({
-          recordType: rec.type,
-          recordId: rec.id,
-          isEditMode: true
-        });
-        rec_url = rec_url.replace(/compid=/,'ai_compid=');
-        response_string += 'window.open("'+rec_url+'","_blank");';
-      });
-      response_string += 'window.open("/app/common/search/searchresults.nl?searchid=1634&whence=","_self");</script>';
-      return response_string;
-    };
-
-    return {
-      onRequest: onRequest
-    };
-});
+        return {
+            onRequest: onRequest
+        };
+    });
