@@ -1,1 +1,86 @@
+<macro id="nlfooter">
+    <hr class='dotted' />
+    <table width="100%">
+        <tr>
+            <td style="vertical-align:top;margin-top:-10px;">
+                <h2>How To Pay</h2>
+            </td>
+            <td width="60%">&nbsp;</td>
+            <td rowspan="2" style="text-align:center; vertical-align:middle;">
+                <p style="margin:0; font-size:9px; font-weight:800; background-color:gray; color:white; padding:3px;">
+                    Invoice No. ${record.tranid}
+                </p>
+                <barcode codetype="qrcode" showtext="false" height="120" width="120" value="http://www.example.com/" />
+            </td>
+        </tr>
+    </table>
+
+    <table table-layout="fixed" width="100%">
+        <tr>
+            <td style="width:6%;vertical-align:top;">
+                <img src="https://5238530.app.netsuite.com/core/media/media.nl?id=5251&amp;c=5238530&amp;h=be20b7467c532c7f2c26" width="33px" height="44px" />
+            </td>
+            <td style="vertical-align:top;font-weight:800;font-size:9px;width:52%;">
+                Mail
+                <p><span style="padding-top:5px;font-style: italic;font-weight:100;">
+                    Detach this section and mail cheque to:
+                </span></p>
+                Auto Ingress Pty Ltd<br />PO Box 825<br />Springwood, QLD 4127
+            </td>
+            <td style="width:6%;vertical-align:top;">
+                <img src="https://5238530.app.netsuite.com/core/media/media.nl?id=5250&amp;c=5238530&amp;h=fcbf948557aaeedbf09a" width="33px" height="44px" />
+            </td>
+            <td style="width:36%;vertical-align:top;font-weight:800;font-size:9px;" rowspan="2">
+                Direct Deposit<br /><br />
+                <table width="100%">
+                    <tr style="font-size:9px;">
+                        <td style="vertical-align:top;padding:1px;width:35%;">Bank:</td>
+                        <td align="left" style="font-weight:0;vertical-align:top;padding:1px;width:65%;">Westpac</td>
+                    </tr>
+                    <tr style="font-size:9px;">
+                        <td style="vertical-align:top;padding:1px;">Acc. Name:</td>
+                        <td align="left" style="font-weight:0;vertical-align:top;padding:1px;">Auto Ingress</td>
+                    </tr>
+                    <tr style="font-size:9px;">
+                        <td style="vertical-align:top;padding:1px;">BSB:</td>
+                        <td align="left" style="font-weight:0;vertical-align:top;padding:1px;">034-026</td>
+                    </tr>
+                    <tr style="font-size:9px;">
+                        <td style="vertical-align:top;padding:1px;">Acc. No.:</td>
+                        <td align="left" style="font-weight:0;vertical-align:top;padding:1px;">141392</td>
+                    </tr>
+                    <tr style="font-size:9px;">
+                        <td style="vertical-align:top;padding:1px;">Due Date:</td>
+                        <td align="left" style="vertical-align:top;padding:1px;font-weight:0;">${record.duedate}</td>
+                    </tr>
+                    <tr style="font-size:9px;">
+                        <td style="vertical-align:top;padding:1px;">Amount Due:</td>
+                        <td align="left" style="vertical-align:top;padding:1px;font-weight:0;">${record.amountremaining}</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style="width:6%;vertical-align:top;">
+                <img src="https://5238530.app.netsuite.com/core/media/media.nl?id=5249&amp;c=5238530&amp;h=8e9bc32bfe7a009b55a1" width="33px" height="44px" />
+            </td>
+            <td style="vertical-align:top;font-weight:800;font-size:9px;">
+                Credit Card (MasterCard or Visa)<br />
+                <span style="font-weight:100;">Payments made via Mastercard, Bankcard or Visa incur a surcharge of 1.5%</span><br />
+                <span style="font-weight:100;">Payments made via American Express incur a surcharge of 3%</span><br />
+                <span style="padding-top:5px;font-style: italic;font-weight:100;">Please call 1300 138 750 to pay over the phone.</span>
+            </td>
+            <td></td>
+        </tr>
+    </table>
+
+    <table class="footer" style="width: 100%;">
+        <tr>
+            <td>&nbsp;</td>
+            <td align="right">
+                Page <pagenumber /> of <totalpages />
+            </td>
+        </tr>
+    </table>
+</macro>
 
