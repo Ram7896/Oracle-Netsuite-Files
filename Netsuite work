@@ -1,1 +1,79 @@
-https://chromewebstore.google.com/detail/netsuite-field-finder/npehdolgmmdncpmkoploaeljhkngjbne
+{
+    "TotalResults": 16,
+    "ResourceList": [
+        {
+            "ReadOnly": {
+                "ReceiverId": 11357661,
+                "ReceiverType": 0,
+                "DeferNotification": false,
+                "ReceiptAdviceSendInfo": {
+                    "SentInfo": {
+                        "Sent": false
+                    }
+                },
+                "CustomerIdentifier": {
+                    "Name": "AURADINE",
+                    "Id": 706
+                },
+                "FacilityIdentifier": {
+                    "Name": "Lynx - Fremont",
+                    "Id": 25
+                },
+                "WarehouseTransactionSourceType": 1,
+                "TransactionEntryType": 1,
+                "CreationDate": "2025-01-14T10:56:32.783",
+                "CreatedByIdentifier": {
+                    "Name": "Rodney -",
+                    "Id": 1806
+                },
+                "LastModifiedDate": "2025-01-14T11:13:07.653",
+                "LastModifiedByIdentifier": {
+                    "Name": "Rodney -",
+                    "Id": 1806
+                },
+                "Status": 2
+            },
+            "ReceiveItems": [
+                {
+                    "ReadOnly": {
+                        "ReceiveItemId": 3414219,
+                        "UnitIdentifier": {
+                            "Name": "Each",
+                            "Id": 1
+                        },
+                        "FacilityIdentifier": {
+                            "Name": "Lynx - Fremont",
+                            "Id": 25
+                        },
+                        "ReferenceNumber": "SJ01423403-CANCELED-11357661",
+                        "TransactionID": 11357661,
+                        "RowVersion": "AAAAACZ1DLI"
+                    },
+                    "ItemIdentifier": {
+                        "Sku": "MISC",
+                        "Id": 212690
+                    },
+                    "Qualifier": "",
+                    "Qty": 0.0000,
+                    "WeightImperial": 0.0000,
+                    "WeightMetric": 0.0000,
+                    "OnHold": false,
+                    "SavedElements": [],
+                    "_links": []
+                }
+            ],
+            "ReferenceNum": "SJ01423403-CANCELED-11357661",
+            "ArrivalDate": "2025-01-14T10:56:32.783",
+            "Notes": "Reason for cancellation: Error",
+            "Billing": {},
+            "Carrier": "JIT Transportation",
+            "CapacityTypeIdentifier": {
+                "Name": "53' Trailer",
+                "Id": 5
+            },
+            "SavedElements": [],
+            "_links": []
+        }
+    ],
+    "_links": []
+}
