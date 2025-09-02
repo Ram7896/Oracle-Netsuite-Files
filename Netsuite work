@@ -1,146 +1,25 @@
 /**
- *@NApiVersion 2.1
- *@NScriptType ScheduledScript
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
  */
+define(['N/currentRecord'], function (currentRecord) {
 
-define(["N/record", "N/search", "N/runtime", "N/https"],
-    function (record, search, runtime, https) {
-        function execute() {
-            try {
-                //script Parameters
-                var scriptObj = runtime.getCurrentScript();
-                var savedSearchId = scriptObj.getParameter({
-                    name: "custscript_ada_pbd_invt_item_search"
-                });
-                log.debug("Saved Search ID", savedSearchId);
+  function fieldChanged(context) {
+    try {
+      var rec = context.currentRecord;
+      var checkbox = rec.getValue({ fieldId: 'custbody12' });
 
-                const ifIntegRecId = scriptObj.getParameter("custscript_ada_get_invt_url");
-                log.debug("ifIntegRecId", ifIntegRecId);
+      // Show or hide the date field
+      var dateField = rec.getField({ fieldId: 'custbody13' });
+      if (dateField) {
+        dateField.isDisplay = checkbox;
+      }
+    } catch (error) {
+      alert("Error in Field Change:" + error.message);
+    }
+  }
 
-                //calling of buildPBDInventoryJSON function
-                var pbdInventoryDetails = buildPBDInventoryJSON(savedSearchId, ifIntegRecId);
-                log.debug("In Main Function",pbdInventoryDetails);
-                if(pbdInventoryDetails.errorCode != 200)
-                {
-                    log.error("Error received from PBD",pbdInventoryDetails.errorMessage);
-                }
-                
-
-            } catch (e) {
-                log.error("Error in main funcion " + e);
-            }
-        }
-
-        //Build PBD Inventory JSON Function
-        function buildPBDInventoryJSON(savedSearchId, ifIntegRecId) {
-            try {
-                log.debug("Starting buildPBDInventoryJSON");
-                log.debug("Saved Search ID", savedSearchId);
-                log.debug("Integration Record ID", ifIntegRecId);
-
-                //Integration credential record
-                const creds = search.lookupFields({
-                    type: "customrecord_ada_integration_credentials",
-                    id: ifIntegRecId,
-                    columns: ["custrecord_ada_url", "custrecord_ada_client_secret", "custrecord_ada_client_id"]
-                });
-                log.debug("Integration Credentials Retrieved", JSON.stringify(creds));
-
-                //GET Inventory URL 
-                var fullUrl = creds.custrecord_ada_url + "&itemCode=";
-                var inventoryDetails = [];
-
-                //Loading saved search
-               /* var searchLoad = search.load({ id: savedSearchId });
-                var searchResults = searchLoad.run().getRange({ start: 0, end: 1000 });
-                log.debug("Total Search Results Retrieved", searchResults.length);                
-
-                //Looping through search results
-                for (var i = 0; i < searchResults.length; i++)
-                {
-                    var itemId = searchResults[i].getValue({ name: 'internalid' });
-                    var itemName = searchResults[i].getValue({ name: 'itemid' });
-                    var customRecordInternalId = searchResults[i].getValue({
-                        name: "internalid",
-                        join: "CUSTRECORD_ADA_PBDINV_ITEM_LINK"
-                    });                    
-                    var inventoryDetailsObj = {
-                        itemId:itemId,
-                        itemName: itemName,
-                        pbdOnHandInvCustRecId: customRecordInternalId,
-                        pbdOnHandQuantity:"",
-                        updatedByPBD:false
-                    };
-                
-                    inventoryDetails.push(inventoryDetailsObj);
-                    //looping to include all items in the URL
-                    fullUrl += encodeURIComponent(itemName) + ",";
-                    //log.debug("Processed Item", JSON.stringify(itemObj));                   
-                 
-                }*/
-                log.debug("Final URL After Processing", fullUrl);
-                log.debug("Final Item Object", inventoryDetails);
-                //Trigger part
-                var response = https.request({
-                    method: https.Method.GET,
-                    url: fullUrl,
-                    headers: {
-                        client_id: creds.custrecord_ada_client_id,
-                        client_secret: creds.custrecord_ada_client_secret,
-                        Accept: "application/json"
-                    }
-                });
-                log.debug("Mulesoft Response Code", response.code);
-                log.debug("Mulesoft Response", response);
-                var responseBody = JSON.parse(response.body);
-                //log.debug("Parsed Response Body", JSON.stringify(responseBody));                   
-                if( response.code == 200)
-                {
-                    //response body                    
-                    log.debug("Parsed Response Body", JSON.stringify(responseBody));                   
-
-                    //Response body item details 
-                    /*var detailLines = responseBody.result.details.detailLine;
-                    log.debug("Extracted Detail Lines", JSON.stringify(detailLines));
-                    var itemCode; 
-                    for (var j = 0; j < detailLines.length; j++) {
-                        itemCode =  detailLines[j].itemCode;
-                        //log.debug("detailLines[j].itemCode",detailLines[j].itemCode);
-                        
-                        var foundInvObjIndex = inventoryDetails.findIndex(i => i.itemName === itemCode);
-                        if(foundInvObjIndex >= 0)
-                        {
-                            //log.debug("Found Item Object Index: ",foundInvObjIndex);
-                            inventoryDetails[foundInvObjIndex].pbdOnHandQuantity=detailLines[j].quantityOnHand;
-                            inventoryDetails[foundInvObjIndex].updatedByPBD=true;
-                            //log.debug("Updated Inventory Detail Object : ",inventoryDetails[foundInvObjIndex]);
-                        }
-    
-                    } 
-                    log.debug("Update Final Inventory Details Object", inventoryDetails); 
-                    return {  
-                        errorCode : response.code,                      
-                        inventoryDetails : inventoryDetails
-                    }; */
-
-                } 
-                else{
-                    return { 
-                        status:responseBody.status,
-                        errorCode : responseBody.errors[0].errorCode,
-                        errorMessage :responseBody.errors[0].errorMessage,                        
-                        inventoryDetails : inventoryDetails                        
-                    };
-                    
-
-                }              
-                    
-            } catch (error) {
-                log.error("Error in buildPBDInventoryJSON", error);
-            }
-        }
-        
-        return {
-            execute: execute
-        };
-    });
+  return {
+    fieldChanged: fieldChanged
+  };
+});
