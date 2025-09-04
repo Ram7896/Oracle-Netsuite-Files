@@ -1,25 +1,194 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType ClientScript
+ * @NScriptType UserEventScript
+ * @NModuleScope SameAccount
+ *
+ * @ScriptId         customscript_ue_rma_to_so_creator
+ * @DeploymentId     customdeploy_ue_rma_to_so_creator
+ *
+ * @Description      This script automatically creates a Sales Order when a Return Authorization (RMA)
+ * is approved (status changes from 'Pending Approval' to 'Pending Receipt').
+ * It stores a link to the new SO on the RMA to provide traceability and prevent duplicates.
+ *
+ * @LastModified     30 Jul 2025
+ * @Author           Sathish (Experienced NetSuite Architect)
  */
-define(['N/currentRecord'], function (currentRecord) {
+define(['N/record', 'N/log', 'N/runtime'], (record, log, runtime) => {
 
-  function fieldChanged(context) {
-    try {
-      var rec = context.currentRecord;
-      var checkbox = rec.getValue({ fieldId: 'custbody12' });
+    /**
+     * Defines the constants used in the script.
+     * Using a constants object is a best practice for maintainability.
+     */
+    const CONSTANTS = {
+        RMA_STATUS_PENDING_APPROVAL: 'A', // Internal ID for 'Pending Approval'
+        RMA_STATUS_PENDING_RECEIPT: 'B',  // Internal ID for 'Pending Receipt'
+        SO_CUSTOM_FORM_ID: '264',         // The internal ID of the custom Sales Order form.
+        SO_ORDER_TYPE_VALUE: 'RMA',       // The value to set for the Order Type field.
+        CUSTOM_FIELDS: {
+            RMA: {
+                // This field is ON the RMA and will store the newly created Sales Order ID.
+                LINKED_SALES_ORDER: 'custbody_created_from_rma'
+            },
+            SALES_ORDER: {
+                // This field is ON the Sales Order and will store the source RMA ID.
+                LINKED_RMA: 'custbody_linked_rma',
+                // This field on the Sales Order will be set to 'RMA'.
+                ORDER_TYPE: 'custbody_order_type'
+            }
+        }
+    };
 
-      // Show or hide the date field
-      var dateField = rec.getField({ fieldId: 'custbody13' });
-      if (dateField) {
-        dateField.isDisplay = checkbox;
-      }
-    } catch (error) {
-      alert("Error in Field Change:" + error.message);
-    }
-  }
+    /**
+     * The main function that executes after a record is submitted.
+     * @param {Object} context - The context object provided by the NetSuite platform.
+     */
+    const afterSubmit = (context) => {
+        // 1. --- SCRIPT EXECUTION GUARD CLAUSES ---
+        if (context.type !== context.UserEventType.EDIT &&
+            context.type !== context.UserEventType.XEDIT &&
+            context.type !== context.UserEventType.APPROVE) {
+            log.debug('Exiting Script', `Execution context '${context.type}' is not 'edit', 'xedit', or 'approve'. No action taken.`);
+            return;
+        }
 
-  return {
-    fieldChanged: fieldChanged
-  };
+        const newRecord = context.newRecord;
+        const rmaId = newRecord.id;
+
+        try {
+            const linkedSOId = newRecord.getValue({ fieldId: CONSTANTS.CUSTOM_FIELDS.RMA.LINKED_SALES_ORDER });
+            let shouldCreateSO = false;
+
+            if (context.type === context.UserEventType.APPROVE && !linkedSOId) {
+                log.debug('Triggered by Approve Context', `RMA ID: ${rmaId}`);
+                shouldCreateSO = true;
+            } else if ((context.type === context.UserEventType.EDIT || context.type === context.UserEventType.XEDIT) && !linkedSOId) {
+                const oldRecord = context.oldRecord;
+                const newStatus = newRecord.getValue({ fieldId: 'orderstatus' });
+                const oldStatus = oldRecord ? oldRecord.getValue({ fieldId: 'orderstatus' }) : null;
+                log.debug(`Triggered by ${context.type} Context`, `Old Status: ${oldStatus}, New Status: ${newStatus}`);
+                if (newStatus === CONSTANTS.RMA_STATUS_PENDING_RECEIPT && oldStatus === CONSTANTS.RMA_STATUS_PENDING_APPROVAL) {
+                    shouldCreateSO = true;
+                }
+            }
+
+            if (shouldCreateSO) {
+                log.audit(`Approval Condition Met`, `RMA ID: ${rmaId} is approved. Initiating Sales Order creation.`);
+                createSalesOrderFromRMA(newRecord);
+            } else {
+                log.debug('Condition Not Met', `No action taken for RMA ID: ${rmaId}.`);
+            }
+
+        } catch (e) {
+            log.error({
+                title: `Error processing RMA ID: ${rmaId}`,
+                details: e.message + ' | Stack: ' + e.stack
+            });
+        }
+    };
+
+    /**
+     * Handles the creation of the Sales Order by manually creating and copying data from the RMA.
+     * @param {record.Record} rmaRecord - The source RMA record object.
+     */
+    const createSalesOrderFromRMA = (rmaRecord) => {
+        const rmaId = rmaRecord.id;
+
+        try {
+            // **ENHANCEMENT:** Set the custom form ID during record creation.
+            const soRecord = record.create({
+                type: record.Type.SALES_ORDER,
+                isDynamic: true,
+                defaultValues: {
+                    entity: rmaRecord.getValue('entity'),
+                    customform: CONSTANTS.SO_CUSTOM_FORM_ID
+                }
+            });
+
+            // --- Set Header Fields ---
+            
+            soRecord.setValue({ fieldId: 'entity', value: rmaRecord.getValue('entity') });
+            soRecord.setValue({ fieldId: 'subsidiary', value: rmaRecord.getValue('subsidiary') });
+            soRecord.setValue({ fieldId: CONSTANTS.CUSTOM_FIELDS.SALES_ORDER.LINKED_RMA, value: rmaId });
+            // soRecord.setValue({ fieldId: 'memo', value: `Created from RMA #${rmaId}` });
+            
+            // **ENHANCEMENT:** Set the Order Type field.
+            soRecord.setValue({ fieldId: CONSTANTS.CUSTOM_FIELDS.SALES_ORDER.ORDER_TYPE, value: CONSTANTS.SO_ORDER_TYPE_VALUE });
+
+			const headerLocation = rmaRecord.getValue('location');
+            if (headerLocation) {
+                 soRecord.setValue({ fieldId: 'location', value: headerLocation });
+            }
+            
+            // --- Copy Line Items ---
+            const lineCount = rmaRecord.getLineCount({ sublistId: 'item' });
+            for (let i = 0; i < lineCount; i++) {
+                soRecord.selectNewLine({ sublistId: 'item' });
+
+                const lineLocation = rmaRecord.getSublistValue({ sublistId: 'item', fieldId: 'location', line: i });
+                const locationToSet = lineLocation || headerLocation;
+
+                // if (!locationToSet) {
+                    // throw new Error(`Cannot create Sales Order: Location is missing for item on line ${i + 1} and there is no fallback Location in the RMA header. Please correct the RMA data.`);
+                // }
+				
+				// soRecord.setCurrentSublistValue({
+                    // sublistId: 'item',
+                    // fieldId: 'location',
+                    // value: locationToSet
+                // });
+
+                soRecord.setCurrentSublistValue({
+                    sublistId: 'item',
+                    fieldId: 'item',
+                    value: rmaRecord.getSublistValue({ sublistId: 'item', fieldId: 'item', line: i })
+                });
+
+                soRecord.setCurrentSublistValue({
+                    sublistId: 'item',
+                    fieldId: 'quantity',
+                    value: rmaRecord.getSublistValue({ sublistId: 'item', fieldId: 'quantity', line: i })
+                });
+
+                soRecord.setCurrentSublistValue({
+                    sublistId: 'item',
+                    fieldId: 'rate',
+                    value: rmaRecord.getSublistValue({ sublistId: 'item', fieldId: 'rate', line: i })
+                });
+                
+                
+
+                soRecord.commitLine({ sublistId: 'item' });
+            }
+
+            const soId = soRecord.save({
+                enableSourcing: true,
+                ignoreMandatoryFields: false
+            });
+
+            log.audit({
+                title: 'Sales Order Created Successfully',
+                details: `Created SO ID: ${soId} from RMA ID: ${rmaId}`
+            });
+
+            // --- Update the RMA to Prevent Duplicates ---
+            record.submitFields({
+                type: record.Type.RETURN_AUTHORIZATION,
+                id: rmaId,
+                values: {
+                    [CONSTANTS.CUSTOM_FIELDS.RMA.LINKED_SALES_ORDER]: soId
+                },
+                options: {
+                    enableSourcing: false,
+                    ignoreMandatoryFields: true
+                }
+            });
+
+        } catch (e) {
+            throw new Error(`Failed during Sales Order creation or save: ${e.message}`);
+        }
+    };
+
+    return {
+        afterSubmit: afterSubmit
+    };
 });
