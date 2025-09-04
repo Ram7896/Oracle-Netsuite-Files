@@ -192,3 +192,31 @@ define(['N/record', 'N/log', 'N/runtime'], (record, log, runtime) => {
         afterSubmit: afterSubmit
     };
 });
+
+
+
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
+define(['N/currentRecord'], (currentRecord) => {
+
+    function saveRecord(context) {
+        var rec = currentRecord.get();
+        var status = rec.getValue({ fieldId: 'orderstatus' }); // Sales Order status
+        var memo = rec.getValue({ fieldId: 'memo' });
+
+        // Restrict only if user is trying to Close Order
+        if (status === 'Closed' && (!memo || memo.trim() === '')) {
+            alert('Please enter Memo before closing this order.');
+            return false; // prevent saving/closing
+        }
+        return true;
+    }
+
+    return {
+        saveRecord
+    };
+});
+
