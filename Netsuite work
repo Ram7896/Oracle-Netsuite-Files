@@ -1,94 +1,39 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType UserEventScript
- */
-define(['N/record'], function (record) {
-    function beforeLoad_addButton(scriptContext) {
-        try {
-            if (scriptContext.type === 'view') {
-                var form = scriptContext.form;
-                var recordObj = scriptContext.newRecord;
-                var status = recordObj.getValue({
-                    fieldId: 'status'
-                });
-                log.debug("Status:", status);
-                if (status === "Pending Fulfillment") {
-                    form.addButton({
-                        id: 'custpage_buttonid',
-                        label: 'Plose',
-                        functionName: 'clientButton()'
-                    });
-
-                    form.clientScriptModulePath = 'SuiteScripts/ClientScripttaskexample.js';
-                }
-            }
-        } catch (error) {
-            log.debug("Error in Before Load Function:", error.message);
-        }
-    }
-    return {
-        beforeLoad: beforeLoad_addButton
-    }
-});
-
-/**
- * @NApiVersion 2.1
  * @NScriptType ClientScript
  */
-define(['N/currentRecord', 'N/search', 'N/record'], function (currentRecord, search, record) {
+define([], () => {
 
-    function pageInit(context) {
-    }
-
-    function clientButton() {
+    function fieldChanged(context) {
         try {
-            alert('submit button triggered');
+            const rec = context.currentRecord;
+            const fieldId = context.fieldId;
 
-            var recordobj = currentRecord.get();
-            var soId = recordobj.id;
+            // Example: checkbox -> related text field mapping
+            const mapping = {
+                custpage_checkbox1: { textField: 'custpage_text1', value: 'Value 1' },
+                custpage_checkbox2: { textField: 'custpage_text2', value: 'Value 2' },
+                custpage_checkbox3: { textField: 'custpage_text3', value: 'Value 3' },
+                custpage_checkbox4: { textField: 'custpage_text4', value: 'Value 4' }
+            };
 
-            var fieldLookUp = search.lookupFields({
-                type: search.Type.SALES_ORDER,
-                id: soId,
-                columns: ['memo']
-            });
+            if (mapping[fieldId]) {
+                let checkboxValue = rec.getValue({ fieldId });
+                let textFieldId = mapping[fieldId].textField;
+                let setValue = checkboxValue ? mapping[fieldId].value : ''; // clear if unchecked
 
-            var memoValue = fieldLookUp.memo;
-
-            if (!memoValue || memoValue.trim() === '') {
-                alert('Enter value for memo field');
-            } else {
-                alert("else triggered");
-
-                var rec = record.load({
-                    type: record.Type.SALES_ORDER,
-                    id: soId,
-                    isDynamic: false
+                rec.setValue({
+                    fieldId: textFieldId,
+                    value: setValue
                 });
-
-                var lineCount = rec.getLineCount({ sublistId: 'item' });
-
-                for (var i = 0; i < lineCount; i++) {
-                    rec.setSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'isclosed',
-                        line: i,
-                        value: true
-                    });
-                }
-
-                rec.save();
-                location.reload();
             }
-        } catch (error) {
-            alert("Error in Client Button:" + error.message);
+
+        } catch (e) {
+            console.log('Error in fieldChanged: ', e.message);
         }
     }
+
     return {
-        pageInit: pageInit,
-        clientButton: clientButton
+        fieldChanged
     };
 });
-/**
- * This script automates the close order process in so and Po
- */
