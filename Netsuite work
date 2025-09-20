@@ -1,1 +1,24 @@
+<!-- Header Section -->
+<h2 style="margin-bottom:15px;">1.&nbsp;&nbsp;&nbsp;AUTOMATIC ENTRY DOOR</h2>
+
+<!-- Header Info with Logo -->
+<table class="headerTable" style="width:100%; border:0.5px solid #000; border-collapse:collapse; margin-top:10px; margin-bottom:10px;">
+  <tr>
+    <td class="label" style="width:25%;">Company</td>
+    <td class="label" style="width:25%;">Technician Name</td>
+    <td style="width:50%;">${technician.name}</td>
+  </tr>
+  <tr style="vertical-align: middle; height:80px;">
+    <td style="text-align:center; border:0.5px solid #000; padding:4px;">
+      <img src="${subsidiary.pagelogo@url}" style="max-width:100%; max-height:70px; object-fit:contain;" />
+    </td>
+    <td class="label">Store Name</td>
+    <td>${store.name}</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td class="label">Date of Service</td>
+    <td>${case.startdate?string("dd/MM/yyyy")}</td>
+  </tr>
+</table>
 
