@@ -6,13 +6,12 @@
       body {
         font-family: Arial, Helvetica, sans-serif;
         font-size: 10pt;
-        font-weight: normal;
+        font-weight: normal
       }
-
+      
       .headerTable {
-        width: 100%;
-        table-layout: fixed;
-        border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
       }
 
       h1 {
@@ -21,81 +20,69 @@
         text-decoration: underline;
         margin-bottom: 10px;
       }
-
       table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
+       width:130%; 
+       border-collapse:collapse; 
+       margin-bottom:10px;
       }
-
       th, td {
-        width: 25%;
-        font-weight: bold;
-        padding: 4px;
-        border: 0.5px solid #ccc;
+       width:25%; 
+       font-weight:bold;
+       padding:4px;
       }
-
       th {
         background-color: #EEE;
         text-align: center;
         font-weight: bold;
+         border:0.5px; 
       }
-
+      td{
+        padding: 4px;
+      }
       td.label {
         width: 25%;
-        font-weight: bold;
+        font-weight: bold; 
         background-color: #f5f5f5;
       }
-
       .headerTable td {
         border: none;
         font-size: 10pt;
         padding: 4px;
-        font-weight: normal;
+        border:0.5px; 
+        font-weight: normal
       }
-
       .logoCell {
         text-align: center;
         vertical-align: middle;
         height: 50px;
       }
-
-      .checklistTable {
+      .checklistTable{
         table-layout: fixed;
       }
-
       .checklistTable th {
         background-color: #d3d3d3;
       }
-
-      .headerTable.label {
+      .headerTable.label{
         background-color: #d3d3d3;
       }
-
       .signatureTable td {
         height: 35px;
       }
-
-      table.footer td {
-        font-size: 10pt;
-        font-weight: normal;
-        text-transform: none;
-      }
     </style>
-
     <macrolist>
-      <macro id="ai_footer">
-        <table align="left" class="footer" width="100%">
-          <tr>
-            <td align="center">Page <pagenumber /> of <totalpages /></td>
-          </tr>
-        </table>
-      </macro>
-    </macrolist>
+    <macro id="ai_footer">
+				<table align="left" class="footer">
+					<tr>
+						<td align="center">Page <pagenumber /> of <totalpages /></td>
+					</tr>
+				</table>
+			</macro>
+		</macrolist>
   </head>
 
   <body font-size="8" font-family="Helvetica">
 
+   <!-- Appendix A Section -->
     <h2>Appendix A – Preventative Maintenance – Scope of Works</h2>
     <p>
       Specified Preventative Maintenance scope of works should be completed to the contracted frequencies.
@@ -105,25 +92,25 @@
     </p>
     <br/>
 
-    <h2 style="margin-bottom:15px;">1.&nbsp;&nbsp;&nbsp;AUTOMATIC ENTRY DOOR</h2>
+    <!-- Header Section -->
+<h2 style="margin-bottom:15px;">1.&nbsp;&nbsp;&nbsp;AUTOMATIC ENTRY DOOR</h2>
 
     <!-- Header Info with Logo -->
     <table class="headerTable">
-      <tr>
+       <tr class="row">
         <td class="label">Company</td>
-        <td colspan="2"><img src="${subsidiary.pagelogo@url}" width="210px" height="40px" /></td>
-      </tr>
-      <tr>
         <td class="label">Technician Name</td>
-        <td colspan="2">${technician.name}</td>
+        <td>${technician.name}</td>
       </tr>
-      <tr>
+      <tr class = "row" style="vertical-align: middle;">
+      <td><img src="${subsidiary.pagelogo@url}" width="210px" height="40px"/></td>
         <td class="label">Store Name</td>
-        <td colspan="2">${store.name}</td>
+        <td>${store.name}</td>
       </tr>
       <tr>
+      <td></td>
         <td class="label">Date of Service</td>
-        <td colspan="2">${case.startdate}</td>
+        <td>${case.startdate}</td>
       </tr>
     </table>
 
@@ -142,30 +129,97 @@
 
     <!-- Checklist -->
     <table class="headerTable">
+    <tr class="headerTable">
+    <th>Task</th>
+    <th colspan="4">Complete ( ✓ / X)</th>
+    </tr>
+     <tr>
+    <td></td>
+    <td class="label"><b>Door 1 
+    Outer 
+    Entry/Exit Door</b>
+    </td>
+    <td class="label"><b>Door 2 
+    Inner Entry 
+    Door</b>
+    </td>
+    <td class="label"><b>Door 3 
+    Inner Exit 
+    Door</b>
+    </td>
+    <td class="label"><b>Door 4 (if applicable) 
+    Outer Exit 
+    Door</b>
+    </td>
+     </tr>
       <tr>
-        <th>Task</th>
-        <th>Door 1<br/>Outer Entry/Exit Door</th>
-        <th>Door 2<br/>Inner Entry Door</th>
-        <th>Door 3<br/>Inner Exit Door</th>
-        <th>Door 4 (if applicable)<br/>Outer Exit Door</th>
+        <td>Check condition of brush/rubber seals</td>
+        <td></td><td></td><td></td><td></td>
       </tr>
-      <tr><td>Check condition of brush/rubber seals</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check and adjust door guides</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check brake distance open/close</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check door alignment</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check door clearances</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check that covers are secured</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check door leaves and sidelights and adjust as required</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check the integrity of the holding point fixings</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check all moving parts for signs of wear</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check electrical components and replace if necessary</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Test electric locking system</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check motor and gearbox function and operation</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check anti crush operation and make sure door opens correctly</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check the failsafe mechanism/inverter system</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check microcomputer control unit and adjust if necessary</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Check alignment and tune the photo electric beams and activation sensors</td><td></td><td></td><td></td><td></td></tr>
-      <tr><td>Test emergency opening under power failure conditions and adjust if necessary</td><td></td><td></td><td></td><td></td></tr>
+      <tr>
+        <td>Check and adjust door guides</td>
+        <td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+        <td>Check brake distance open/close</td>
+        <td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+        <td>Check door alignment</td>
+        <td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+        <td>Check door clearances</td>
+        <td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+    <td>Check that covers are secured</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check door leaves and sidelights and adjust as required</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check the integrity of the holding point fixings</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check all moving parts for signs of wear</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check electrical components and replace if necessary</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Test electric locking system</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check motor and gearbox function and operation</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check anti crush operation and make sure door opens correctly</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check the failsafe mechanism/inverter system</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check microcomputer control unit and adjust if necessary</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Check alignment and tune the photo electric beams and activation sensors</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
+  <tr>
+    <td>Test emergency opening under power failure conditions and adjust if necessary</td>
+    <td></td><td></td><td></td><td></td>
+  </tr>
     </table>
 
     <!-- Additional Comments -->
@@ -198,9 +252,5 @@
       </tr>
     </table>
 
-    <!-- Footer Macro Call -->
-    <macro id="ai_footer"/>
-    
   </body>
 </pdf>
-
