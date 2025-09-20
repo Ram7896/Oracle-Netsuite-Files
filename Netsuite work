@@ -1,1 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+  <head>
+    <macrolist>
+      <macro id="pageFooter">
+        <p align="center">Page <pagenumber/> of <totalpages/></p>
+      </macro>
+    </macrolist>
+  </head>
+
+  <body font-size="9" font-family="Helvetica">
+
+    <!-- Appendix A Section -->
+    <h2 align="center">Appendix A – Preventative Maintenance – Scope of Works</h2>
+    <p>
+      Specified Preventative Maintenance scope of works should be completed to the contracted frequencies.
+      The scope of works for each asset is contained within the appropriate Preventative Maintenance checklist below.
+      Please ensure the below checklists are completed alongside each Preventative Maintenance service, signed,
+      and provided with the invoice as per Special Condition Section 15.6.
+    </p>
+    <br/>
+
+    <!-- Header Section -->
+    <table width="100%" border="0" cellpadding="4">
+      <tr>
+        <td width="50%"><b>Company</b></td>
+        <td width="50%">${companyName}</td>
+      </tr>
+      <tr>
+        <td width="50%"><b>Company Logo &amp; Name to be entered</b></td>
+        <td width="50%">${logo}</td>
+      </tr>
+      <tr>
+        <td width="50%"><b>Store Name</b></td>
+        <td width="50%">${storeName}</td>
+      </tr>
+      <tr>
+        <td width="50%"><b>Date of Service</b></td>
+        <td width="50%">${dateOfService}</td>
+      </tr>
+    </table>
+    <br/>
+
+    <!-- General Instructions -->
+    <table width="100%" border="1" cellpadding="4">
+      <tr>
+        <td background-color="#f2f2f2"><b>General Items</b></td>
+      </tr>
+      <tr>
+        <td>
+          When arriving to/ departing from site the technician must sign into Rapid Global or equivalent ALDI Contractor Management System (CMS).<br/>
+          The technician must check into ServiceChannel and then checkout upon completion.<br/>
+          Enquire with staff as to performance of system and any specific issues that need attention.<br/>
+          Record and notify store staff of any issues that need to be addressed.
+        </td>
+      </tr>
+    </table>
+    <br/>
+
+    <!-- Checklist Table -->
+    <table width="100%" border="1" cellpadding="4" style="table-layout:fixed;">
+      <tr>
+        <td width="40%"><b>Task</b></td>
+        <td width="15%"><b>Door 1 Outer Entry/Exit Door</b></td>
+        <td width="15%"><b>Door 2 Inner Entry Door</b></td>
+        <td width="15%"><b>Door 3 Inner Exit Door</b></td>
+        <td width="15%"><b>Door 4 (if applicable) Outer Exit Door</b></td>
+      </tr>
+
+      <tr><td>Check condition of brush/rubber seals</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check and adjust door guides</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check brake distance open/close</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check door alignment</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check door clearances</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check that covers are secured</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check door leaves and sidelights and adjust as required</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check the integrity of the holding point fixings</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check all moving parts for signs of wear</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check electrical components and replace if necessary</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Test electric locking system</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check motor and gearbox function and operation</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check anti crush operation and make sure door opens correctly</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check the failsafe mechanism/inverter system</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check microcomputer control unit and adjust if necessary</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check alignment and tune the photo electric beams and activation sensors</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Test emergency opening under power failure conditions and adjust if necessary</td><td></td><td></td><td></td><td></td></tr>
+    </table>
+    <p align="center">Page 8 of 14</p>
+
+    <!-- Second Page Checklist -->
+    <table width="100%" border="1" cellpadding="4" style="table-layout:fixed;">
+      <tr><td>Check for loose or damaged glass</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Tighten all loose nuts, bolts and electrical terminations</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check power supply, check battery condition and record voltage V:</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Record date that is on the batteries - photographic evidence to be provided.</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check and secure wiring</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Clean track and check bottom guide rail condition and security</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Clean track wheels</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check for finger, head and body traps as per AS5007</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Clean area</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check for any gaps that would allow ingress of vermin (including underneath each door)</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Ensure the new service sticker is attached with correct dates</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Document any damage to the door itself</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Review the date of the last battery replacement. If the battery is approaching or exceeds two years, it must be replaced prior to testing. Ensure the new battery is clearly marked with the date of installation</td><td></td><td></td><td></td><td></td></tr>
+    </table>
+
+    <!-- NSW Section -->
+    <p><b>NSW stores only</b></p>
+    <table width="100%" border="1" cellpadding="4">
+      <tr><td>Power Failure Testing: Set the doors to "Auto" mode. Disconnect power to the motor and confirm that all doors open automatically</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Restore power to the motor and set the doors to "lock" mode. Check all doors open upon manual activation of green push button</td><td></td><td></td><td></td><td></td></tr>
+    </table>
+
+    <!-- Comments Section -->
+    <p><b>Additional Comments</b></p>
+    <table width="100%" border="1" height="60">
+      <tr><td></td></tr>
+    </table>
+
+    <!-- Signatures -->
+    <br/>
+    <table width="100%" border="1" cellpadding="4">
+      <tr>
+        <td width="50%">Store Manager Signature</td>
+        <td width="50%"></td>
+      </tr>
+      <tr>
+        <td width="50%">Technician Signature</td>
+        <td width="50%"></td>
+      </tr>
+    </table>
+    <p align="center">Page 9 of 14</p>
+
+    <!-- Store Stamp -->
+    <br/>
+    <table width="100%" border="1" cellpadding="4">
+      <tr>
+        <td width="30%">Store Stamp</td>
+        <td width="70%"></td>
+      </tr>
+      <tr>
+        <td width="30%">Next Service Due</td>
+        <td width="70%"></td>
+      </tr>
+    </table>
+
+  </body>
+</pdf>
 
