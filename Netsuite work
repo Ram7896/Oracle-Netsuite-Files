@@ -14,23 +14,30 @@
         margin-bottom: 10px;
       }
       table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 8px;
+       width:130%; 
+       border:0.5px solid #000; 
+       border-collapse:collapse; 
+       margin-bottom:10px;
       }
       th, td {
-        border: 0.5px solid #999;
-        padding: 5px;
-        font-size: 9pt;
+       width:25%; 
+       font-weight:bold; 
+       border:0.5px solid #000; 
+       padding:4px;
       }
       th {
         background-color: #EEE;
         text-align: center;
         font-weight: bold;
       }
+      td{
+        padding: 4px; 
+        border-bottom: 1px solid #00
+      }
       td.label {
         width: 25%;
         font-weight: bold;
+        border:0.5px solid #000; 
         background-color: #f5f5f5;
       }
       .headerTable td {
@@ -52,24 +59,37 @@
     </style>
   </head>
 
-  <body size="A4" margin="0.5in">
+  <body font-size="8" font-family="Helvetica">
 
-    <!-- Title -->
-    <h1>Automatic Entry Door - Service Checklist</h1>
+   <!-- Appendix A Section -->
+    <h2>Appendix A – Preventative Maintenance – Scope of Works</h2>
+    <p>
+      Specified Preventative Maintenance scope of works should be completed to the contracted frequencies.
+      The scope of works for each asset is contained within the appropriate Preventative Maintenance checklist below.
+      Please ensure the below checklists are completed alongside each Preventative Maintenance service, signed,
+      and provided with the invoice as per Special Condition Section 15.6.
+    </p>
+    <br/>
+
+    <!-- Header Section -->
+    <h2>1.&#160;&#160;&#160;AUTOMATIC ENTRY DOOR</h2>
 
     <!-- Header Info with Logo -->
     <table class="headerTable">
-      <tr>
+       <tr>
         <td class="label">Company</td>
-        <td><img src="${subsidiary.pagelogo@url}" width="120" height="40"/></td>
         <td class="label">Technician Name</td>
         <td>${technician.name}</td>
       </tr>
-      <tr>
+      <tr style="vertical-align: middle;">
+      <td><img src="${subsidiary.pagelogo@url}" width="130px" height="90px" padding="0px" margin="0px" display="block"/></td>
         <td class="label">Store Name</td>
         <td>${store.name}</td>
+      </tr>
+      <tr>
+      <td></td>
         <td class="label">Date of Service</td>
-        <td>${case.startdate?string("dd-MMM-yyyy")}</td>
+        <td>${case.startdate}</td>
       </tr>
     </table>
 
@@ -145,24 +165,3 @@
 
   </body>
 </pdf>
-
-
-
-<table style="width:100%; border:0.5px solid #000; border-collapse:collapse; margin-bottom:10px;">
-  <tr>
-    <td style="width:25%; font-weight:bold; border:0.5px solid #000; padding:6px;">Company</td>
-    <td style="width:25%; border:0.5px solid #000; padding:6px;">
-      <img src="${subsidiary.pagelogo@url}" width="100" height="30"/><br/>
-      ${subsidiary.name}
-    </td>
-    <td style="width:25%; font-weight:bold; border:0.5px solid #000; padding:6px;">Technician Name</td>
-    <td style="width:25%; border:0.5px solid #000; padding:6px;">${technician.name}</td>
-  </tr>
-  <tr>
-    <td style="font-weight:bold; border:0.5px solid #000; padding:6px;">Store Name</td>
-    <td style="border:0.5px solid #000; padding:6px;">${store.name}</td>
-    <td style="font-weight:bold; border:0.5px solid #000; padding:6px;">Date of Service</td>
-    <td style="border:0.5px solid #000; padding:6px;">${case.startdate?string("dd-MMM-yyyy")}</td>
-  </tr>
-</table>
-
