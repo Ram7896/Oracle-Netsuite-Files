@@ -1,1 +1,193 @@
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+  <head>
+    <style>
+      /* basic fonts and page styles */
+      body { font-family: Arial, Helvetica, sans-serif; font-size:10pt; }
+      table { table-layout: fixed; width: 100%; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; }
+      th, td { padding: 4px; vertical-align: top; font-size:9pt; }
+      h1 { font-size:12pt; text-transform:uppercase; text-decoration:underline; margin:0 0 8px 0; }
+      hr { height:1px; background-color:#d3d3d3; border:none; margin:6px 0; }
+
+      /* header/footer */
+      table.header { font-size:8pt; width:100%; }
+      table.footer { font-size:9pt; width:100%; }
+
+      /* custom blocks */
+      table.projHeader { background:#EEE; padding:6px; font-size:10pt; }
+      table.doorDetails { background:#F7F7F7; font-size:10pt; margin:6px 0; }
+      table.checklist { font-size:8pt; border: 0.5px solid #CCC; margin:6px 0; }
+      table.partsUsed { font-size:10pt; margin:6px 0; }
+      table.additionalNotes { font-size:10pt; margin:6px 0; page-break-inside: avoid; }
+
+      .small { font-size:8pt; }
+      .center { text-align:center; }
+      .right { text-align:right; }
+      .bold { font-weight:bold; }
+    </style>
+
+    <macrolist>
+      <!-- page header macro -->
+      <macro id="ai_header">
+        <table class="header">
+          <tr>
+            <td style="width:60%;">
+              <!-- Logo: replace src with your logo url or inline resource -->
+              <img src="${company.logo_url}" width="220px" height="40px" style="float:left; margin:0; padding:0;" />
+            </td>
+            <td style="width:40%; text-align:right;">
+              <div class="small bold">Company Name Here</div>
+              <div class="small">ABN: 00 000 000 000</div>
+              <div class="small">Email: info@company.com</div>
+              <div class="small">Phone: 1300 000 000</div>
+            </td>
+          </tr>
+        </table>
+        <hr/>
+        <table class="page_title" style="width:100%; margin-top:4px;">
+          <tr>
+            <td style="font-size:14pt; font-weight:bold;">${project.title?if_exists}</td>
+            <td style="text-align:right; font-size:12pt;">#${case.number?if_exists}</td>
+          </tr>
+          <tr>
+            <td class="small">${project.subtitle?if_exists}</td>
+            <td class="small right">${case.date?string("yyyy-MM-dd")}</td>
+          </tr>
+        </table>
+      </macro>
+
+      <!-- page footer macro -->
+      <macro id="ai_footer">
+        <table class="footer">
+          <tr>
+            <td style="width:33%;">Page <pagenumber/> of <totalpages/></td>
+            <td style="width:34%; text-align:center;">Think of Us Automatically</td>
+            <td style="width:33%; text-align:right;">
+              <img src="${company.small_logo_url}" width="40px" height="40px" style="vertical-align:middle;" />
+            </td>
+          </tr>
+        </table>
+      </macro>
+    </macrolist>
+  </head>
+
+  <!-- body: use header/footer defined above -->
+  <body header="ai_header" header-height="18%" footer="ai_footer" footer-height="3%" padding="0.5in 0.5in 0.5in 0.5in" size="A4">
+
+    <!-- Project / Site block -->
+    <table class="projHeader">
+      <tr>
+        <td><b>Customer:</b> ${case.customer?if_exists}</td>
+        <td><b>Site:</b> ${case.site?if_exists}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><b>Address:</b> ${site.address?if_exists}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><b>Contact:</b> ${case.contact_name?if_exists} / ${case.contact_phone?if_exists}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><b>Notes:</b> ${case.notes?if_exists}</td>
+      </tr>
+    </table>
+
+    <!-- Repeatable sub-assets (e.g. doors) -->
+    <#-- Example FreeMarker-style loop; adjust to your templating system -->
+    <#list sub_assets as asset>
+      <hr />
+      <table class="doorDetails">
+        <tr>
+          <td colspan="2"><b>Serial Number:</b> ${asset.serial?if_exists}</td>
+          <td colspan="2"><b>Master Code:</b> ${asset.master_code?if_exists}</td>
+        </tr>
+        <tr>
+          <td colspan="2"><b>Make / Model:</b> ${asset.make?if_exists} / ${asset.model?if_exists}</td>
+          <td colspan="2"><b>Manufacture Date:</b> ${asset.manufacture_date?if_exists}</td>
+        </tr>
+        <tr>
+          <td colspan="4"><b>Location Onsite:</b> ${asset.location?if_exists}</td>
+        </tr>
+        <tr>
+          <td colspan="4"><b>Asset Notes:</b> ${asset.notes?if_exists}</td>
+        </tr>
+      </table>
+
+      <!-- Checklist table -->
+      <table class="checklist" border="0.5">
+        <tr>
+          <th style="width:65%;">Task</th>
+          <th style="width:10%;" class="center">Door 1</th>
+          <th style="width:10%;" class="center">Door 2</th>
+          <th style="width:15%;" class="center">Notes</th>
+        </tr>
+        <tr>
+          <td>Check condition of brush/rubber seals</td>
+          <td class="center">Y / N</td>
+          <td class="center">Y / N</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Check door alignment</td>
+          <td class="center">Y / N</td>
+          <td class="center">Y / N</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Test electric locking system</td>
+          <td class="center">Y / N</td>
+          <td class="center">Y / N</td>
+          <td></td>
+        </tr>
+        <!-- Add rows as required -->
+      </table>
+    </#list>
+
+    <!-- Additional notes block (expandable rows) -->
+    <table class="additionalNotes">
+      <tr><td><b>Work Notes (please record serial numbers for quoting):</b></td></tr>
+      <!-- generate empty rows for manual entry -->
+      <#list 1..10 as i>
+        <tr><td style="border-bottom:0.5px solid #CCC; height:12pt;"></td></tr>
+      </#list>
+    </table>
+
+    <!-- Parts Used table -->
+    <table class="partsUsed" border="0.5">
+      <tr>
+        <th style="width:15%;">Serial Number</th>
+        <th style="width:60%;">Parts Used (Description)</th>
+        <th style="width:7%;">Qty</th>
+        <th style="width:18%;">Faulty / Damaged</th>
+      </tr>
+      <#list 1..6 as r>
+        <tr>
+          <td></td><td></td><td class="center"></td><td></td>
+        </tr>
+      </#list>
+    </table>
+
+    <!-- Follow ups and signatures -->
+    <table style="margin-top:8px;">
+      <tr>
+        <td style="width:40%;"><b>Is Job Complete?</b> Yes / No</td>
+        <td style="width:60%;"><b>Follow-Up Required?</b> Quote / Return Visit / Office to Contact Customer</td>
+      </tr>
+    </table>
+
+    <table style="margin-top:12px; border-top:0.5px solid #CCC; padding-top:8px;">
+      <tr>
+        <td style="width:30%;">Arrival Time:</td>
+        <td style="width:30%;">Departure Time:</td>
+        <td style="width:40%;">Technician Name / Signature / Date</td>
+      </tr>
+      <tr>
+        <td>Customer Name:</td>
+        <td>Customer Signature:</td>
+        <td>Date:</td>
+      </tr>
+    </table>
+
+  </body>
+</pdf>
 
