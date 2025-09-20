@@ -176,17 +176,23 @@
     </table>
 
     <!-- Additional Comments -->
-    <h3>Additional Comments</h3>
-    <table>
-      <tr><td style="height:80px;"></td></tr>
-    </table>
-
+    
+<table class="headerTable" width="100%" style="margin-top:10px;">
+    <tr>
+      <td style="font-weight:bold; width:30%;">Additional Comments</td> 
+    </tr>
+    <tr>
+    <td>
+    <textarea style="width:600%;height:800%;"></textarea>
+    </td>
+    </tr>
+  </table>
     <!-- Signatures -->
     <table class="signatureTable">
       <tr>
         <td class="label">Store Manager Signature</td>
-        <td></td>
       </tr>
+      <tr style="width:100% height:90%"></tr>
       <tr>
         <td class="label">Technician Signature</td>
         <td></td>
@@ -207,4 +213,3 @@
 
   </body>
 </pdf>
-
