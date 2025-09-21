@@ -1,1 +1,13 @@
+<tr>
+  <!-- Logo cell spans 2 rows -->
+  <td rowspan="2" style="height:120px; width:220px; padding:0; margin:0; text-align:center; vertical-align:middle;">
+    <img src="${subsidiary.pagelogo@url}" style="max-width:100%; max-height:100%; object-fit:contain;"/>
+  </td>
+  <td class="label">Store Name</td>
+  <td>${store.name}</td>
+</tr>
+<tr>
+  <td class="label">Date of Service</td>
+  <td>${case.startdate}</td>
+</tr>
 
