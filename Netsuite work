@@ -1,7 +1,9 @@
 <table class="headerTable" style="width:100%; border-collapse:collapse;">
   <tr>
-    <!-- Task cell spans 2 rows -->
-    <th rowspan="2" style="text-align:center; vertical-align:middle;">Task</th>
+    <!-- Task cell spans two rows -->
+    <th rowspan="2" style="text-align:center; vertical-align:middle; font-weight:bold; padding:4px;">
+      Task
+    </th>
     <th colspan="4" style="text-align:center;">Complete ( Y / N )</th>
   </tr>
   <tr>
