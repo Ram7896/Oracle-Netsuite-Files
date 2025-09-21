@@ -1,10 +1,10 @@
 <table class="headerTable" style="width:100%; border-collapse:collapse;">
   <tr>
-    <th style="text-align:center;">Task</th>
+    <!-- Task cell spans 2 rows -->
+    <th rowspan="2" style="text-align:center; vertical-align:middle;">Task</th>
     <th colspan="4" style="text-align:center;">Complete ( Y / N )</th>
   </tr>
   <tr>
-    <td></td>
     <td class="label"><b>Door 1 Outer Entry/Exit Door</b></td>
     <td class="label"><b>Door 2 Inner Entry Door</b></td>
     <td class="label"><b>Door 3 Inner Exit Door</b></td>
