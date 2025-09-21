@@ -1,15 +1,17 @@
-<table class="headerTable" style="width:100%; border-collapse:collapse;">
-  <tr>
-    <!-- Task cell spans two rows -->
-    <th rowspan="2" style="text-align:center; vertical-align:middle; font-weight:bold; padding:4px;">
+<table class="headerTable" width="100%" style="border-collapse:collapse;">
+  <tr style="height:50px;">
+    <!-- Task cell spans 2 rows -->
+    <td rowspan="2" style="text-align:center; vertical-align:middle; font-weight:bold; border:0.5px solid #000;">
       Task
-    </th>
-    <th colspan="4" style="text-align:center;">Complete ( Y / N )</th>
+    </td>
+    <td colspan="4" style="text-align:center; vertical-align:middle; font-weight:bold; border:0.5px solid #000;">
+      Complete ( Y / N )
+    </td>
   </tr>
-  <tr>
-    <td class="label"><b>Door 1 Outer Entry/Exit Door</b></td>
-    <td class="label"><b>Door 2 Inner Entry Door</b></td>
-    <td class="label"><b>Door 3 Inner Exit Door</b></td>
-    <td class="label"><b>Door 4 (if applicable) Outer Exit Door</b></td>
+  <tr style="height:50px;">
+    <td class="label" style="text-align:center; vertical-align:middle; border:0.5px solid #000;"><b>Door 1 Outer Entry/Exit Door</b></td>
+    <td class="label" style="text-align:center; vertical-align:middle; border:0.5px solid #000;"><b>Door 2 Inner Entry Door</b></td>
+    <td class="label" style="text-align:center; vertical-align:middle; border:0.5px solid #000;"><b>Door 3 Inner Exit Door</b></td>
+    <td class="label" style="text-align:center; vertical-align:middle; border:0.5px solid #000;"><b>Door 4 (if applicable) Outer Exit Door</b></td>
   </tr>
 </table>
