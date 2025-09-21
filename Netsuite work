@@ -1,1 +1,21 @@
+<!-- Header Info with Logo -->
+<table class="headerTable">
+  <tr class="row">
+    <td class="label">Company</td>
+    <td class="label">Technician Name</td>
+    <td>${technician.name}</td>
+  </tr>
+  <tr class="row" style="vertical-align: middle;">
+    <!-- Logo spans two rows -->
+    <td rowspan="2" class="logoCell">
+      <img src="${subsidiary.pagelogo@url}" width="220px" height="100px"/>
+    </td>
+    <td class="label">Store Name</td>
+    <td>${store.name}</td>
+  </tr>
+  <tr>
+    <td class="label">Date of Service</td>
+    <td>${case.startdate}</td>
+  </tr>
+</table>
 
