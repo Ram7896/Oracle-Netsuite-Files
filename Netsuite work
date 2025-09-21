@@ -1,12 +1,13 @@
-<table class="headerTable">     
-    <tr class="headerTable">
-    <th>Task</th>   
-    <th colspan="4" style ="text-align=center;">Complete ( Y / N)</th>
-    </tr>
-      <tr>
-        <td></td>
-        <td class="label"><b>Door 1 Outer Entry/Exit Door</b></td>
-        <td class="label"><b>Door 2 Inner Entry Door</b></td>
-        <td class="label"><b>Door 3 Inner Exit Door</b></td>
-        <td class="label"><b>Door 4 (if applicable) Outer Exit Door</b></td>
-      </tr>
+<table class="headerTable" style="width:100%; border-collapse:collapse;">
+  <tr>
+    <th style="text-align:center;">Task</th>
+    <th colspan="4" style="text-align:center;">Complete ( Y / N )</th>
+  </tr>
+  <tr>
+    <td></td>
+    <td class="label"><b>Door 1 Outer Entry/Exit Door</b></td>
+    <td class="label"><b>Door 2 Inner Entry Door</b></td>
+    <td class="label"><b>Door 3 Inner Exit Door</b></td>
+    <td class="label"><b>Door 4 (if applicable) Outer Exit Door</b></td>
+  </tr>
+</table>
