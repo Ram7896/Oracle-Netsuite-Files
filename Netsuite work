@@ -1,9 +1,16 @@
-Consumer Key / Client ID
-7c714298f6f582576f682687644d130012d2e8cb9f9d9906ae31202ffc70e4b1
-Consumer Secret / Client Secret
-745f8e2e57daf6c7c6376dd01fd08706b00600d0bdc8d455372a5134e1989e6a
-
-Token Id
-ebd0d144cb8dbe5d1f060e681372e895447b475fd0d1d9edb54741c9c78bc7a5
-Token Secret
-570b9aa503b53ea14f0a7b02875823fa77595a1e712bfc003b05ce49f0c1c0e1
+{
+  "data": [
+    {
+      "companyname": "Testing restlet1",
+      "subsidiary": 11
+    },
+    {
+      "companyname": "Testing restlet2",
+      "subsidiary": 11
+    },
+    {
+      "companyname": "Testing restlet3",
+      "subsidiary": 12
+    }
+  ]
+}
