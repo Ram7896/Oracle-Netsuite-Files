@@ -1,26 +1,58 @@
-Oauth 2.0:
- 
- 
-To establish the key and certificate we need to do this process:
-set OPENSSL_CONF=C:\Program Files\OpenSSL-Win64\bin\openssl.cfg
- 
-openssl req -x509 -newkey rsa:3072 -keyout sw2021d_key.pem -out sw2021d_cert.pem -days 365 -nodes
- 
-Link:
-Win32/Win64 OpenSSL Installer for Windows - Shining Light Productions
- 
- 
-Win64 OpenSSL v3.5.1
-EXE |MSI	281MB Installer
- 
- 
-Authorization Grant:
-https://suiteanswers.custhelp.com/app/answers/detail/a_id/1020926/loc/en_US
- 
-Machine to Machine SuiteAnswer Id:
-1013484
-Win32/Win64 OpenSSL Installer for Windows - Shining Light Productions
- Consumer Key / Client ID
-0451d39dec2531ffb420c5db5920ff868071b80050a2bf12b49629cdf25f3e5d
-Consumer Secret / Client Secret
-4caa4948c39997c5f8623c54f64086cc91ea6045f2355ad1d749267d0754419c
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
+define(['N/currentRecord'], function (currentRecord) {
+
+    function pageInit(context) {
+        var rec = context.currentRecord;
+        toggleFields(rec);
+    }
+
+    function fieldChanged(context) {
+        if (context.fieldId === 'custentity_service_agent') {
+            var rec = context.currentRecord;
+            toggleFields(rec);
+        }
+    }
+
+    function toggleFields(rec) {
+        var serviceAgent = rec.getValue({ fieldId: 'custentity_service_agent' });
+        var categoryFieldId = 'custentity_category'; // Replace with actual field id
+        var cat3InternalId = 3; // replace with internalId of CAT3 in your Category list
+
+        var pricingFields = [
+            'custentity_labour_rate',
+            'custentity_callout_fee',
+            'custentity_other_fee'
+            // add all pricing field IDs
+        ];
+
+        if (serviceAgent) { // YES
+            // Force Category = CAT3
+            rec.setValue({
+                fieldId: categoryFieldId,
+                value: cat3InternalId
+            });
+
+            // Show pricing fields
+            pricingFields.forEach(function (fld) {
+                var fObj = rec.getField({ fieldId: fld });
+                if (fObj) fObj.isDisplay = true;
+            });
+        } else { // NO
+            // Keep Category untouched (assume already CAT3)
+
+            // Hide pricing fields
+            pricingFields.forEach(function (fld) {
+                var fObj = rec.getField({ fieldId: fld });
+                if (fObj) fObj.isDisplay = false;
+            });
+        }
+    }
+
+    return {
+        pageInit: pageInit,
+        fieldChanged: fieldChanged
+    };
+});
