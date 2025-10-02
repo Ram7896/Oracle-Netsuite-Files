@@ -1,58 +1,622 @@
+/*************************************************************************************************************************************
+ * Script Name			:	ADA Fonteva Item Integration
+ * Author   			:	Manchala Vaibhavi 
+ * Creation date		:	23th December 2024
+ * Company	  			:	Capgemini India
+ * Description			:	This script is used to creates and updates the Fonteva Non-Inventory Item recieved from request
+ * Change Log	  		:	||    Changed By    ||    Date     ||            Description                              ||
+                            ||    Rama Sudhakar ||    02/11/2025||  Item AvaTaxTaxcode updated                        ||
+ *************************************************************************************************************************************/
 /**
+ * RestLet to create and update Fonteva Item
  * @NApiVersion 2.1
- * @NScriptType ClientScript
+ * @NScriptType Restlet
+ * @NModuleScope SameAccount
  */
-define(['N/currentRecord'], function (currentRecord) {
 
-    function pageInit(context) {
-        var rec = context.currentRecord;
-        toggleFields(rec);
-    }
+define(["N/record", "N/search", "N/runtime", "./lib/Error Handling Library.js"],
+    function (record, search, runtime, errorLib) {
 
-    function fieldChanged(context) {
-        if (context.fieldId === 'custentity_service_agent') {
-            var rec = context.currentRecord;
-            toggleFields(rec);
+        function dopost(data) {
+            try {
+                log.debug("Request Body", data);
+
+                //From Request
+                var action = data.messageHeader.action;
+                log.debug("action in provided request is", action);
+                var event = data.messageContent.isEvent;
+                log.debug("isevent provided in request is", event);
+                var memberShip = data.messageContent.isMembership;
+                log.debug("ismembership provided request is", memberShip);
+                var exId = data.messageContent.externalId;
+                log.debug("Provided externalId in request is", exId);
+                var deferRevenue = data.messageContent.deferRevenue;
+                log.debug("deferRevenue value provided in request is ", deferRevenue);
+                var deferRevAcc = data.messageContent.deferredRevenueAccount;
+                log.debug("deferredRevenueAccount provide in request is", deferRevAcc);
+                var incomeAcc = data.messageContent.incomeAccount;
+                log.debug("incomeAccount provided in request is", incomeAcc);
+                var program = data.messageContent.program;
+                log.debug("program provided in request is", program);
+                var avataxCode = data.messageContent.avaTaxCode;
+                log.debug("avaTaxCode provided in request is", avataxCode);
+
+                //Script Parameters
+                const script = runtime.getCurrentScript();
+                var int_error_id = script.getParameter({
+                    name: "custscript_ada_item_error_handling"
+                });
+                log.debug("integration record", int_error_id);
+
+                var eventItem = script.getParameter({
+                    name: "custscript_ada_event_type_item"
+                });
+                log.debug("event item is", eventItem);
+
+                var memberShipItem = script.getParameter({
+                    name: "custscript_ada_member_ship_item"
+                });
+                log.debug("memberShip Item is", memberShipItem);
+
+                var itemSource = script.getParameter({
+                    name: "custscript_ada_item_source"
+                });
+                log.debug("itemSource is", itemSource);
+
+                var subsidiary = script.getParameter({
+                    name: "custscript_ada_fonteva_subsidiary"
+                });
+                log.debug("subsidiary is", subsidiary);
+
+                var distributionType = script.getParameter({
+                    name: "custscript_ada_fonteva_distribution_type"
+                });
+                log.debug("distribution type is", distributionType);
+
+                var timeStamp = new Date().toISOString();
+                log.debug("Generated Timestamp", timeStamp);
+
+                // Action validation and item creation/update
+                if (action == undefined) {
+                    var response = {
+                        message: "Invalid action: " + action
+                    };
+                    log.debug("Response for invalid action", response);
+                    errorLib.Search_ErrorHandlingInterface({
+                        id: int_error_id,
+                        type: "error",
+                        body: "No action received in request: \n\n" + JSON.stringify(data),
+                    });
+                    return response;
+                }
+                else if (action == "FontevaItemCreation") {
+                    log.debug("Provided action is correct", action);
+
+                    //Checking if recieved request has externalId 
+                    if (!exId || exId === 'undefined') {
+                        var errorMessage = "External ID (exId) is missing in the request.";
+                        log.error("Error: ", errorMessage);
+                        var errorResponse = {
+                            timeStamp: new Date().toISOString(),
+                            success: false,
+                            txnStatus: "FAILED",
+                            externalId: exId,
+                            message: errorMessage
+                        };
+                        errorLib.Search_ErrorHandlingInterface({
+                            id: int_error_id,
+                            type: "error",
+                            body: "Error: " + errorMessage + "\nRequest data: " + JSON.stringify(data)
+                        });
+                        return errorResponse;
+                    }
+                    else {
+                        log.debug("External id is also present", exId);
+                        var response = fontevaItemCreation(data, event, memberShip, eventItem, memberShipItem, exId, subsidiary, itemSource, distributionType, timeStamp, program, deferRevenue, deferRevAcc, avataxCode, incomeAcc, int_error_id);
+                        log.debug("Response from FontevaItemCreation", response);
+                        return response;
+                    }
+                }
+                else {
+                    var response = {
+                        message: "Invalid action: " + action
+                    };
+                    log.debug("Response for invalid action", response);
+                    errorLib.Search_ErrorHandlingInterface({
+                        id: int_error_id,
+                        type: "error",
+                        body: "Invalid action on received JSON: \n\n" + JSON.stringify(data),
+                    });
+                    return response;
+                }
+
+            } catch (error) {
+                var errorResponse = {
+                    timeStamp: timeStamp,
+                    success: false,
+                    txnStatus: "FAILED",
+                    externalId: exId,
+                    message: "Error processing request in doPost: " + error.message
+                };
+                log.debug("Error Response in doPost", errorResponse);
+                errorLib.Search_ErrorHandlingInterface({
+                    id: int_error_id,
+                    type: "error",
+                    body: "Error processing request in doPost: " + JSON.stringify(data),
+                });
+                return errorResponse;
+            }
         }
-    }
 
-    function toggleFields(rec) {
-        var serviceAgent = rec.getValue({ fieldId: 'custentity_service_agent' });
-        var categoryFieldId = 'custentity_category'; // Replace with actual field id
-        var cat3InternalId = 3; // replace with internalId of CAT3 in your Category list
+        // Main function for Fonteva Item Creation
+        function fontevaItemCreation(data, event, memberShip, eventItem, memberShipItem, exId, subsidiary, itemSource, distributionType, timeStamp, program, deferRevenue, deferRevAcc, avaTaxcode, incomeAcc, int_error_id) {
+            try {
+                log.debug("data:", data);
+                log.debug("event:", event);
+                log.debug("memberShip:", memberShip);
+                log.debug("eventItem:", eventItem);
+                log.debug("memberShipItem:", memberShipItem);
+                log.debug("exId:", exId);
+                log.debug("subsidiary:", subsidiary);
+                log.debug("itemSource:", itemSource);
+                log.debug("distributionType:", distributionType);
+                log.debug("timeStamp:", timeStamp);
+                log.debug("program:", program);
+                log.debug("deferRevenue:", deferRevenue);
+                log.debug("deferRevAcc:", deferRevAcc);
+                log.debug("incomeAcc:", incomeAcc);
+                log.debug("interface error handing record", int_error_id);
+                log.debug("avaTaxtaxCode:", avaTaxcode);
 
-        var pricingFields = [
-            'custentity_labour_rate',
-            'custentity_callout_fee',
-            'custentity_other_fee'
-            // add all pricing field IDs
-        ];
+                var successMessage;
+                var actionType;
+                var nsEntityId = null;
 
-        if (serviceAgent) { // YES
-            // Force Category = CAT3
-            rec.setValue({
-                fieldId: categoryFieldId,
-                value: cat3InternalId
-            });
+                // Validation for Deferred Revenue Account (when deferRevenue is true)
+                if (deferRevenue === "true") {
+                    // Check if deferredRevenueAccount is null or empty
+                    if (!deferRevAcc || deferRevAcc.trim() === "") {
+                        var errorMessage = "Error: 'deferredRevenueAccount' cannot be null or empty when 'deferRevenue' is true.";
+                        log.error("Deferred Revenue Error", errorMessage);
 
-            // Show pricing fields
-            pricingFields.forEach(function (fld) {
-                var fObj = rec.getField({ fieldId: fld });
-                if (fObj) fObj.isDisplay = true;
-            });
-        } else { // NO
-            // Keep Category untouched (assume already CAT3)
+                        var errorResponse = {
+                            timeStamp: timeStamp,
+                            success: false,
+                            txnStatus: "FAILED",
+                            externalId: exId,
+                            message: errorMessage
+                        };
 
-            // Hide pricing fields
-            pricingFields.forEach(function (fld) {
-                var fObj = rec.getField({ fieldId: fld });
-                if (fObj) fObj.isDisplay = false;
-            });
+                        errorLib.Search_ErrorHandlingInterface({
+                            id: int_error_id,
+                            type: "error",
+                            body: errorMessage + "\nRequest data: " + JSON.stringify(data)
+                        });
+
+                        return errorResponse;
+                    }
+
+                    // Validate if the deferredRevenueAccount is correct 
+                    var result = getAccountInternalId(deferRevenue, deferRevAcc, incomeAcc);
+                    if (!result || !result.internalid) {
+                        var errorMessage = "Error: Invalid 'deferredRevenueAccount'. Account does not exist.";
+                        log.error("Deferred Revenue Account Error", errorMessage);
+
+                        var errorResponse = {
+                            timeStamp: timeStamp,
+                            success: false,
+                            txnStatus: "FAILED",
+                            externalId: exId,
+                            message: errorMessage
+                        };
+
+                        errorLib.Search_ErrorHandlingInterface({
+                            id: int_error_id,
+                            type: "error",
+                            body: errorMessage + "\nRequest data: " + JSON.stringify(data)
+                        });
+
+                        return errorResponse;
+                    }
+                }
+
+                // Validation for Income Account (when deferRevenue is false)
+                if (deferRevenue === "false") {
+                    // Check if incomeAccount is null or empty
+                    if (!incomeAcc || incomeAcc.trim() === "") {
+                        var errorMessage = "Error: 'incomeAccount' cannot be null or empty when 'deferRevenue' is false.";
+                        log.error("Income Account Error", errorMessage);
+
+                        var errorResponse = {
+                            timeStamp: timeStamp,
+                            success: false,
+                            txnStatus: "FAILED",
+                            externalId: exId,
+                            message: errorMessage
+                        };
+
+                        errorLib.Search_ErrorHandlingInterface({
+                            id: int_error_id,
+                            type: "error",
+                            body: errorMessage + "\nRequest data: " + JSON.stringify(data)
+                        });
+
+                        return errorResponse;
+                    }
+
+                    // Validate if the incomeAccount is correct 
+                    var result = getAccountInternalId(deferRevenue, deferRevAcc, incomeAcc);
+                    if (!result || !result.internalid) {
+                        var errorMessage = "Error: Invalid 'incomeAccount'. Account does not exist.";
+                        log.error("Income Account Error", errorMessage);
+
+                        var errorResponse = {
+                            timeStamp: timeStamp,
+                            success: false,
+                            txnStatus: "FAILED",
+                            externalId: exId,
+                            message: errorMessage
+                        };
+
+                        errorLib.Search_ErrorHandlingInterface({
+                            id: int_error_id,
+                            type: "error",
+                            body: errorMessage + "\nRequest data: " + JSON.stringify(data)
+                        });
+
+                        return errorResponse;
+                    }
+                }
+
+                // Processing Fonteva item request in item creation or updation function
+                log.debug("Processing Fonteva item request in item creation or updation function", data);
+
+                // Performing item search to check if the item exists
+                var itemFound = itemSearch(exId, itemSource);
+                log.debug("itemFound in fonteva item creation", itemFound);
+                var itemRecord;
+
+                if (itemFound) {
+                    log.debug("Found item is, inorder to load", itemFound);
+                    // Item exists, load it to update
+                    itemRecord = record.load({
+                        type: record.Type.NON_INVENTORY_ITEM,
+                        id: itemFound
+                    });
+                    log.debug("Item found. Proceeding with update.", itemRecord);
+                    actionType = "Update";
+                    successMessage = "Item updated successfully.";
+                } else {
+                    // Item doesn't exist, create new item
+                    log.debug("Item not found. Proceeding with creation.");
+                    itemRecord = record.create({
+                        type: record.Type.NON_INVENTORY_ITEM
+                    });
+                    actionType = "Create";
+                    successMessage = "Item created successfully.";
+                }
+
+                // Set item type based on whether it's an event or a membership
+                if (event === true) {
+                    itemRecord.setValue({
+                        fieldId: "custitem_ada_item_type_field",
+                        value: eventItem
+                    });
+                } else if (memberShip === true) {
+                    itemRecord.setValue({
+                        fieldId: "custitem_ada_item_type_field",
+                        value: memberShipItem
+                    });
+                }
+
+                // Set additional fields for the item
+                itemRecord.setValue({
+                    fieldId: "subtype",
+                    value: "Sale"
+                });
+                itemRecord.setValue({
+                    fieldId: "externalid",
+                    value: exId
+                });
+                itemRecord.setValue({
+                    fieldId: "custitem_ada_external_product_id",
+                    value: exId
+                });
+                itemRecord.setValue({
+                    fieldId: "itemid",
+                    value: data.messageContent.itemName
+                });
+                itemRecord.setValue({
+                    fieldId: "displayname",
+                    value: data.messageContent.displayName
+                });
+                itemRecord.setValue({
+                    fieldId: "salesdescription",
+                    value: data.messageContent.displayName
+                });
+                log.debug("Before setting the value:", data.messageContent.avaTaxCode);
+                var tax_code = itemRecord.setValue({
+                    fieldId: "custitem_ava_taxcode",
+                    value: data.messageContent.avaTaxCode
+                });
+                log.debug("tax code set successfully:", tax_code);
+                itemRecord.setValue({
+                    fieldId: "subsidiary",
+                    value: subsidiary
+                });
+                itemRecord.setValue({
+                    fieldId: "custitem_ada_item_source",
+                    value: itemSource
+                });
+                itemRecord.setValue({
+                    fieldId: "custitem_ada_distribution_type",
+                    value: distributionType
+                });
+                itemRecord.setValue({
+                    fieldId: "isfulfillable",
+                    value: false
+                });
+
+                // Department search function call
+                var progData = program ? getDepartmentInternalId(program) : null;
+
+                // If program is found, set department, else debug and proceed
+                if (progData && progData.internalid) {
+                    log.debug("program internalid is ", progData.internalid);
+                    itemRecord.setValue({
+                        fieldId: "department",
+                        value: progData.internalid
+                    });
+                } else {
+                    log.debug("Program not found, skipping department assignment for externalId: " + exId);
+                }
+
+                // Account search function call based on deferRevenue flag
+                var result;
+                if (deferRevenue === "true") {
+                    result = getAccountInternalId(deferRevenue, deferRevAcc, incomeAcc);
+                } else {
+                    result = getAccountInternalId(deferRevenue, deferRevAcc, incomeAcc);
+                }
+
+                if (result && result.internalid) {
+                    log.debug("Internal id of account as we found is", result.internalid);
+                    itemRecord.setValue({
+                        fieldId: "incomeaccount",
+                        value: result.internalid
+                    });
+                } else {
+                    var errorMessage = deferRevenue === "true" ? "Invalid 'deferredRevenueAccount'" : "Invalid 'incomeAccount'";
+                    log.error("Account Search Error", errorMessage);
+
+                    var errorResponse = {
+                        timeStamp: timeStamp,
+                        success: false,
+                        txnStatus: "FAILED",
+                        externalId: exId,
+                        message: errorMessage
+                    };
+                    log.debug("Error Response for account not found", errorResponse);
+                    errorLib.Search_ErrorHandlingInterface({
+                        id: int_error_id,
+                        type: "error",
+                        body: errorMessage + "\nRequest data: " + JSON.stringify(data)
+                    });
+                    return errorResponse;
+                }
+
+                // Set fields for the item
+                itemRecord.setValue({
+                    fieldId: "custitem_ada_year",
+                    value: data.messageContent.year
+                });
+                itemRecord.setValue({
+                    fieldId: "taxschedule",
+                    value: "1"
+                });
+
+                // Saving the record
+                nsEntityId = itemRecord.save();
+                log.debug("Item save successful with id:", nsEntityId);
+
+                // Success Response
+                var successResponse = {
+                    timeStamp: timeStamp,
+                    success: true,
+                    txnStatus: "SUCCESS",
+                    type: actionType,
+                    externalId: exId,
+                    nsEntityId: nsEntityId,
+                    message: successMessage
+                };
+                log.debug("Success Response", successResponse);
+
+                errorLib.Search_ErrorHandlingInterface({
+                    id: int_error_id,
+                    type: "success",
+                    body: successMessage
+                });
+
+                return successResponse;
+
+            } catch (error) {
+                var errorResponse = {
+                    timeStamp: timeStamp,
+                    success: false,
+                    txnStatus: "FAILED",
+                    externalId: exId,
+                    message: "Error processing Fonteva item creation: " + error.message
+                };
+                log.debug("Error in Fonteva item creation:", errorResponse);
+                errorLib.Search_ErrorHandlingInterface({
+                    id: int_error_id,
+                    type: "error",
+                    body: "Error processing request in Fonteva item creation for externalId: " + exId
+                });
+                return errorResponse;
+            }
         }
-    }
 
-    return {
-        pageInit: pageInit,
-        fieldChanged: fieldChanged
-    };
-});
+        //-------------------------------------------------------------------- HELPER FUNCTIONS -----------------------------------------------------------------------------//
+
+        function itemSearch(exId, itemSource) {
+            try {
+                log.debug("itemSearch function called", { externalId: exId, itemSource: itemSource });
+
+                var itemSearchObj = search.create({
+                    type: "noninventorysaleitem",
+                    filters: [
+                        ["type", "anyof", "NonInvtPart"],
+                        "AND",
+                        ["subtype", "anyof", "Sale"],
+                        "AND",
+                        ["custitem_ada_item_source", "anyof", itemSource],
+                        "AND",
+                        ["externalid", "anyof", exId],
+                        "AND",
+                        ["isinactive", "is", "F"]
+                    ],
+                    columns: [
+                        search.createColumn({
+                            name: "externalid",
+                            label: "External ID"
+                        }),
+                        search.createColumn({
+                            name: "itemid",
+                            label: "Name"
+                        }),
+                        search.createColumn({
+                            name: "internalid",
+                            label: "Internal ID"
+                        })
+                    ]
+                });
+
+                log.debug("Search object created", itemSearchObj);
+                var searchResults = itemSearchObj.run().getRange({ start: 0, end: 1 });
+                //Search Results
+                log.debug("Search results fetched", { resultCount: searchResults.length });
+
+                if (searchResults.length > 0) {
+                    log.debug("search result lenght is", searchResults.length);
+                    var internalId = searchResults[0].getValue("internalid");
+                    log.debug("Item found", { internalId: internalId });
+                    return internalId;
+                } else {
+                    log.debug("No item found");
+                    return null;
+                }
+            } catch (error) {
+                log.error("Error in itemSearch function", error);
+                return null;
+            }
+        }
+
+        //Department Search Function
+        function getDepartmentInternalId(program) {
+            try {
+                log.debug("Searching for department with program (externalid):", program);
+
+                var departmentSearchObj = search.create({
+                    type: "department",
+                    filters:
+                        [
+                            ["externalid", "anyof", program]
+                        ],
+                    columns:
+                        [
+                            search.createColumn({
+                                name: "internalid",
+                                label: "Internal ID"
+                            }),
+                            search.createColumn({
+                                name: "name",
+                                label: "Name"
+                            })
+                        ]
+                });
+
+                var searchResults = departmentSearchObj.run().getRange({ start: 0, end: 1 });
+                //Search Results
+                if (searchResults.length > 0) {
+                    var departmentInternalId = searchResults[0].getValue("internalid");
+                    log.debug("Found Department Internal ID:", departmentInternalId);
+                    return { internalid: departmentInternalId };
+                } else {
+                    log.error("Department not found", "No department found for externalid: ", program);
+                    return { internalid: null };
+                }
+
+            } catch (error) {
+                log.error("Error in getDepartmentInternalId function", error);
+                return { internalid: null };
+            }
+        }
+
+
+
+        // Helper function for searching account 
+        function getAccountInternalId(deferRevenue, deferRevAcc, incomeAcc) {
+            try {
+                var filters = [];
+
+                log.debug("Account Search Inputs", {
+                    deferRevenue: deferRevenue,
+                    deferRevAcc: deferRevAcc,
+                    incomeAcc: incomeAcc
+                });
+
+                // Creating Filters based on deferRevenue
+                if (deferRevenue === "true") {
+                    filters = [
+                        ["displayname", "is", deferRevAcc],
+                        "AND",
+                        ["isinactive", "is", "F"]
+                    ];
+                    log.debug("Filters for Deferred Revenue", filters);
+                } else if (deferRevenue === "false") {
+                    filters = [
+                        ["displayname", "is", incomeAcc],
+                        "AND",
+                        ["isinactive", "is", "F"]
+                    ];
+                    log.debug("Filters for Income Account", filters);
+                }
+
+                log.debug("Running Account Search with filters", filters);
+
+                // Creating Search for the account
+                var accountSearchObj = search.create({
+                    type: "account",
+                    filters: filters,
+                    columns: [
+                        search.createColumn({
+                            name: "internalid",
+                            label: "Internal ID"
+                        })
+                    ]
+                });
+
+                var searchResults = accountSearchObj.run().getRange({ start: 0, end: 1 });
+                log.debug("searchResults are", searchResults.length);
+
+                // Check if account is found
+                if (searchResults.length > 0) {
+                    log.debug("Account Search Results", {
+                        internalid: searchResults[0].getValue("internalid")
+                    });
+                    return { internalid: searchResults[0].getValue("internalid") };
+                } else {
+                    log.debug("Account Search Results", "No accounts found matching the criteria.");
+                    return { internalid: null };
+                }
+
+            } catch (error) {
+                log.error("Error in getAccountInternalId", error);
+                return { internalid: null };
+            }
+        }
+        return {
+            post: dopost
+        };
+    });
