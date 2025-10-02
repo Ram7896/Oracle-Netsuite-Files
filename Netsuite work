@@ -1,12 +1,4 @@
-/*************************************************************************************************************************************
- * Script Name			:	ADA Fonteva Item Integration
- * Author   			:	Manchala Vaibhavi 
- * Creation date		:	23th December 2024
- * Company	  			:	Capgemini India
- * Description			:	This script is used to creates and updates the Fonteva Non-Inventory Item recieved from request
- * Change Log	  		:	||    Changed By    ||    Date     ||            Description                              ||
-                            ||    Rama Sudhakar ||    02/11/2025||  Item AvaTaxTaxcode updated                        ||
- *************************************************************************************************************************************/
+
 /**
  * RestLet to create and update Fonteva Item
  * @NApiVersion 2.1
