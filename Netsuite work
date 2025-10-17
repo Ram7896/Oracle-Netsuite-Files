@@ -1,1 +1,146 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ScheduledScript
+ * @NModuleScope SameAccount
+ *
+ * Scheduled Script to execute the HTTP POST to the OIC endpoint using OAuth 2.0.
+ * Credentials are retrieved dynamically from Script Deployment Parameters.
+ */
+define(['N/record', 'N/http', 'N/runtime', 'N/log', 'N/encode'],
+    (record, http, runtime, log, encode) => {
 
+        // --- HARDCODED CONFIGURATION ---
+        const OIC_STATUS_ENDPOINT = 'https://oic-uat-axrhjvrbauyg-sj.integration.us-sanjose-1.ocp.oraclecloud.com/ic/api/integration/v1/flows/rest/RMA_NS/1.0/getRMAStatus';
+
+        // --- HELPER FUNCTION: GET ACCESS TOKEN ---
+        const getAccessToken = (script) => {
+            log.debug('Token Request', 'Attempting to retrieve OIC Access Token.');
+
+            // 1. Retrieve Credentials from Deployment Parameters
+            const clientID = script.getParameter({ name: 'custscript_oic_client_id_param' });
+            log.debug('clientID', clientID);
+            const clientSecret = script.getParameter({ name: 'custscript_oic_client_secret_param' });
+            log.debug('clientSecret', clientSecret);
+            
+            let tokenUrl = script.getParameter({ name: 'custscript_oic_token_url_param' });
+            // 🌟 FINAL FIX: Use .trim() to eliminate invisible whitespace characters.
+            if (tokenUrl) {
+                tokenUrl = tokenUrl.trim();
+            }
+            log.debug('tokenUrl', tokenUrl);
+            
+            if (!clientID || !clientSecret || !tokenUrl) {
+                 log.error('Token Request Error', 'One or more required script parameters (Client ID, Secret, or Token URL) are missing.');
+                 throw new Error('Missing OAuth configuration parameters on deployment.');
+            }
+
+            // 2. Prepare OAuth Token Request (Basic Auth)
+            const basicAuth = `${clientID}:${clientSecret}`;
+            
+            const encodedCredentials = encode.convert({
+                string: basicAuth,
+                inputEncoding: encode.Encoding.UTF_8,
+                outputEncoding: encode.Encoding.BASE_64
+            });
+            
+            const tokenHeaders = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${encodedCredentials}`
+            };
+
+            const tokenBody = 'grant_type=client_credentials';
+
+            const tokenResponse = http.post({
+                url: tokenUrl, // Now guaranteed to be trimmed
+                body: tokenBody,
+                headers: tokenHeaders
+            });
+
+            // 3. Process Token Response
+            if (tokenResponse.code !== 200) {
+                log.error({
+                    title: 'Token Request Failed',
+                    details: `Code: ${tokenResponse.code}, Body: ${tokenResponse.body}`
+                });
+                throw new Error(`Failed to get access token. Status: ${tokenResponse.code}`);
+            }
+
+            const tokenResponseJSON = JSON.parse(tokenResponse.body);
+            const accessToken = tokenResponseJSON.access_token;
+            
+            if (!accessToken) {
+                throw new Error('Access token was not present in the successful response body.');
+            }
+
+            log.debug('Token Request', 'Access Token retrieved successfully.');
+            return accessToken;
+        };
+
+
+        // --- MAIN EXECUTE FUNCTION (No changes needed here) ---
+        const execute = (scriptContext) => {
+            const script = runtime.getCurrentScript();
+            const rmaId = script.getParameter({ name: 'custscript_rma_id' });
+            log.debug('rmaId', rmaId);
+
+            if (!rmaId) {
+                log.error('EXECUTE', 'Missing RMA Internal ID parameter. Exiting.');
+                return;
+            }
+            
+            let accessToken;
+
+            try {
+                // STEP 1: Get Access Token
+                accessToken = getAccessToken(script);
+
+                // STEP 2: Load RMA Record Data
+                const rmaRecord = record.load({
+                    type: record.Type.RETURN_AUTHORIZATION,
+                    id: rmaId,
+                    isDynamic: false
+                });
+
+                const newStatusText = rmaRecord.getText({ fieldId: 'status' });
+                
+                // STEP 3: Construct the Status Update Request Body
+                const requestBody = JSON.stringify({
+                    "RMA_Number": rmaRecord.getValue('tranid'),
+                    "RMA_Status": newStatusText,
+                });
+
+                // STEP 4: Set Headers and Execute the Status Update POST
+                const statusHeaders = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}` 
+                };
+
+                log.audit('HTTP POST', `Sending RMA ${rmaId} update. Body: ${requestBody}`);
+
+                const response = http.post({
+                    url: OIC_STATUS_ENDPOINT,
+                    body: requestBody,
+                    headers: statusHeaders
+                });
+
+                // STEP 5: Handle Final Response
+                if (response.code >= 200 && response.code < 300) {
+                    log.audit('HTTP SUCCESS', `RMA ${rmaId} status successfully sent. Code: ${response.code}`);
+                } else {
+                    log.error({
+                        title: 'Status Update FAILED',
+                        details: `RMA ${rmaId}. Code: ${response.code}, Body: ${response.body}`
+                    });
+                }
+
+            } catch (e) {
+                log.error({
+                    title: 'Scheduled Script Execution Error',
+                    details: e.message,
+                    stack: e.stack
+                });
+            }
+        };
+
+        return { execute };
+    });
