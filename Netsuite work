@@ -1,7 +1,62 @@
-A short history
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ * @NModuleScope SameAccount
+ *
+ * User Event Script to detect RMA status changes and trigger a Scheduled Script
+ * for real-time integration with the OIC endpoint.
+ */
+define(['N/task', 'N/log'],
+    (task, log) => {
 
-In the 1970s, IBM developed a language called SEQUEL (Structured English Query Language) to manage data in their early relational databases.
+        const afterSubmit = (scriptContext) => {
+            // Only trigger on create, edit, xedit, approve, or reject.
+            if (!['create', 'edit', 'xedit', 'approve', 'reject'].includes(scriptContext.type)) {
+                return;
+            }
 
-Later, due to trademark issues, the name SEQUEL was shortened to SQL.
+            const newRecord = scriptContext.newRecord;
+            const oldRecord = scriptContext.oldRecord;
 
-It became a standard language for relational databases by ANSI (American National Standards Institute) in 1986
+            const newStatus = newRecord.getValue({ fieldId: 'status' });
+            let oldStatus = null;
+
+            // Check if status has actually changed (only possible in edit/xedit contexts)
+            if (oldRecord) {
+                oldStatus = oldRecord.getValue({ fieldId: 'status' });
+                if (oldStatus === newStatus) {
+                    log.debug('AFTER SUBMIT', `RMA ${newRecord.id} status unchanged. Exiting.`);
+                    return;
+                }
+            }
+
+            try {
+                // 1. Get the RMA Internal ID
+                const rmaId = newRecord.id;
+
+                // 2. Submit a task to run the Scheduled Script asynchronously
+                const scriptTask = task.create({
+                    taskType: task.TaskType.SCHEDULED_SCRIPT,
+                    scriptId: 'customscript_rma_status_ss', // <-- Verify this ID
+                    deploymentId: 'customdeploy_rma_status_ss', // <-- Verify this ID
+                    params: {
+                        // FIX: Only send the required parameter. 
+                        // The 'custscript_new_status_val' parameter was unnecessary and likely undefined 
+                        // on the target script definition, causing the entire parameter object to fail.
+                        custscript_rma_id: rmaId
+                    }
+                });
+
+                const taskId = scriptTask.submit();
+                log.audit('AFTER SUBMIT', `Scheduled Script task submitted for RMA: ${rmaId}. Task ID: ${taskId}`);
+
+            } catch (e) {
+                log.error({
+                    title: 'Error Submitting Scheduled Task',
+                    details: e
+                });
+            }
+        };
+
+        return { afterSubmit };
+    });
