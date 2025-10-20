@@ -295,7 +295,7 @@
 		    <tr>
 		      <td>Fascia Clean &amp; All Service Stickers Affixed</td>
 		      <td align="center">y / n</td>
-		      <td>Door Condition Rating (1 to 5)</td>
+		      <td>Door Rating (1-Poor 2-Fair 3-Good 4-VeryGood 5-Excellent)</td>
 		      <td align="center"></td>
 		    </tr>
 		    <tr>
@@ -341,7 +341,7 @@
 		    <tr>
 		      <td>Safety Beam</td>
 		      <td align="center">Pass or Fail or N/A</td>
-		      <td>Door Condition Rating (1 to 5)</td>
+		      <td>Door Rating (1-Poor 2-Fair 3-Good 4-VeryGood 5-Excellent)</td>
 		      <td align="center"></td>
 		    </tr>
 		    <tr>
@@ -437,7 +437,7 @@
 		    </tr>
 		    <tr>
 		      <td><b>Overall Assesment</b> Pass/Fail</td>
-		      <td><b>Door Condition Rating (1 to 5):</b></td>
+		      <td><b>Door Rating (1-Poor 2-Fair 3-Good 4-VeryGood 5-Excellent):</b></td>
 		    </tr>
 		  </table>
 		
@@ -499,6 +499,8 @@
         	  <tr>
         	    <td colspan="2"><b>Door Width: </b>${asset.custrecord_nxc_door_width_m}</td>
         	    <td colspan="2"><b>Door Height: </b>${asset.custrecord_nxc_door_height_m}</td>
+				<td colspan="2"><b>Additional Model Information: </b></td>
+				<td colspan="2"><b>Non-Autoingress Model: </b></td>
         	  </tr>
             <tr>
               <td colspan="4"><b>Asset Notes: </b>${(asset.custrecord_nxc_asset_notes)?html}</td>
