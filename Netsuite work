@@ -1,2 +1,27 @@
-[22/10, 9:41 pm] Nagarajuna Oracle Netsuite Voz: https://mylearn.oracle.com/netsuite/learning-path/certification-preparation-financial-associate/144915
-[22/10, 9:46 pm] Nagarajuna Oracle Netsuite Voz: https://mylearn.oracle.com/netsuite/learning-path/certification-preparation-bi-and-reporting-associate/154999
+/**
+ * @NApiVersion 2.1
+ */
+define(['N/format'], function(format) {
+
+    function formatDateToDDMMYY(inputDate) {
+        if (!inputDate) return '';
+
+        // Convert to NetSuite date object if it's a string
+        var dateObj = (typeof inputDate === 'string') ? new Date(inputDate) : inputDate;
+
+        // Extract day, month, year
+        var day = ('0' + dateObj.getDate()).slice(-2);
+        var month = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+        var year = dateObj.getFullYear().toString().slice(-2); // only last 2 digits
+
+        return `${day}/${month}/${year}`;
+    }
+
+    function execute() {
+        var myDate = new Date(); // or record.getValue({ fieldId: 'trandate' });
+        var formatted = formatDateToDDMMYY(myDate);
+        log.debug('Formatted Date', formatted);
+    }
+
+    return { execute };
+});
