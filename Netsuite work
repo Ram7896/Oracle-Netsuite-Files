@@ -12,46 +12,76 @@ define(['N/search', 'N/record', 'N/runtime', 'N/log'],
                 name: "custscript_ada_sales_order_saved_search"
             });
 
+            log.debug("Saved Search ID", savedSearchId);
+
             if (!savedSearchId) {
                 log.error({ title: 'Saved search Id not provided in script parameter' });
                 return [];
             }
 
-            const loadSavedSearch = search.load({ id: savedSearchId });
-            log.debug("Search Count", loadSavedSearch.runPaged().count);
+            const loadSavedSearch = search.load({
+                id: savedSearchId,
+            });
+
+            const searchCount = loadSavedSearch.runPaged().count;
+             log.debug("Number of search results", searchCount);
+
+           // log.debug("Loaded Saved Search", loadSavedSearch);
             return loadSavedSearch;
         }
 
         function map(context) {
             try {
                 const searchResult = JSON.parse(context.value);
+                const salesOrderId = searchResult.id;
+                
                 context.write({
-                    key: searchResult.id,
+                    key: salesOrderId,
                     value: searchResult
                 });
+
             } catch (error) {
-                log.error("Map Error", error);
+                log.error({
+                    title: 'Error in map function',
+                    details: error
+                });
             }
         }
 
         function reduce(context) {
-            try {
+            try{
                 const soDetails = context.values;
                 const salesOrderId = context.key;
-
+                log.debug("Sales Order ID", salesOrderId);
+                log.debug("Sales Order Details", soDetails);
+                log.debug("Sales Order Details length", soDetails.length);
                 var invoiceDetailsArray = [];
-
-                for (var i = 0; i < soDetails.length; i++) {
-                    var soDetailsData = JSON.parse(soDetails[i]);
-
-                    invoiceDetailsArray.push({
-                        createdBy: soDetailsData.values['custbody_created_by'].value,
-                        supress_email: soDetailsData.values['custbody_ada_suppress_invoice_email'],
-                        item: soDetailsData.values['item'].value,
-                        itemType: soDetailsData.values['type.item'].value,
-                        memberItem: soDetailsData.values['memberitem.item'].value
-                    });
+                
+                for(var soItemCount = 0; soItemCount < soDetails.length; soItemCount++)
+                {
+                    var soDetailsData = JSON.parse(soDetails[soItemCount]);
+                    var createdBy = soDetailsData.values['custbody_created_by'].value;
+                    var supress_email = soDetailsData.values['custbody_ada_suppress_invoice_email'];
+                    var soItem = soDetailsData.values['item'].value;
+                    var soItemType = soDetailsData.values['type.item'].value;
+                    var soMemberItem = soDetailsData.values['memberitem.item'].value;
+                    log.debug("Created By", createdBy);
+                    log.debug("Suppress Email", supress_email);
+                    log.debug("SO Item", soItem);
+                    log.debug("SO Item Type", soItemType);
+                    log.debug("SO Member Item", soMemberItem);
+                    var invoiceDetails = {
+                        createdBy: createdBy,
+                        supress_email: supress_email,
+                        item: soItem,
+                        itemType: soItemType,
+                        memberItem: soMemberItem
+                    }
+                    log.debug("Invoice Details JSON in Map",invoiceDetails);
+                    invoiceDetailsArray.push(invoiceDetails);
                 }
+                
+                log.debug("Invoice Deatails Array", invoiceDetailsArray);
 
                 const invoiceRecord = record.transform({
                     fromType: record.Type.SALES_ORDER,
@@ -69,140 +99,271 @@ define(['N/search', 'N/record', 'N/runtime', 'N/log'],
                     fieldId: 'approvalstatus',
                     value: 2
                 });
+                log.debug("status is set to Approved");
 
-                invoiceRecord.setValue({
-                    fieldId: 'tobeemailed',
-                    value: invoiceDetailsArray[0].supress_email !== 'T',
-                    ignoreFieldChange: true
-                });
-
-                var invoiceLineCount = invoiceRecord.getLineCount({ sublistId: 'item' });
-
-                for (var invLine = 0; invLine < invoiceLineCount; invLine++) {
-
-                    var itemName = invoiceRecord.getSublistValue({
+                if (invoiceDetailsArray[0].supress_email === 'T') {
+                    invoiceRecord.setValue({
+                        fieldId: 'tobeemailed',
+                        value: false,
+                        ignoreFieldChange: true
+                    });
+                } else {
+                    invoiceRecord.setValue({
+                        fieldId: 'tobeemailed',
+                        value: true,
+                        ignoreFieldChange: true
+                    });
+                }
+                var invoiceLineCount = invoiceRecord.getLineCount({sublistId: 'item'});
+                for(var invLine = 0; invLine < invoiceLineCount; invLine++)
+                {
+                    var itemName =  invoiceRecord.getSublistValue({
                         sublistId: 'item',
                         fieldId: 'item',
                         line: invLine
                     });
-
+                    log.debug("Item Name on Invoice Record",itemName);
                     var invItemType = invoiceRecord.getSublistValue({
                         sublistId: 'item',
                         fieldId: 'itemtype',
                         line: invLine
                     });
-
+                    log.debug("Item Type on Invoice Record",invItemType);
                     var invItemAmount = invoiceRecord.getSublistValue({
                         sublistId: 'item',
                         fieldId: 'amount',
                         line: invLine
                     });
-
-                    // ❗ FIX APPLIED HERE (Correct Line Index)
-                    var invItemLineNo = invLine + 1;
-
-                    if (invItemType === 'Kit') {
-
-                        var foundItem = invoiceDetailsArray.filter(soItem => soItem.item === itemName);
-
-                        if (foundItem.length > 0) {
-
+                    log.debug("Item Amount on Invoice Record",invItemAmount);
+                    var invItemLineNo = invoiceRecord.getSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'line',
+                        line: invLine
+                    });
+                    log.debug("Item Line No on Invoice Record",invItemLineNo);
+                    if(invItemType == 'Kit')
+                    {
+                        var foundItem = invoiceDetailsArray.filter(soItemName => soItemName.item === itemName);
+                        log.debug("foundItem",foundItem);
+                        if(foundItem && foundItem.length>0)
+                        {
                             invoiceRecord.selectLine({
                                 sublistId: 'item',
                                 line: invLine
                             });
-
                             invoiceRecord.setCurrentSublistValue({
                                 sublistId: 'item',
                                 fieldId: 'amount',
                                 value: 0
                             });
-
                             invoiceRecord.setCurrentSublistValue({
                                 sublistId: 'item',
                                 fieldId: 'custcol_ada_kit_amount',
                                 value: invItemAmount
                             });
-
                             invoiceRecord.commitLine({
                                 sublistId: 'item'
                             });
-
-                            var newKitItemAmount = (invItemAmount / foundItem.length).toFixed(2);
+                            
+                            var newKitItemAmount = (invItemAmount/foundItem.length).toFixed(2);
                             var remainingKitAmount = invItemAmount;
-
-                            for (var kitLine = 0; kitLine < foundItem.length; kitLine++) {
-
+                            log.debug("Kit Item Amount",newKitItemAmount);
+                            for(var kitLine = 0; kitLine < foundItem.length; kitLine++)
+                            {
                                 invoiceRecord.insertLine({
                                     sublistId: 'item',
                                     line: invItemLineNo++,
                                     ignoreRecalc: true
                                 });
-
-                                invoiceRecord.setCurrentSublistValue({
+                                var itemName =  invoiceRecord.setCurrentSublistValue({
                                     sublistId: 'item',
                                     fieldId: 'item',
                                     value: foundItem[kitLine].memberItem
                                 });
-
                                 invoiceRecord.setCurrentSublistValue({
                                     sublistId: 'item',
                                     fieldId: 'quantity',
                                     value: 0
                                 });
-
-                                if (kitLine === foundItem.length - 1) {
+                                if(kitLine == (foundItem.length-1))
+                                {
                                     invoiceRecord.setCurrentSublistValue({
                                         sublistId: 'item',
                                         fieldId: 'amount',
                                         value: remainingKitAmount
                                     });
-                                } else {
+                                } 
+                                else
+                                {
                                     invoiceRecord.setCurrentSublistValue({
                                         sublistId: 'item',
                                         fieldId: 'amount',
                                         value: newKitItemAmount
                                     });
-
-                                    remainingKitAmount -= newKitItemAmount;
-                                }
-
+                                    remainingKitAmount = (remainingKitAmount - newKitItemAmount)
+                                }   
+                                
                                 invoiceRecord.setCurrentSublistValue({
                                     sublistId: 'item',
                                     fieldId: 'custcol_ada_hide_on_pdf',
                                     value: true
                                 });
-
                                 invoiceRecord.commitLine({
                                     sublistId: 'item'
                                 });
-                            }
+                                invLine++;
+                                log.debug("New Invoice Line No : ",invLine);
+                                invoiceLineCount++;
+                                log.debug("Updated Invoice Line Count",invoiceLineCount);
+                            }    
 
-                            // Refresh line count
-                            invoiceLineCount = invoiceRecord.getLineCount({ sublistId: 'item' });
+                            
+                            
+
                         }
                     }
                 }
-
+                //invoiceLineCount = invoiceRecord.getLineCount({sublistId: 'item'});
+                //log.debug("Final Invoice Line Count",invoiceLineCount);
                 const invoiceId = invoiceRecord.save();
-                log.debug("Invoice Created", invoiceId);
+                log.debug("Invoice ID", invoiceId);
 
-            } catch (error) {
-                log.error("Reduce Error", error);
+
+
+
+
             }
-        }
+            catch (error) {
+                log.error({
+                    title: 'Error in reduce function',
+                    details: error
+                });
+            }
+        }    
 
         function summarize(summary) {
+            log.audit('Summary', {
+                totalUsage: summary.usage,
+                concurrency: summary.concurrency,
+                yields: summary.yields
+            });
+
             summary.mapSummary.errors.iterator().each(function (key, error) {
-                log.error("Map Error", key + ": " + error);
+                log.error({
+                    title: `Error for key: ${key}`,
+                    details: error
+                });
                 return true;
             });
         }
 
         return {
-            getInputData,
-            map,
-            reduce,
-            summarize
+            getInputData: getInputData,
+            map: map,
+            reduce: reduce,
+            summarize: summarize
         };
     });
+
+
+Summary	11/17/2025	8:28 am	-System-	
+{
+   totalUsage: 15,
+   concurrency: 1,
+   yields: 0
+}
+Remove
+2	View	Error	Error in reduce function	11/17/2025	8:28 am	-System-	
+{
+   type: "error.SuiteScriptError",
+   name: "SSS_INVALID_SUBLIST_OPERATION",
+   message: "You have attempted an invalid sublist or line item operation. You are either trying to access a field on a non-existent line or you are trying to add or remove lines from a static sublist.",
+   id: "",
+   stack: [
+      "Error\n    at RecordInvoker.insertLine (suitescript/resources/javascript/record/serverRecordService.js:343:5)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/ADA AutoBilling Corporate order Mapreduce Script.js:183:47)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "SSS_INVALID_SUBLIST_OPERATION",
+      details: "You have attempted an invalid sublist or line item operation. You are either trying to access a field on a non-existent line or you are trying to add or remove lines from a static sublist.",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at RecordInvoker.insertLine (suitescript/resources/javascript/record/serverRecordService.js:343:5)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/ADA AutoBilling Corporate order Mapreduce Script.js:183:47)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}
+Remove
+3	View	Debug	Kit Item Amount	11/17/2025	8:28 am	-System-	31.24	Remove
+4	View	Debug	foundItem	11/17/2025	8:28 am	-System-	
+[
+   {
+      createdBy: "220718",
+      supress_email: "F",
+      item: "3126",
+      itemType: "Kit",
+      memberItem: "2185"
+   },
+   {
+      createdBy: "220718",
+      supress_email: "F",
+      item: "3126",
+      itemType: "Kit",
+      memberItem: "2186"
+   },
+   {
+      createdBy: "220718",
+      supress_email: "F",
+      item: "3126",
+      itemType: "Kit",
+      memberItem: "2200"
+   },
+   {
+      createdBy: "220718",
+      supress_email: "F",
+      item: "3126",
+      itemType: "Kit",
+      memberItem: "2778"
+   }
+]
+Remove
+5	View	Debug	Item Line No on Invoice Record	11/17/2025	8:28 am	-System-	40	Remove
+6	View	Debug	Item Amount on Invoice Record	11/17/2025	8:28 am	-System-	124.95	Remove
+7	View	Debug	Item Type on Invoice Record	11/17/2025	8:28 am	-System-	Kit	Remove
+8	View	Debug	Item Name on Invoice Record	11/17/2025	8:28 am	-System-	3126	Remove
+9	View	Debug	Updated Invoice Line Count	11/17/2025	8:28 am	-System-	8	Remove
+10	View	Debug	New Invoice Line No :	11/17/2025	8:28 am	-System-	6	Remove
+11	View	Debug	Updated Invoice Line Count	11/17/2025	8:28 am	-System-	7	Remove
+12	View	Debug	New Invoice Line No :	11/17/2025	8:28 am	-System-	5	Remove
+13	View	Debug	Kit Item Amount	11/17/2025	8:28 am	-System-	32.48	Remove
+14	View	Debug	foundItem	11/17/2025	8:28 am	-System-	
+[
+   {
+      createdBy: "220718",
+      supress_email: "F",
+      item: "3099",
+      itemType: "Kit",
+      memberItem: "2201"
+   },
+   {
+      createdBy: "220718",
+      supress_email: "F",
+      item: "3099",
+      itemType: "Kit",
+      memberItem: "2709"
+   }
+]
+Remove
+15	View	Debug	Item Line No on Invoice Record	11/17/2025	8:28 am	-System-	5	Remove
+16	View	Debug	Item Amount on Invoice Record	11/17/2025	8:28 am	-System-	64.95	Remove
+17	View	Debug	Item Type on Invoice Record	11/17/2025	8:28 am	-System-	Kit	Remove
+18	View	Debug	Item Name on Invoice Record	11/17/2025	8:28 am	-System-	3099	Remove
+19	View	Debug	Updated Invoice Line Count	11/17/2025	8:28 am	-System-	6	Remove
+20	View	Debug	New Invoice Line No :	11/17/2025	8:28 am	-System-	3	Remove
+21	View	Debug	Updated Invoice Line Count	11/17/2025	8:28 am	-System-	5	Remove
+22	View	Debug	New Invoice Line No :	11/17/2025	8:28 am	-System-	2	Remove
+23	View	Debug	Updated Invoice Line Count	11/17/2025	8:28 am	-System-	4	Remove
+24	View	Debug	New Invoice Line No :	11/17/2025	8:28 am	-System-	1	Remove
+25	View	Debug	Kit Item Amount	11/17/2025	8:28 am	-System-	24.98
