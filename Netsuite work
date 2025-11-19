@@ -1,1 +1,407 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ * @NModuleScope SameAccount
+ *
+ * Celularity Inc – Label Generator (patched)
+ */
+define(['N/ui/serverWidget', 'N/log', 'N/record', 'N/runtime', 'N/search'],
+function (serverWidget, log, record, runtime, search) {
+
+  const ALLOWED_REPRINT_ROLES = [ -5, 1123];
+
+  function onRequest(context) {
+    const request = context.request;
+    const response = context.response;
+    const user = runtime.getCurrentUser();
+    log.debug("User:", user);
+
+    try {
+
+      /* -------------------- GET: Show entry form -------------------- */
+      if (request.method === 'GET') {
+        const form = buildForm(user);
+        form.clientScriptModulePath = './cs_label_download_v2.js';
+        response.writePage(form);
+        return;
+      }
+
+      /* -------------------- POST: Generate labels ------------------- */
+      if (request.method === 'POST') {
+        const group = 'custpage_lblines';
+        const lineCount = request.getLineCount({ group });
+        if (!lineCount || lineCount <= 0)
+          return showAlert(response, 'Please add at least one row before printing.');
+
+        const results = [];
+
+        for (let i = 0; i < lineCount; i++) {
+          const itemId        = request.getSublistValue({ group, name: 'custpage_item',           line: i });
+          const sampleType    = request.getSublistValue({ group, name: 'custpage_sampletype',     line: i }) || '';
+          let   mfgDate       = request.getSublistValue({ group, name: 'custpage_mfgdate',        line: i });
+          let   volume        = request.getSublistValue({ group, name: 'custpage_volume',         line: i }) || '';
+          let   concentration = request.getSublistValue({ group, name: 'custpage_concentration',  line: i }) || '';
+          let   startSerial   = request.getSublistValue({ group, name: 'custpage_serial',         line: i }) || '';
+          const incFlag       = (request.getSublistValue({ group, name: 'custpage_incrementsn',   line: i }) === 'T');
+          const qty           = parseInt(request.getSublistValue({ group, name: 'custpage_qty',   line: i }) || '1', 10);
+          const labelSize     = request.getSublistValue({ group, name: 'custpage_labelsize',      line: i }) || '1.5x1';
+          const printType     = request.getSublistValue({ group, name: 'custpage_printtype',      line: i }) || 'Original';
+          const reprintReason = request.getSublistValue({ group, name: 'custpage_reprintreason',  line: i }) || '';
+
+          // Validation
+          if (!itemId)        return showAlert(response, `Row ${i+1}: Select Item is required.`);
+          if (!sampleType)    return showAlert(response, `Row ${i+1}: Sample Type is required.`);
+          if (!mfgDate)       return showAlert(response, `Row ${i+1}: Manufacturing Date is required.`);
+          if (!volume)        return showAlert(response, `Row ${i+1}: Volume is required.`);
+          if (!concentration) return showAlert(response, `Row ${i+1}: Cell Conc. is required.`);
+          if (!startSerial)   return showAlert(response, `Row ${i+1}: Lot Number is required.`);
+          if (printType === 'reprint' && !ALLOWED_REPRINT_ROLES.includes(user.role))
+            return showAlert(response, `Row ${i+1}: You are not allowed to use Duplicate mode.`);
+          if (printType === 'reprint' && !reprintReason.trim())
+            return showAlert(response, `Row ${i+1}: Please provide a Reason for Reprint.`);
+
+          // Normalize data
+          if (mfgDate) {
+            const d = new Date(mfgDate);
+            const mth = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            mfgDate = `${String(d.getDate()).padStart(2,'0')}${mth[d.getMonth()]}${d.getFullYear()}`;
+          }
+          if (incFlag && !/-[A-Z]\d+$/i.test(startSerial)) startSerial += '-A0';
+
+          const itemName = getItemName(itemId);
+
+          // SAFETY: check if serial already exists (only for initial/original print)
+          if (printType === 'Original' && serialAlreadyExists(startSerial)) {
+            return showAlert(response, `Row ${i+1}: Serial ${startSerial} already exists. Use Duplicate mode.`);
+          }
+
+          // Build ZPL + save
+          const zpl = buildZplCode(itemName, sampleType, mfgDate, volume, concentration,
+                                   qty, startSerial, incFlag, labelSize);
+          const endSerial = incFlag ? incrementSerialCustom(startSerial, qty - 1) : startSerial;
+
+          savePrintLog({
+            printType, itemId, itemName, sampleType, mfgDate, volume,
+            concentration, startSerial, endSerial, qty, zpl, reprintReason,
+            user, incrementSerialFlag: incFlag, labelSize
+          });
+
+          results.push({ idx: i+1, itemName, startSerial, endSerial, qty, zpl });
+        }
+
+        /* --------- Render Output Page --------- */
+        const out = serverWidget.createForm({ title: 'Celularity – ZPL Output' });
+        out.clientScriptModulePath = './cs_label_download_v2.js';
+
+        const rs = out.addSublist({
+          id: 'custpage_results',
+          type: serverWidget.SublistType.LIST,
+          label: 'Generated Labels'
+        });
+        rs.addField({ id:'line_no',    type: serverWidget.FieldType.INTEGER, label:'Row #' });
+        rs.addField({ id:'line_item',  type: serverWidget.FieldType.TEXT,    label:'Item' });
+        rs.addField({ id:'line_start', type: serverWidget.FieldType.TEXT,    label:'Start Serial' });
+        rs.addField({ id:'line_end',   type: serverWidget.FieldType.TEXT,    label:'End Serial' });
+        rs.addField({ id:'line_qty',   type: serverWidget.FieldType.INTEGER, label:'# Labels' });
+
+        let hiddenHtml = '';
+        results.forEach((r, idx) => {
+          rs.setSublistValue({ id:'line_no',    line: idx, value: String(r.idx) });
+          rs.setSublistValue({ id:'line_item',  line: idx, value: r.itemName });
+          rs.setSublistValue({ id:'line_start', line: idx, value: r.startSerial });
+          rs.setSublistValue({ id:'line_end',   line: idx, value: r.endSerial });
+          rs.setSublistValue({ id:'line_qty',   line: idx, value: String(r.qty) });
+          hiddenHtml += `<input type="hidden" id="custpage_zpltext_${r.idx}" value="${encodeURIComponent(r.zpl)}">`;
+          out.addButton({ id:`custpage_print_${r.idx}`, label:`Print Row ${r.idx}`, functionName:`printZPLDirectlyLine(${r.idx})` });
+          out.addButton({ id:`custpage_download_${r.idx}`, label:`Download Row ${r.idx}`, functionName:`downloadZPLLine(${r.idx})` });
+        });
+
+        //  Combined ZPL for all rows
+        const combinedZpl = results.map(r => r.zpl).join('\n\n');
+        const zplFld = out.addField({
+          id: 'custpage_zpltext',
+          type: serverWidget.FieldType.LONGTEXT,
+          label: 'All ZPL Codes (Hidden)'
+        });
+        zplFld.defaultValue = combinedZpl;
+        zplFld.updateDisplayType({ displayType: serverWidget.FieldDisplayType.HIDDEN });
+
+        // Hidden inputs (per line)
+        const htmlFld = out.addField({
+          id: 'custpage_hiddenhtml',
+          type: serverWidget.FieldType.INLINEHTML,
+          label: 'hidden'
+        });
+        htmlFld.defaultValue = `
+          <div id="zplContainer" style="display:none;">
+            ${hiddenHtml}
+          </div>
+          <script>
+            console.log('Loaded ${results.length} ZPL rows');
+          </script>`;
+
+        // Back button
+        const backFld = out.addField({
+          id: 'custpage_back',
+          type: serverWidget.FieldType.INLINEHTML,
+          label: 'Back'
+        });
+        backFld.defaultValue = `<div style="margin-top:8px;"><button type="button" onclick="history.back()">Back to Form</button></div>`;
+
+        response.writePage(out);
+      }
+
+    } catch (e) {
+      log.error('Label Generator Error', e);
+      response.write(`<h2 style="color:red;">Error: ${e.message || e.toString()}</h2>`);
+    }
+  }
+
+  /* -------------------- Build Input Form -------------------- */
+  function buildForm(user) {
+    const form = serverWidget.createForm({ title: 'Celularity – Label Generator' });
+    const sub = form.addSublist({ id:'custpage_lblines', type:serverWidget.SublistType.INLINEEDITOR, label:'Label Lines' });
+
+    const sizeFld = sub.addField({ id:'custpage_labelsize', type:serverWidget.FieldType.SELECT, label:'Label Size (inches)' });
+    sizeFld.addSelectOption({ value:'1.5x1', text:'1.5 x 1', isSelected:true });
+    sizeFld.addSelectOption({ value:'2.5x1', text:'2.5 x 1' });
+    sizeFld.addSelectOption({ value:'3x2',   text:'3 x 2' });
+
+    const fItem = sub.addField({ id:'custpage_item', type:serverWidget.FieldType.SELECT, label:'Select Item' });
+    fItem.addSelectOption({ value:'', text:'Select an Item' });
+    getAllItems().forEach(r => fItem.addSelectOption({ value:r.id, text:r.itemid }));
+
+    sub.addField({ id:'custpage_sampletype',    type:serverWidget.FieldType.TEXT,    label:'Sample Type' });
+    sub.addField({ id:'custpage_serial',        type:serverWidget.FieldType.TEXT,    label:'Lot Number' });
+    sub.addField({ id:'custpage_incrementsn',   type:serverWidget.FieldType.CHECKBOX,label:'Serialize?' });
+    sub.addField({ id:'custpage_mfgdate',       type:serverWidget.FieldType.DATE,    label:'Manufacturing Date' });
+    sub.addField({ id:'custpage_volume',        type:serverWidget.FieldType.TEXT,    label:'Volume' });
+    sub.addField({ id:'custpage_concentration', type:serverWidget.FieldType.TEXT,    label:'Cell Conc.' });
+    sub.addField({ id:'custpage_qty',           type:serverWidget.FieldType.INTEGER, label:'# Labels' }).defaultValue = '1';
+
+
+    const pt = sub.addField({ id:'custpage_printtype', type:serverWidget.FieldType.SELECT, label:'Print Type' });
+    pt.addSelectOption({ value:'Original', text:'Intial Print', isSelected:true });
+    if (ALLOWED_REPRINT_ROLES.includes(user.role))
+      pt.addSelectOption({ value:'reprint', text:'Duplicate' });
+
+    sub.addField({ id:'custpage_reprintreason', type:serverWidget.FieldType.TEXTAREA, label:'Reason for Reprint' });
+
+    form.addButton({ id:'custpage_addrow', label:'Add Row', functionName:'addRow()' });
+    form.addButton({ id:'custpage_deleterow', label:'Delete Row', functionName:'deleteSelectedRow()' });
+    form.addSubmitButton({ label:'Print Labels' });
+    form.clientScriptModulePath = './cs_label_download_v2.js';
+    return form;
+  }
+
+  /* -------------------- Helpers -------------------- */
+  function getAllItems() {
+    // Return an array of simple objects {id, itemid} to make addSelectOption usage safe
+    const s = search.create({ type: search.Type.ITEM, filters: [['isinactive','is','F']], columns: ['internalid','itemid'] });
+    const res = [];
+    try {
+      s.run().each(r => {
+        const id = r.getValue({ name: 'internalid' }) || r.id;
+        const itemid = r.getValue({ name: 'itemid' }) || ('Item ' + id);
+        res.push({ id, itemid });
+        return true;
+      });
+    } catch (e) {
+      log.error('getAllItems search error', e);
+    }
+    return res;
+  }
+
+  function getItemName(id) {
+    try {
+      const r = search.lookupFields({ type: search.Type.ITEM, id, columns: ['itemid'] });
+      return (r && r.itemid) || ('Item ' + id);
+    } catch (e) {
+      log.error('getItemName lookup failed for ' + id, e);
+      return ('Item ' + id);
+    }
+  }
+
+  function incrementSerialCustom(base, step) {
+    const m = base.match(/^(.*-)([A-Z])(\d+)$/i);
+    if (!m) return base;
+    const prefix = m[1], letter = m[2].toUpperCase(), num = parseInt(m[3],10);
+    // total number of increments as numeric offset
+    const total = (letter.charCodeAt(0) - 65) + step;
+    const newLetter = String.fromCharCode(65 + (total % 26));
+    const carry = Math.floor(total / 26);
+    const newNum = num + carry;
+    return `${prefix}${newLetter}${newNum}`;
+  }
+
+  function serialAlreadyExists(serial) {
+    // Defensive: ensure serial is a non-empty string
+    try {
+      if (!serial || String(serial).trim() === '') return false;
+      // Use getRange(0,1) to avoid paged count issues in some accounts
+      const s = search.create({
+        type: 'customrecord_label_print_log',
+        filters: [['custrecord_serialstart', 'is', String(serial)]],
+        columns: ['internalid']
+      });
+      const results = s.run().getRange({ start: 0, end: 1 }) || [];
+      return results.length > 0;
+    } catch (e) {
+      log.error('serialAlreadyExists search error', e);
+      // don't throw; treat as "not found" so the user isn't blocked by search runtime errors.
+      return false;
+    }
+  }
+
+  function savePrintLog(p) {
+    try {
+      const rec = record.create({ type:'customrecord_label_print_log', isDynamic:true });
+      rec.setValue('custrecord_print_type', p.printType);
+      rec.setValue('custrecord_item', p.itemId);
+      rec.setValue('custrecord_itemname', p.itemName);
+      rec.setValue('custrecord_sample_type', p.sampleType);
+      rec.setValue('custrecord_mfgdate', p.mfgDate);
+      rec.setValue('custrecord_volume', p.volume);
+      rec.setValue('custrecord_concentration', p.concentration);
+      rec.setValue('custrecord_serialstart', p.startSerial);
+      rec.setValue('custrecord_serialend', p.endSerial);
+      rec.setValue('custrecord_qty', p.qty);
+      rec.setValue('custrecord_printedby', p.user.id);
+      rec.setValue('custrecord_printedon', new Date());
+      rec.setValue('custrecord_reprint_reason', p.reprintReason);
+      rec.setValue('custrecord_zplcode', p.zpl);
+      rec.setValue('custrecord_autoincrement', p.incrementSerialFlag ? 'T' : 'F');
+      rec.setValue('custrecord_label_size', p.labelSize);
+      rec.save();
+    } catch (e) { log.error('Error saving print log', e); }
+  }
+
+  /* -------------------- ZPL Builder -------------------- */
+  function buildZplCode(item, sampleType, mfg, vol, conc, qty, startSerial, incFlag, labelSize) {
+    const logoCelularity = `~DGCelularity3.GRF,162,6,000000000000
+000000000000
+000000000000
+003FE003FE00
+00FFF00FFF80
+03FFFC0FFFC0
+07FFFE07FFE0
+07F0FF0307F0
+0FC03F0001F8
+0F801F8000F8
+1F800F0000F8
+1F000600007C
+1F000000007C
+1F000000007C
+1F000030007C
+1F80007800F8
+0F8000FC00F8
+0FC0007E01F8
+07F0607F07F0
+07FFF03FFFE0
+03FFF01FFFE0
+00FFF80FFF80
+007FE003FE00
+000700003000
+000000000000
+000000000000
+000000000000`;
+
+    const logoBiohazard = `~DGbiohazard.GRF,258,6,000000000000
+000000000000
+000060C00000
+000180300000
+000200080000
+0006000C0000
+000C00060000
+001800030000
+001800030000
+003800038000
+003800038000
+00780003C000
+00783F83C000
+0078FFE3C000
+007DFFF7C000
+007DC077C000
+00FE000FE000
+01FF001FF000
+07FF803FFC00
+0FFFFBFFFE00
+1FFFFBFFFF00
+1E01F1F00F00
+3C38E0E38780
+303860C38180
+201800030080
+201C1B070080
+401C1F070040
+401C1F070040
+400E1F0E0040
+400F1F1E0040
+0007DF7C0000
+0003DF780000
+0001DF700000
+00003F800000
+00003F800000
+08007FC00200
+0400FFE00400
+0303FBF81800
+00FFF1FFE000
+003FC07F8000
+000000000000
+000000000000
+000000000000`;
+
+    let layout;
+    switch (labelSize) {
+      case '2.5x1':
+        layout={pw:500,ll:250,lines:[
+          {x:10,y:10,text:item},
+          {x:10,y:40,text:sampleType},
+          {x:10,y:70,text:'{serial}'},
+          {x:10,y:100,text:`Mfg:${mfg}`},
+          {x:10,y:130,text:`Vol:${vol} Cell Conc:${conc}`},
+          {x:10,y:160,text:'Caution: Investigational Use Only'}
+        ],logos:[{x:360,y:40,ref:'Celularity3.GRF'},{x:360,y:90,ref:'biohazard.GRF'}]};
+        break;
+      case '3x2':
+        layout={pw:610,ll:400,lines:[
+          {x:20,y:20,text:item},
+          {x:20,y:60,text:sampleType},
+          {x:20,y:100,text:'{serial}'},
+          {x:20,y:140,text:`Mfg:${mfg}`},
+          {x:20,y:180,text:`Vol:${vol} Cell Conc:${conc}`},
+          {x:20,y:220,text:'Storage: ≤ -20°C'},
+          {x:20,y:260,text:'Caution: Investigational Use Only'}
+        ],logos:[{x:450,y:60,ref:'Celularity3.GRF'},{x:450,y:120,ref:'biohazard.GRF'}]};
+        break;
+      default:
+        layout={pw:400,ll:300,lines:[
+          {x:10,y:10,text:item},
+          {x:10,y:35,text:sampleType},
+          {x:10,y:60,text:'{serial}'},
+          {x:10,y:85,text:`Mfg:${mfg}`},
+          {x:10,y:110,text:`Vol:${vol} Cell Conc:${conc}`},
+          {x:10,y:135,text:'Caution: Investigational Use Only'}
+        ],logos:[{x:240,y:35,ref:'Celularity3.GRF'},{x:240,y:85,ref:'biohazard.GRF'}]};
+        break;
+    }
+
+    let zpl = `${logoCelularity}\n${logoBiohazard}\n`;
+    for (let i=0; i<qty; i++) {
+      const serial = incFlag ? incrementSerialCustom(startSerial,i) : startSerial;
+      zpl += `^XA\n^PW${layout.pw}\n^LL${layout.ll}\n^LH0,0\n^CF0,22\n`;
+      for (const l of layout.lines)
+        zpl += `^FO${l.x},${l.y}^FD${String(l.text).replace('{serial}',serial)}^FS\n`;
+      for (const g of layout.logos)
+        zpl += `^FO${g.x},${g.y}^XGR:${g.ref},1,1^FS\n`;
+      zpl += '^XZ\n';
+    }
+    return zpl;
+  }
+
+  function showAlert(response, msg) {
+    response.write(`<script>alert("${String(msg).replace(/"/g,'\\"')}");history.back();</script>`);
+  }
+
+  return { onRequest };
+});
 
