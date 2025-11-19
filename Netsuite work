@@ -1,251 +1,519 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType MapReduceScript
+ * @NScriptType Suitelet
+ * @NModuleScope SameAccount
+ *
+ * Celularity Inc – Label Generator
+ * 
  */
-define(['N/search', 'N/record', 'N/runtime', 'N/log'],
-    function (search, record, runtime, log) {
+define(['N/ui/serverWidget', 'N/log', 'N/record', 'N/runtime', 'N/search'],
+function (serverWidget, log, record, runtime, search) {
 
-        function getInputData() {
-            const currentScript = runtime.getCurrentScript();
-            const savedSearchId = currentScript.getParameter({
-                name: "custscript_ada_sales_order_saved_search"
-            });
+  const ALLOWED_REPRINT_ROLES = [ -5, 1123];
 
-            log.debug("Saved Search ID", savedSearchId);
+  function onRequest(context) {
+    const request = context.request;
+    const response = context.response;
+    const user = runtime.getCurrentUser();
+    log.debug("User:",user);
 
-            if (!savedSearchId) {
-                log.error({ title: 'Saved search Id not provided in script parameter' });
-                return [];
-            }
+    try {
 
-            const loadSavedSearch = search.load({
-                id: savedSearchId,
-            });
+      /* -------------------- GET: Show entry form -------------------- */
+      if (request.method === 'GET') {
+        const form = buildForm(user);
+        form.clientScriptModulePath = './cs_label_download_v2.js';
+        response.writePage(form);
+        return;
+      }
 
-            const searchCount = loadSavedSearch.runPaged().count;
-            log.debug("Number of search results", searchCount);
+      /* -------------------- POST: Generate labels ------------------- */
+      if (request.method === 'POST') {
+        const group = 'custpage_lblines';
+        const lineCount = request.getLineCount({ group });
+        if (!lineCount || lineCount <= 0)
+          return showAlert(response, 'Please add at least one row before printing.');
 
-            return loadSavedSearch;
+        const results = [];
+
+        for (let i = 0; i < lineCount; i++) {
+          const itemId        = request.getSublistValue({ group, name: 'custpage_item',           line: i });
+          const sampleType    = request.getSublistValue({ group, name: 'custpage_sampletype',     line: i }) || '';
+          let   mfgDate       = request.getSublistValue({ group, name: 'custpage_mfgdate',        line: i });
+          let   volume        = request.getSublistValue({ group, name: 'custpage_volume',         line: i }) || '';
+          let   concentration = request.getSublistValue({ group, name: 'custpage_concentration',  line: i }) || '';
+          let   startSerial   = request.getSublistValue({ group, name: 'custpage_serial',         line: i }) || '';
+          const incFlag       = (request.getSublistValue({ group, name: 'custpage_incrementsn',   line: i }) === 'T');
+          const qty           = parseInt(request.getSublistValue({ group, name: 'custpage_qty',   line: i }) || '1', 10);
+          const labelSize     = request.getSublistValue({ group, name: 'custpage_labelsize',      line: i }) || '1.5x1';
+          const printType     = request.getSublistValue({ group, name: 'custpage_printtype',      line: i }) || 'Original';
+          const reprintReason = request.getSublistValue({ group, name: 'custpage_reprintreason',  line: i }) || '';
+
+          // Validation
+          if (!itemId)        return showAlert(response, `Row ${i+1}: Select Item is required.`);
+          if (!sampleType)    return showAlert(response, `Row ${i+1}: Sample Type is required.`);
+          if (!mfgDate)       return showAlert(response, `Row ${i+1}: Manufacturing Date is required.`);
+          if (!volume)        return showAlert(response, `Row ${i+1}: Volume is required.`);
+          if (!concentration) return showAlert(response, `Row ${i+1}: Cell Conc. is required.`);
+          if (!startSerial)   return showAlert(response, `Row ${i+1}: Lot Number is required.`);
+          if (printType === 'reprint' && !ALLOWED_REPRINT_ROLES.includes(user.role))
+            return showAlert(response, `Row ${i+1}: You are not allowed to use Duplicate mode.`);
+          if (printType === 'reprint' && !reprintReason.trim())
+            return showAlert(response, `Row ${i+1}: Please provide a Reason for Reprint.`);
+
+          // Normalize data
+          if (mfgDate) {
+            const d = new Date(mfgDate);
+            const mth = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+            mfgDate = `${String(d.getDate()).padStart(2,'0')}${mth[d.getMonth()]}${d.getFullYear()}`;
+          }
+          if (incFlag && !/-[A-Z]\d+$/i.test(startSerial)) startSerial += '-A0';
+
+          const itemName = getItemName(itemId);
+          if (printType === 'Original' && serialAlreadyExists(startSerial))
+            return showAlert(response, `Row ${i+1}: Serial ${startSerial} already exists. Use Duplicate mode.`);
+
+          // Build ZPL + save
+          const zpl = buildZplCode(itemName, sampleType, mfgDate, volume, concentration,
+                                   qty, startSerial, incFlag, labelSize);
+          const endSerial = incFlag ? incrementSerialCustom(startSerial, qty - 1) : startSerial;
+
+          savePrintLog({
+            printType, itemId, itemName, sampleType, mfgDate, volume,
+            concentration, startSerial, endSerial, qty, zpl, reprintReason,
+            user, incrementSerialFlag: incFlag, labelSize
+          });
+
+          results.push({ idx: i+1, itemName, startSerial, endSerial, qty, zpl });
         }
 
-        function map(context) {
-            try {
-                const searchResult = JSON.parse(context.value);
-                const salesOrderId = searchResult.id;
-                
-                context.write({
-                    key: salesOrderId,
-                    value: searchResult
-                });
+        /* --------- Render Output Page --------- */
+        const out = serverWidget.createForm({ title: 'Celularity – ZPL Output' });
+        out.clientScriptModulePath = './cs_label_download_v2.js';
 
-            } catch (error) {
-                log.error({
-                    title: 'Error in map function',
-                    details: error
-                });
-            }
+        const rs = out.addSublist({
+          id: 'custpage_results',
+          type: serverWidget.SublistType.LIST,
+          label: 'Generated Labels'
+        });
+        rs.addField({ id:'line_no',    type: serverWidget.FieldType.INTEGER, label:'Row #' });
+        rs.addField({ id:'line_item',  type: serverWidget.FieldType.TEXT,    label:'Item' });
+        rs.addField({ id:'line_start', type: serverWidget.FieldType.TEXT,    label:'Start Serial' });
+        rs.addField({ id:'line_end',   type: serverWidget.FieldType.TEXT,    label:'End Serial' });
+        rs.addField({ id:'line_qty',   type: serverWidget.FieldType.INTEGER, label:'# Labels' });
+
+        let hiddenHtml = '';
+        results.forEach((r, idx) => {
+          rs.setSublistValue({ id:'line_no',    line: idx, value: String(r.idx) });
+          rs.setSublistValue({ id:'line_item',  line: idx, value: r.itemName });
+          rs.setSublistValue({ id:'line_start', line: idx, value: r.startSerial });
+          rs.setSublistValue({ id:'line_end',   line: idx, value: r.endSerial });
+          rs.setSublistValue({ id:'line_qty',   line: idx, value: String(r.qty) });
+          hiddenHtml += `<input type="hidden" id="custpage_zpltext_${r.idx}" value="${encodeURIComponent(r.zpl)}">`;
+          out.addButton({ id:`custpage_print_${r.idx}`, label:`Print Row ${r.idx}`, functionName:`printZPLDirectlyLine(${r.idx})` });
+          out.addButton({ id:`custpage_download_${r.idx}`, label:`Download Row ${r.idx}`, functionName:`downloadZPLLine(${r.idx})` });
+        });
+
+        //  Combined ZPL for all rows
+        const combinedZpl = results.map(r => r.zpl).join('\n\n');
+        const zplFld = out.addField({
+          id: 'custpage_zpltext',
+          type: serverWidget.FieldType.LONGTEXT,
+          label: 'All ZPL Codes (Hidden)'
+        });
+        zplFld.defaultValue = combinedZpl;
+        zplFld.updateDisplayType({ displayType: serverWidget.FieldDisplayType.HIDDEN });
+
+        // Hidden inputs (per line)
+        const htmlFld = out.addField({
+          id: 'custpage_hiddenhtml',
+          type: serverWidget.FieldType.INLINEHTML,
+          label: 'hidden'
+        });
+        htmlFld.defaultValue = `
+          <div id="zplContainer" style="display:none;">
+            ${hiddenHtml}
+          </div>
+          <script>
+            console.log('Loaded ${results.length} ZPL rows');
+          </script>`;
+
+        // Back button
+        const backFld = out.addField({
+          id: 'custpage_back',
+          type: serverWidget.FieldType.INLINEHTML,
+          label: 'Back'
+        });
+        backFld.defaultValue = `<div style="margin-top:8px;"><button type="button" onclick="history.back()">Back to Form</button></div>`;
+
+        response.writePage(out);
+      }
+
+    } catch (e) {
+      log.error('Label Generator Error', e);
+      response.write(`<h2 style="color:red;">Error: ${e.message || e.toString()}</h2>`);
+    }
+  }
+
+  /* -------------------- Build Input Form -------------------- */
+  function buildForm(user) {
+    const form = serverWidget.createForm({ title: 'Celularity – Label Generator' });
+    const sub = form.addSublist({ id:'custpage_lblines', type:serverWidget.SublistType.INLINEEDITOR, label:'Label Lines' });
+
+    const sizeFld = sub.addField({ id:'custpage_labelsize', type:serverWidget.FieldType.SELECT, label:'Label Size (inches)' });
+    sizeFld.addSelectOption({ value:'1.5x1', text:'1.5 x 1', isSelected:true });
+    sizeFld.addSelectOption({ value:'2.5x1', text:'2.5 x 1' });
+    sizeFld.addSelectOption({ value:'3x2',   text:'3 x 2' }); 
+    
+    const fItem = sub.addField({ id:'custpage_item', type:serverWidget.FieldType.SELECT, label:'Select Item' });
+    fItem.addSelectOption({ value:'', text:'Select an Item' });
+    getAllItems().forEach(r => fItem.addSelectOption({ value:r.id, text:r.getValue('itemid') }));
+
+    sub.addField({ id:'custpage_sampletype',    type:serverWidget.FieldType.TEXT,    label:'Sample Type' });
+    sub.addField({ id:'custpage_serial',        type:serverWidget.FieldType.TEXT,    label:'Lot Number' });
+    sub.addField({ id:'custpage_incrementsn',   type:serverWidget.FieldType.CHECKBOX,label:'Serialize?' });
+    sub.addField({ id:'custpage_mfgdate',       type:serverWidget.FieldType.DATE,    label:'Manufacturing Date' });
+    sub.addField({ id:'custpage_volume',        type:serverWidget.FieldType.TEXT,    label:'Volume' });
+    sub.addField({ id:'custpage_concentration', type:serverWidget.FieldType.TEXT,    label:'Cell Conc.' });
+    sub.addField({ id:'custpage_qty',           type:serverWidget.FieldType.INTEGER, label:'# Labels' }).defaultValue = '1';
+
+    
+
+    const pt = sub.addField({ id:'custpage_printtype', type:serverWidget.FieldType.SELECT, label:'Print Type' });
+    pt.addSelectOption({ value:'Original', text:'Intial Print', isSelected:true });
+    if (ALLOWED_REPRINT_ROLES.includes(user.role))
+      pt.addSelectOption({ value:'reprint', text:'Duplicate' });
+
+    sub.addField({ id:'custpage_reprintreason', type:serverWidget.FieldType.TEXTAREA, label:'Reason for Reprint' });
+
+    form.addButton({ id:'custpage_addrow', label:'Add Row', functionName:'addRow()' });
+    form.addButton({ id:'custpage_deleterow', label:'Delete Row', functionName:'deleteSelectedRow()' });
+    form.addSubmitButton({ label:'Print Labels' });
+    form.clientScriptModulePath = './cs_label_download_v2.js';
+    return form;
+  }
+
+  /* -------------------- Helpers -------------------- */
+  function getAllItems() {
+    const s = search.create({ type:search.Type.ITEM, filters:[['isinactive','is','F']], columns:['internalid','itemid'] });
+    const res = []; s.run().each(r => { res.push(r); return true; }); return res;
+  }
+
+  function getItemName(id) {
+    const r = search.lookupFields({ type:search.Type.ITEM, id, columns:['itemid'] });
+    return r.itemid || ('Item ' + id);
+  }
+
+  function incrementSerialCustom(base, step) {
+    const m = base.match(/^(.*-)([A-Z])(\d+)$/i);
+    if (!m) return base;
+    const prefix=m[1], letter=m[2].toUpperCase(), num=parseInt(m[3],10);
+    const total=(letter.charCodeAt(0)-65)+step;
+    return `${prefix}${String.fromCharCode(65+(total%26))}${num+Math.floor(total/26)}`;
+  }
+
+  function serialAlreadyExists(serial) {
+    return search.create({
+      type:'customrecord_label_print_log',
+      filters:[['custrecord_serialstart','is',serial]],
+      columns:['internalid']
+    }).runPaged().count > 0;
+  }
+
+  function savePrintLog(p) {
+    try {
+      const rec = record.create({ type:'customrecord_label_print_log', isDynamic:true });
+      rec.setValue('custrecord_print_type', p.printType);
+      rec.setValue('custrecord_item', p.itemId);
+      rec.setValue('custrecord_itemname', p.itemName);
+      rec.setValue('custrecord_sample_type', p.sampleType);
+      rec.setValue('custrecord_mfgdate', p.mfgDate);
+      rec.setValue('custrecord_volume', p.volume);
+      rec.setValue('custrecord_concentration', p.concentration);
+      rec.setValue('custrecord_serialstart', p.startSerial);
+      rec.setValue('custrecord_serialend', p.endSerial);
+      rec.setValue('custrecord_qty', p.qty);
+      rec.setValue('custrecord_printedby', p.user.id);
+      rec.setValue('custrecord_printedon', new Date());
+      rec.setValue('custrecord_reprint_reason', p.reprintReason);
+      rec.setValue('custrecord_zplcode', p.zpl);
+      rec.setValue('custrecord_autoincrement', p.incrementSerialFlag ? 'T' : 'F');
+      rec.setValue('custrecord_label_size', p.labelSize);
+      rec.save();
+    } catch (e) { log.error('Error saving print log', e); }
+  }
+
+  /* -------------------- ZPL Builder -------------------- */
+  function buildZplCode(item, sampleType, mfg, vol, conc, qty, startSerial, incFlag, labelSize) {
+    const logoCelularity = `~DGCelularity3.GRF,162,6,000000000000
+000000000000
+000000000000
+003FE003FE00
+00FFF00FFF80
+03FFFC0FFFC0
+07FFFE07FFE0
+07F0FF0307F0
+0FC03F0001F8
+0F801F8000F8
+1F800F0000F8
+1F000600007C
+1F000000007C
+1F000000007C
+1F000030007C
+1F80007800F8
+0F8000FC00F8
+0FC0007E01F8
+07F0607F07F0
+07FFF03FFFE0
+03FFF01FFFE0
+00FFF80FFF80
+007FE003FE00
+000700003000
+000000000000
+000000000000
+000000000000`;
+
+    const logoBiohazard = `~DGbiohazard.GRF,258,6,000000000000
+000000000000
+000060C00000
+000180300000
+000200080000
+0006000C0000
+000C00060000
+001800030000
+001800030000
+003800038000
+003800038000
+00780003C000
+00783F83C000
+0078FFE3C000
+007DFFF7C000
+007DC077C000
+00FE000FE000
+01FF001FF000
+07FF803FFC00
+0FFFFBFFFE00
+1FFFFBFFFF00
+1E01F1F00F00
+3C38E0E38780
+303860C38180
+201800030080
+201C1B070080
+401C1F070040
+401C1F070040
+400E1F0E0040
+400F1F1E0040
+0007DF7C0000
+0003DF780000
+0001DF700000
+00003F800000
+00003F800000
+08007FC00200
+0400FFE00400
+0303FBF81800
+00FFF1FFE000
+003FC07F8000
+000000000000
+000000000000
+000000000000`;
+
+    let layout;
+    switch (labelSize) {
+      case '2.5x1':
+        layout={pw:500,ll:250,lines:[
+          {x:10,y:10,text:item},
+          {x:10,y:40,text:sampleType},
+          {x:10,y:70,text:'{serial}'},
+          {x:10,y:100,text:`Mfg:${mfg}`},
+          {x:10,y:130,text:`Vol:${vol} Cell Conc:${conc}`},
+          {x:10,y:160,text:'Caution: Investigational Use Only'}
+        ],logos:[{x:360,y:40,ref:'Celularity3.GRF'},{x:360,y:90,ref:'biohazard.GRF'}]};
+        break;
+      case '3x2':
+        layout={pw:610,ll:400,lines:[
+          {x:20,y:20,text:item},
+          {x:20,y:60,text:sampleType},
+          {x:20,y:100,text:'{serial}'},
+          {x:20,y:140,text:`Mfg:${mfg}`},
+          {x:20,y:180,text:`Vol:${vol} Cell Conc:${conc}`},
+          {x:20,y:220,text:'Storage: ≤ -20°C'},
+          {x:20,y:260,text:'Caution: Investigational Use Only'}
+        ],logos:[{x:450,y:60,ref:'Celularity3.GRF'},{x:450,y:120,ref:'biohazard.GRF'}]};
+        break;
+      default:
+        layout={pw:400,ll:300,lines:[
+          {x:10,y:10,text:item},
+          {x:10,y:35,text:sampleType},
+          {x:10,y:60,text:'{serial}'},
+          {x:10,y:85,text:`Mfg:${mfg}`},
+          {x:10,y:110,text:`Vol:${vol} Cell Conc:${conc}`},
+          {x:10,y:135,text:'Caution: Investigational Use Only'}
+        ],logos:[{x:240,y:35,ref:'Celularity3.GRF'},{x:240,y:85,ref:'biohazard.GRF'}]};
+        break;
+    }
+
+    let zpl = `${logoCelularity}\n${logoBiohazard}\n`;
+    for (let i=0; i<qty; i++) {
+      const serial = incFlag ? incrementSerialCustom(startSerial,i) : startSerial;
+      zpl += `^XA\n^PW${layout.pw}\n^LL${layout.ll}\n^LH0,0\n^CF0,22\n`;
+      for (const l of layout.lines)
+        zpl += `^FO${l.x},${l.y}^FD${l.text.replace('{serial}',serial)}^FS\n`;
+      for (const g of layout.logos)
+        zpl += `^FO${g.x},${g.y}^XGR:${g.ref},1,1^FS\n`;
+      zpl += '^XZ\n';
+    }
+    return zpl;
+  }
+
+  function showAlert(response, msg) {
+    response.write(`<script>alert("${String(msg).replace(/"/g,'\\"')}");history.back();</script>`);
+  }
+
+  return { onRequest };
+});/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ *
+ * Celularity Inc – Label Generator Client Script (Multi-Line)
+ */
+
+define([], function () {
+
+    function pageInit(context) {
+        console.log('Label Generator Client Script Loaded');
+    }
+
+    
+
+    /* --------------------------------------------------------------------
+     *  Print a specific row ZPL (from hidden <input id="custpage_zpltext_X">)
+     * -------------------------------------------------------------------- */
+    function printZPLDirectlyLine(lineIndex) {
+    try {
+        const fld = document.getElementById(`custpage_zpltext_${lineIndex}`);
+        if (!fld) {
+            alert('ZPL not found for Row ' + lineIndex);
+            return;
         }
 
-        function reduce(context) {
-            try {
-                const soDetails = context.values;
-                const salesOrderId = context.key;
-                log.debug("Sales Order ID", salesOrderId);
-                log.debug("Sales Order Details", soDetails);
-                log.debug("Sales Order Details length", soDetails.length);
-                var invoiceDetailsArray = [];
-                
-                for (var soItemCount = 0; soItemCount < soDetails.length; soItemCount++) {
-                    var soDetailsData = JSON.parse(soDetails[soItemCount]);
-                    var createdBy = soDetailsData.values['custbody_created_by'].value;
-                    var supress_email = soDetailsData.values['custbody_ada_suppress_invoice_email'];
-                    var soItem = soDetailsData.values['item'].value;
-                    var soItemType = soDetailsData.values['type.item'].value;
-                    var soMemberItem = soDetailsData.values['memberitem.item'].value;
-                    log.debug("Created By", createdBy);
-                    log.debug("Suppress Email", supress_email);
-                    log.debug("SO Item", soItem);
-                    log.debug("SO Item Type", soItemType);
-                    log.debug("SO Member Item", soMemberItem);
-                    var invoiceDetails = {
-                        createdBy: createdBy,
-                        supress_email: supress_email,
-                        item: soItem,
-                        itemType: soItemType,
-                        memberItem: soMemberItem
-                    }
-                    log.debug("Invoice Details JSON in Map", invoiceDetails);
-                    invoiceDetailsArray.push(invoiceDetails);
-                }
-                
-                log.debug("Invoice Deatails Array", invoiceDetailsArray);
-
-                const invoiceRecord = record.transform({
-                    fromType: record.Type.SALES_ORDER,
-                    fromId: salesOrderId,
-                    toType: record.Type.INVOICE,
-                    isDynamic: true
-                });
-
-                invoiceRecord.setValue({
-                    fieldId: 'custbody_created_by',
-                    value: invoiceDetailsArray[0].createdBy
-                });
-
-                invoiceRecord.setValue({
-                    fieldId: 'approvalstatus',
-                    value: 2
-                });
-
-                if (invoiceDetailsArray[0].supress_email === 'T') {
-                    invoiceRecord.setValue({
-                        fieldId: 'tobeemailed',
-                        value: false,
-                        ignoreFieldChange: true
-                    });
-                } else {
-                    invoiceRecord.setValue({
-                        fieldId: 'tobeemailed',
-                        value: true,
-                        ignoreFieldChange: true
-                    });
-                }
-
-                var invoiceLineCount = invoiceRecord.getLineCount({ sublistId: 'item' });
-
-                for (var invLine = 0; invLine < invoiceLineCount; invLine++) {
-                    var itemName = invoiceRecord.getSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'item',
-                        line: invLine
-                    });
-
-                    var invItemType = invoiceRecord.getSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'itemtype',
-                        line: invLine
-                    });
-
-                    var invItemAmount = invoiceRecord.getSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'amount',
-                        line: invLine
-                    });
-
-                    var invItemLineNo = invoiceRecord.getSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'line',
-                        line: invLine
-                    });
-
-                    if (invItemType == 'Kit') {
-
-                        var foundItem = invoiceDetailsArray.filter(soItemName => soItemName.item === itemName);
-
-                        if (foundItem && foundItem.length > 0) {
-
-                            invoiceRecord.selectLine({
-                                sublistId: 'item',
-                                line: invLine
-                            });
-                            invoiceRecord.setCurrentSublistValue({
-                                sublistId: 'item',
-                                fieldId: 'amount',
-                                value: 0
-                            });
-                            invoiceRecord.setCurrentSublistValue({
-                                sublistId: 'item',
-                                fieldId: 'custcol_ada_kit_amount',
-                                value: invItemAmount
-                            });
-                            invoiceRecord.commitLine({ sublistId: 'item' });
-                            
-                            var newKitItemAmount = (invItemAmount / foundItem.length).toFixed(2);
-                            var remainingKitAmount = invItemAmount;
-
-                            /*** FIXED BLOCK STARTS HERE ***/
-                            for (var kitLine = 0; kitLine < foundItem.length; kitLine++) {
-
-                                var insertAt = invoiceRecord.getLineCount({ sublistId: 'item' });
-
-                                invoiceRecord.insertLine({
-                                    sublistId: 'item',
-                                    line: insertAt,
-                                    ignoreRecalc: true
-                                });
-
-                                invoiceRecord.setCurrentSublistValue({
-                                    sublistId: 'item',
-                                    fieldId: 'item',
-                                    value: foundItem[kitLine].memberItem
-                                });
-
-                                invoiceRecord.setCurrentSublistValue({
-                                    sublistId: 'item',
-                                    fieldId: 'quantity',
-                                    value: 0
-                                });
-
-                                if (kitLine == foundItem.length - 1) {
-                                    invoiceRecord.setCurrentSublistValue({
-                                        sublistId: 'item',
-                                        fieldId: 'amount',
-                                        value: remainingKitAmount
-                                    });
-                                } else {
-                                    invoiceRecord.setCurrentSublistValue({
-                                        sublistId: 'item',
-                                        fieldId: 'amount',
-                                        value: newKitItemAmount
-                                    });
-                                    remainingKitAmount = remainingKitAmount - newKitItemAmount;
-                                }
-
-                                invoiceRecord.setCurrentSublistValue({
-                                    sublistId: 'item',
-                                    fieldId: 'custcol_ada_hide_on_pdf',
-                                    value: true
-                                });
-
-                                invoiceRecord.commitLine({ sublistId: 'item' });
-                            }
-                            /*** FIXED BLOCK ENDS HERE ***/
-                        }
-                    }
-                }
-
-                const invoiceId = invoiceRecord.save();
-                log.debug("Invoice ID", invoiceId);
-
-            } catch (error) {
-                log.error({
-                    title: 'Error in reduce function',
-                    details: error
-                });
-            }
+        const zplText = decodeURIComponent(fld.value || '');
+        if (!zplText.trim()) {
+            alert('No ZPL code for Row ' + lineIndex);
+            return;
         }
 
-        function summarize(summary) {
-            log.audit('Summary', {
-                totalUsage: summary.usage,
-                concurrency: summary.concurrency,
-                yields: summary.yields
-            });
+        // ✅ Build same clean print HTML as your main print function
+        const html = `
+            <html>
+                <head><title>ZPL Print Preview (Row ${lineIndex})</title></head>
+                <body style="font-family: monospace; white-space: pre;">
+                    ${zplText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                </body>
+            </html>
+        `;
 
-            summary.mapSummary.errors.iterator().each(function (key, error) {
-                log.error({
-                    title: `Error for key: ${key}`,
-                    details: error
-                });
-                return true;
-            });
-        }
+        const printWin = window.open('', '_blank');
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
 
-        return {
-            getInputData: getInputData,
-            map: map,
-            reduce: reduce,
-            summarize: summarize
+        // ✅ EXACT same behavior as main print function
+        printWin.onload = function () {
+            printWin.focus();
+            printWin.print();
         };
-    });
 
+    } catch (e) {
+        alert('Error printing line ' + lineIndex + ': ' + e.message);
+    }
+}
+
+
+    /* --------------------------------------------------------------------
+     *  Download a specific row ZPL file
+     * -------------------------------------------------------------------- */
+    function downloadZPLLine(lineIndex) {
+        try {
+            const fld = document.getElementById(`custpage_zpltext_${lineIndex}`);
+            if (!fld) {
+                alert('ZPL not found for Row ' + lineIndex);
+                return;
+            }
+            const zpl = decodeURIComponent(fld.value || '');
+            const blob = new Blob([zpl], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Celularity_Label_Row${lineIndex}.zpl`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            alert('Error downloading line ' + lineIndex + ': ' + e.message);
+        }
+    }
+
+    /* --------------------------------------------------------------------
+     *  Reset back to the Suitelet main form
+     * -------------------------------------------------------------------- */
+    function resetForm() {
+        try {
+            history.back();
+        } catch (e) {
+            alert('Unable to reset form: ' + e.message);
+        }
+    }
+
+    /* --------------------------------------------------------------------
+     *  Add / Delete Row for Inline Editor Sublist
+     * -------------------------------------------------------------------- */
+    function addRow() {
+        try {
+            const btn = document.querySelector('input[type="button"][value="Add"]');
+            if (btn) btn.click();
+        } catch (e) {
+            alert('Unable to add row: ' + e.message);
+        }
+    }
+
+    function deleteSelectedRow() {
+        try {
+            const btn = document.querySelector('input[type="button"][value="Remove"]');
+            if (btn) btn.click();
+        } catch (e) {
+            alert('Unable to delete row: ' + e.message);
+        }
+    }
+
+    return {
+        pageInit,
+       
+        printZPLDirectlyLine,
+        downloadZPLLine,
+        resetForm,
+        addRow,
+        deleteSelectedRow
+    };
+});
+{
+   type: "error.SuiteScriptError",
+   name: "UNEXPECTED_ERROR",
+   message: "An unexpected SuiteScript error has occurred",
+   id: "9d225a06-4dc6-4b99-861c-16cfc1875a58-2d323032352e31312e3139",
+   stack: [
+      "Error\n    at serialAlreadyExists (/SuiteScripts/cel_sl_label_generator (14).js:220:8)\n    at Object.onRequest (/SuiteScripts/cel_sl_label_generator (14).js:73:43)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "UNEXPECTED_ERROR",
+      details: "An unexpected SuiteScript error has occurred",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at serialAlreadyExists (/SuiteScripts/cel_sl_label_generator (14).js:220:8)\n    at Object.onRequest (/SuiteScripts/cel_sl_label_generator (14).js:73:43)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}
