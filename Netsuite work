@@ -1,1 +1,12 @@
+<soapenv:Body>
+    <platformMsgs:search>
+        <platformMsgs:searchRecord xsi:type="platformCommon:SavedSearchSearch">
+            <platformCommon:basic>
+                <platformCommon:recordType operator="anyOf">
+                    <platformCore:recordType>savedSearch</platformCore:recordType>
+                </platformCommon:recordType>
+            </platformCommon:basic>
+        </platformMsgs:searchRecord>
+    </platformMsgs:search>
+</soapenv:Body>
 
