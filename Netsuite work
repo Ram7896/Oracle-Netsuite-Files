@@ -1,1 +1,29 @@
+<soapenv:Envelope 
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:msg="urn:messages_2024_2.platform.webservices.netsuite.com"
+    xmlns:core="urn:core_2024_2.platform.webservices.netsuite.com">
+
+  <soapenv:Header>
+    <msg:applicationInfo>
+      <core:applicationId>YOUR_APP_ID</core:applicationId>
+    </msg:applicationInfo>
+
+    <msg:passport>
+      <core:email>YOUR_EMAIL</core:email>
+      <core:password>YOUR_PASSWORD</core:password>
+      <core:account>YOUR_ACCOUNT_ID</core:account>
+      <core:role internalId="3"/>
+    </msg:passport>
+  </soapenv:Header>
+
+  <soapenv:Body>
+    <msg:search>
+      <msg:searchRecord 
+          xsi:type="core:SearchRecordRef"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          savedSearchId="12345"/>
+    </msg:search>
+  </soapenv:Body>
+
+</soapenv:Envelope>
 
