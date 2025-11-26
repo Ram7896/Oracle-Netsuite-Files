@@ -1,72 +1,23 @@
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-    .img-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
-    .img-table td {
-        text-align: center;
-        vertical-align: top;
-        padding: 8px;
-    }
-    .desc {
-        font-size: 10pt;
-        margin-top: 5px;
-    }
-    img {
-        max-width: 230px;
-        max-height: 200px;
-    }
-</style>
-</head>
-<body>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:platformMsgs="urn:messages_2024_2.platform.webservices.netsuite.com"
+                  xmlns:platformCore="urn:core_2024_2.platform.webservices.netsuite.com"
+                  xmlns:listRel="urn:relationships_2024_2.lists.webservices.netsuite.com"
+                  xmlns:tranSales="urn:sales_2024_2.transactions.webservices.netsuite.com">
+   <soapenv:Header>
+      <platformMsgs:passport>
+         <platformCore:email>EMAIL</platformCore:email>
+         <platformCore:password>PASSWORD</platformCore:password>
+         <platformCore:account>ACCOUNT_ID</platformCore:account>
+         <platformCore:role internalId="ROLE_ID"/>
+      </platformMsgs:passport>
+   </soapenv:Header>
 
-<h2>Service Images</h2>
-
-<table class="img-table" border="1">
-    <tr>
-        <td>
-            <#if record.custbody_img1?has_content>
-                <img src="${record.custbody_img1}"/>
-            </#if>
-            <div class="desc">
-                After S/N 25060 L2 entry to library
-            </div>
-        </td>
-
-        <td>
-            <#if record.custbody_img2?has_content>
-                <img src="${record.custbody_img2}"/>
-            </#if>
-            <div class="desc">
-                S/N 25060 entry L2 push button not working
-            </div>
-        </td>
-
-        <td>
-            <#if record.custbody_img3?has_content>
-                <img src="${record.custbody_img3}"/>
-            </#if>
-            <div class="desc">
-                S/N 24921 after replaced end pulley wheel
-            </div>
-        </td>
-    </tr>
-
-    <tr>
-        <td>
-            <#if record.custbody_img4?has_content>
-                <img src="${record.custbody_img4}"/>
-            </#if>
-            <div class="desc">
-                S/N 24921 Basement entry, end pulley wheel cracked
-            </div>
-        </td>
-    </tr>
-</table>
-
-</body>
-</html>
+   <soapenv:Body>
+      <platformMsgs:get>
+         <platformMsgs:baseRef xsi:type="platformCore:RecordRef"
+                               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                               internalId="9999"
+                               type="savedSearch" />
+      </platformMsgs:get>
+   </soapenv:Body>
+</soapenv:Envelope>
