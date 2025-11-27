@@ -1,45 +1,72 @@
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns:platformMsgs="urn:messages_2025_1.platform.webservices.netsuite.com"
-                  xmlns:platformCore="urn:core_2025_1.platform.webservices.netsuite.com"
-                  xmlns:listRel="urn:relationships_2025_1.lists.webservices.netsuite.com"
-                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-   <soapenv:Header>
-      <platformMsgs:tokenPassport>
-         <platformCore:account>{{account}}</platformCore:account>
-         <platformCore:consumerKey>{{consumerKey}}</platformCore:consumerKey>
-         <platformCore:token>{{tokenId}}</platformCore:token>
-         <platformCore:nonce>{{nonce}}</platformCore:nonce>
-         <platformCore:timestamp>{{timeStamp}}</platformCore:timestamp>
-         <platformCore:signature algorithm="HMAC_SHA256">{{signature}}</platformCore:signature>
-      </platformMsgs:tokenPassport>
-   </soapenv:Header>
-   <soapenv:Body>
-      <platformMsgs:search>
-         <platformMsgs:searchRecord xsi:type="listRel:CustomerSearchAdvanced">
-            <listRel:savedSearchId>1828</listRel:savedSearchId>
-         </platformMsgs:searchRecord>
-      </platformMsgs:search>
-   </soapenv:Body>
-</soapenv:Envelope>
-SOAPAction:search
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+    .img-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    .img-table td {
+        text-align: center;
+        vertical-align: top;
+        padding: 8px;
+    }
+    .desc {
+        font-size: 10pt;
+        margin-top: 5px;
+    }
+    img {
+        max-width: 230px;
+        max-height: 200px;
+    }
+</style>
+</head>
+<body>
 
-Soap Pre-request Script:
-// Fixed typo in environment variable name
-let account = 'TD2982546';
-let consumerKey = '';
-let consumerSecret = '';
-let tokenId = '';
-let tokenSecret = '';
-let timeStamp = new Date().getTime().toString().substring(0,10);
-let nonce = Math.floor(Math.random() * 1000000);
-var baseString = account + '&' + consumerKey + '&' + tokenId + '&' + nonce + '&' + timeStamp;
-var key = consumerSecret + '&' + tokenSecret;
-var signature = CryptoJS.HmacSHA256(baseString, key).toString(CryptoJS.enc.Base64);
-pm.environment.set('signature', signature);
-pm.environment.set('account',account);
-pm.environment.set('nonce', nonce);
-pm.environment.set('timeStamp', timeStamp);
-pm.environment.set('tokenId',tokenId);
-pm.environment.set('tokenSecret',tokenSecret);
-pm.environment.set('consumerKey',consumerKey);
-pm.environment.set('consumerSecret',consumerSecret);
+<h2>Service Images</h2>
+
+<table class="img-table" border="1">
+    <tr>
+        <td>
+            <#if record.custbody_img1?has_content>
+                <img src="${record.custbody_img1}"/>
+            </#if>
+            <div class="desc">
+                After S/N 25060 L2 entry to library
+            </div>
+        </td>
+
+        <td>
+            <#if record.custbody_img2?has_content>
+                <img src="${record.custbody_img2}"/>
+            </#if>
+            <div class="desc">
+                S/N 25060 entry L2 push button not working
+            </div>
+        </td>
+
+        <td>
+            <#if record.custbody_img3?has_content>
+                <img src="${record.custbody_img3}"/>
+            </#if>
+            <div class="desc">
+                S/N 24921 after replaced end pulley wheel
+            </div>
+        </td>
+    </tr>
+
+    <tr>
+        <td>
+            <#if record.custbody_img4?has_content>
+                <img src="${record.custbody_img4}"/>
+            </#if>
+            <div class="desc">
+                S/N 24921 Basement entry, end pulley wheel cracked
+            </div>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
