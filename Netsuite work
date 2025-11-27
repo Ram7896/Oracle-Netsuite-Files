@@ -1,12 +1,45 @@
-<soapenv:Body>
-    <platformMsgs:search>
-        <platformMsgs:searchRecord xsi:type="platformCommon:SavedSearchSearch">
-            <platformCommon:basic>
-                <platformCommon:recordType operator="anyOf">
-                    <platformCore:recordType>savedSearch</platformCore:recordType>
-                </platformCommon:recordType>
-            </platformCommon:basic>
-        </platformMsgs:searchRecord>
-    </platformMsgs:search>
-</soapenv:Body>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:platformMsgs="urn:messages_2025_1.platform.webservices.netsuite.com"
+                  xmlns:platformCore="urn:core_2025_1.platform.webservices.netsuite.com"
+                  xmlns:listRel="urn:relationships_2025_1.lists.webservices.netsuite.com"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+   <soapenv:Header>
+      <platformMsgs:tokenPassport>
+         <platformCore:account>{{account}}</platformCore:account>
+         <platformCore:consumerKey>{{consumerKey}}</platformCore:consumerKey>
+         <platformCore:token>{{tokenId}}</platformCore:token>
+         <platformCore:nonce>{{nonce}}</platformCore:nonce>
+         <platformCore:timestamp>{{timeStamp}}</platformCore:timestamp>
+         <platformCore:signature algorithm="HMAC_SHA256">{{signature}}</platformCore:signature>
+      </platformMsgs:tokenPassport>
+   </soapenv:Header>
+   <soapenv:Body>
+      <platformMsgs:search>
+         <platformMsgs:searchRecord xsi:type="listRel:CustomerSearchAdvanced">
+            <listRel:savedSearchId>1828</listRel:savedSearchId>
+         </platformMsgs:searchRecord>
+      </platformMsgs:search>
+   </soapenv:Body>
+</soapenv:Envelope>
+SOAPAction:search
 
+Soap Pre-request Script:
+// Fixed typo in environment variable name
+let account = 'TD2982546';
+let consumerKey = '';
+let consumerSecret = '';
+let tokenId = '';
+let tokenSecret = '';
+let timeStamp = new Date().getTime().toString().substring(0,10);
+let nonce = Math.floor(Math.random() * 1000000);
+var baseString = account + '&' + consumerKey + '&' + tokenId + '&' + nonce + '&' + timeStamp;
+var key = consumerSecret + '&' + tokenSecret;
+var signature = CryptoJS.HmacSHA256(baseString, key).toString(CryptoJS.enc.Base64);
+pm.environment.set('signature', signature);
+pm.environment.set('account',account);
+pm.environment.set('nonce', nonce);
+pm.environment.set('timeStamp', timeStamp);
+pm.environment.set('tokenId',tokenId);
+pm.environment.set('tokenSecret',tokenSecret);
+pm.environment.set('consumerKey',consumerKey);
+pm.environment.set('consumerSecret',consumerSecret);
