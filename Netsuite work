@@ -1,16 +1,25 @@
+<!-- Header Row -->
 <tr style="height: 60px;">
   <!-- Task cell spans two rows -->
-  <th rowspan="2" style="text-align: center; vertical-align: middle; font-weight: bold; border: 0.5px solid #000; font-size: 10px; padding: 10px;">
+  <th rowspan="2"
+      style="text-align: center; vertical-align: middle; font-weight: bold;
+             border: 0.5px solid #000; font-size: 10px; padding: 10px;">
     Task
   </th>
-  <th colspan="4" style="text-align: center; vertical-align: middle; font-weight: bold; border: 0.5px solid #000; font-size: 10px; padding: 10px;">
+
+  <!-- Dynamic number of columns -->
+  <th colspan="${sub_assets.data?size}"
+      style="text-align: center; vertical-align: middle; font-weight: bold;
+             border: 0.5px solid #000; font-size: 10px; padding: 10px;">
     Complete (Y / N)
   </th>
 </tr>
+
+<!-- Asset Name Row -->
 <tr>
   <#list sub_assets.data as fixeddata>
     <#if fixeddata.name?trim?has_content>
-      <td class="label" style="text-align: center; border: 0.5px solid #000; font-size: 10px;">
+      <td style="text-align: center; border: 0.5px solid #000; font-size: 10px;">
         <b>${fixeddata.name}</b>
       </td>
     </#if>
