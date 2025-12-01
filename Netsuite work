@@ -1,3 +1,71 @@
+asset_results.forEach(function (res) {
+        var results = search.lookupFields({
+          type: 'customrecord_nx_asset',
+          id: res,
+          columns: [
+            'name',
+            'custrecord_nx_asset_serial',
+            'custrecord_nxc_master_code',
+            'custrecord_nxc_manufacture_date',
+            'custrecord_nxc_commissioning_date',
+            'custrecord_na_nxc_location_on_site',
+            'custrecord_nxc_make',
+            'custrecord_nxc_model',
+            'custrecord_nxc_locking',
+            'custrecord_purchase_type',
+            'custrecord_nxc_batt_type',
+            'custrecord_nxc_transmission',
+            'custrecord_product_type',
+            'custrecord_nxc_sec_opt_operator_type',
+            'custrecord_nxc_cowl',
+            'custrecord_nxc_cowl_length',
+            'custrecord_nxc_pelmet',
+            'custrecord_nxc_pelmet_length',
+            'custrecord_nxc_asset_type',
+            'custrecord_nxc_door_height_m',
+            'custrecord_nxc_door_width_m',
+            'custrecord_nxc_door_weight_kg',
+            'custrecord_nxc_glass_thickness',
+            'custrecord_nxc_entry_sensor',
+            'custrecord_nxc_exit_sensor',
+            'custrecord_nxc_open_safety',
+            'custrecord_nxc_close_safety',
+            'custrecord_nxc_entry_switch',
+            'custrecord_nxc_exit_switch',
+            'custrecord_nxc_mode_switch',
+            'custrecord_nxc_add_comm_parts',
+            'custrecord_nx_asset_type',
+            'custrecord_nxc_customer_asset_id',
+            'custrecord_nxc_asset_notes',
+            'custrecord_ai_nonai_model',
+            'custrecord_ai_adnl_model_info'
+
+          ]
+        });
+        var names = Object.keys(results);
+        names.forEach(function (name) {
+          if (Array.isArray(results[name])) {
+            if (results[name].length == 0) results[name] = '';
+            else if (name != 'custrecord_nxc_add_comm_parts')
+              results[name] = results[name][0].text;
+          }
+          else results[name] = results[name];
+        });
+        assets.push(results);
+      });
+      log.debug("Asset Details:", assets);
+      if(assets.name == ''){
+        log.debug("Assset is empty");
+      }
+      else{
+      renderer.addCustomDataSource({
+        format: render.DataSource.OBJECT,
+        alias: 'sub_assets',
+        data: { data: assets }
+      });
+    }
+
+
 <tr>
   <#list sub_assets.data as fixeddata>
     <#if fixeddata.name?trim?has_content>
