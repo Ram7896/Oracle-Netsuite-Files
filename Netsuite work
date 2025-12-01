@@ -1,1 +1,224 @@
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+  <head>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10pt;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      h1, h2 {
+        margin: 5px 0;
+        padding: 0;
+      }
+
+      .headerTable td, .headerTable th {
+        border: 0.5px solid #000;
+        padding: 4px;
+        font-size: 10px;
+      }
+
+      .label {
+        background: #f5f5f5;
+        font-weight: bold;
+      }
+
+      th {
+        background: #e6e6e6;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .checklistTable th, .checklistTable td {
+        border: 0.5px solid #000;
+        font-size: 10px;
+        padding: 3px;
+      }
+
+      .logoCell img {
+        margin: 0;
+        padding: 0;
+        display: block;
+      }
+
+      .spacer-20 { height: 20px; }
+      .spacer-40 { height: 40px; }
+      .spacer-80 { height: 80px; }
+
+      .footerTable { font-size: 10px; }
+
+    </style>
+
+    <macrolist>
+      <macro id="ai_footer">
+        <table class="footerTable" width="100%">
+          <tr>
+            <td width="33%"></td>
+            <td width="34%" align="center">Page <pagenumber/> of <totalpages/></td>
+            <td width="33%"></td>
+          </tr>
+        </table>
+      </macro>
+    </macrolist>
+  </head>
+
+  <body footer="ai_footer" footer-height="3%">
+
+    <!-- ====================== SECTION 1 ====================== -->
+
+    <h2>1. AUTOMATIC ENTRY DOOR</h2>
+
+    <table class="headerTable">
+      <tr>
+        <td class="label" width="25%">Company</td>
+        <td class="label" width="25%">Technician Name</td>
+        <td>${technician.name}</td>
+      </tr>
+      <tr>
+        <td rowspan="2" class="logoCell" width="25%">
+          <img src="${subsidiary.pagelogo@url}" width="180" height="40"/>
+        </td>
+        <td class="label">Store Name</td>
+        <td>${store.name}</td>
+      </tr>
+      <tr>
+        <td class="label">Date of Service</td>
+        <td>${case.startdate}</td>
+      </tr>
+    </table>
+
+    <!-- General Items -->
+    <table class="headerTable">
+      <tr>
+        <td class="label" width="25%">General Items</td>
+        <td>
+          Technician must check in and out of CMS and ServiceChannel.<br/>
+          Confirm performance & issues with staff.<br/>
+          Report all faults to store.
+        </td>
+      </tr>
+    </table>
+
+    <!-- Checklist -->
+    <table class="checklistTable">
+      <tr>
+        <th rowspan="2">Task</th>
+        <th colspan="${sub_assets.data?size}">Complete (Y/N)</th>
+      </tr>
+
+      <tr>
+      <#list sub_assets.data as i>
+        <th>${i.name}</th>
+      </#list>
+      </tr>
+
+      <tr><td>Check condition of brush/rubber seals</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check and adjust door guides</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check brake distance open/close</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check door alignment</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check door clearances</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check that covers are secured</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check door leaves and sidelights</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check integrity of holding fixings</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Check moving parts for wear</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Electrical component check</td><td></td><td></td><td></td><td></td></tr>
+    </table>
+
+    <div class="spacer-40"></div>
+
+    <!-- Additional Comments -->
+    <table class="headerTable">
+      <tr><td class="label">Additional Comments</td></tr>
+      <tr><td style="height:120px;"></td></tr>
+    </table>
+
+    <div class="spacer-20"></div>
+
+    <!-- Signatures -->
+    <table class="headerTable">
+      <tr><td class="label">Store Manager Signature</td><td style="height:50px;"></td></tr>
+      <tr><td class="label">Technician Signature</td><td style="height:50px;"></td></tr>
+      <tr><td class="label">Store Stamp</td><td style="height:60px;"></td></tr>
+      <tr><td class="label">Next Service Due</td><td style="height:40px;"></td></tr>
+    </table>
+
+    <div class="spacer-80"></div>
+
+    <!-- ====================== SECTION 2 ====================== -->
+
+    <h2>2. AUTOMATIC SLIDING DOOR (BACK OF HOUSE)</h2>
+
+    <table class="headerTable">
+      <tr>
+        <td class="label">Company</td>
+        <td class="label">Technician Name</td>
+        <td>${technician.name}</td>
+      </tr>
+      <tr>
+        <td rowspan="2" class="logoCell">
+          <img src="${subsidiary.pagelogo@url}" width="180" height="40"/>
+        </td>
+        <td class="label">Store Name</td>
+        <td>${store.name}</td>
+      </tr>
+      <tr>
+        <td class="label">Date of Service</td>
+        <td>${case.startdate}</td>
+      </tr>
+    </table>
+
+    <!-- General Items -->
+    <table class="headerTable">
+      <tr>
+        <td class="label" width="25%">General Items</td>
+        <td>
+          Technician must check into CMS and ServiceChannel.<br/>
+          Confirm system performance.<br/>
+          Notify store of issues.
+        </td>
+      </tr>
+    </table>
+
+    <!-- BOH Checklist -->
+    <table class="checklistTable">
+      <tr>
+        <th>Task</th>
+        <th>Complete (Y/N)</th>
+      </tr>
+
+      <tr><td>Check and adjust door guides</td><td></td></tr>
+      <tr><td>Check brake distance</td><td></td></tr>
+      <tr><td>Check alignment</td><td></td></tr>
+      <tr><td>Check clearances</td><td></td></tr>
+      <tr><td>Check covers are secured</td><td></td></tr>
+      <tr><td>Check leaves and adjust</td><td></td></tr>
+      <tr><td>Check moving parts</td><td></td></tr>
+    </table>
+
+    <div class="spacer-20"></div>
+
+    <!-- Additional Comments -->
+    <table class="headerTable">
+      <tr><td class="label">Additional Comments</td></tr>
+      <tr><td style="height:120px;"></td></tr>
+    </table>
+
+    <div class="spacer-20"></div>
+
+    <!-- Signatures -->
+    <table class="headerTable">
+      <tr><td class="label">Store Manager Signature</td><td style="height:40px;"></td></tr>
+      <tr><td class="label">Technician Signature</td><td style="height:40px;"></td></tr>
+      <tr><td class="label">Store Stamp</td><td style="height:60px;"></td></tr>
+      <tr><td class="label">Next Service Due</td><td style="height:40px;"></td></tr>
+    </table>
+
+  </body>
+</pdf>
 
