@@ -1,1 +1,81 @@
 
+<table class="headerTable" style="width:100%; border-collapse:collapse;">
+
+  <!-- ===== HEADER ROW 1 ===== -->
+  <tr>
+    <th rowspan="2"
+        style="text-align:center; vertical-align:middle; font-weight:bold; border:0.5px solid #000; font-size:10px; padding:10px;">
+      Task
+    </th>
+
+    <th colspan="${sub_assets.data?size}"
+        style="text-align:center; vertical-align:middle; font-weight:bold; border:0.5px solid #000; font-size:10px; padding:10px;">
+      Complete (Y / N)
+    </th>
+  </tr>
+
+  <!-- ===== HEADER ROW 2 (NAMES FROM sub_assets.data) ===== -->
+  <tr>
+    <#list sub_assets.data as fixedData>
+      <th style="text-align:center; border:0.5px solid #000; font-size:10px;">
+        <b>${fixedData.name}</b>
+      </th>
+    </#list>
+  </tr>
+
+
+  <!-- ===== DYNAMIC ROW TEMPLATE ===== -->
+  <#macro taskRow label>
+    <tr>
+      <td>${label}</td>
+      <#list sub_assets.data as x>
+        <td></td>
+      </#list>
+    </tr>
+  </#macro>
+
+
+  <!-- ===== ALL TASK ROWS BELOW USING taskRow MACRO ===== -->
+
+  <@taskRow "Check condition of brush/rubber seals"/>
+  <@taskRow "Check and adjust door guides"/>
+  <@taskRow "Check brake distance open/close"/>
+  <@taskRow "Check door alignment"/>
+  <@taskRow "Check door clearances"/>
+  <@taskRow "Check that covers are secured"/>
+  <@taskRow "Check door leaves and sidelights and adjust as required"/>
+  <@taskRow "Check the integrity of the holding point fixings"/>
+  <@taskRow "Check all moving parts for signs of wear"/>
+  <@taskRow "Check electrical components and replace if necessary"/>
+  <@taskRow "Test electric locking system"/>
+  <@taskRow "Check motor and gearbox function and operation"/>
+  <@taskRow "Check anti crush operation and ensure correct opening"/>
+  <@taskRow "Check the failsafe mechanism/inverter system"/>
+  <@taskRow "Check microcomputer control unit and adjust if necessary"/>
+  <@taskRow "Check alignment and tune PE beams and sensors"/>
+  <@taskRow "Test emergency opening under power failure conditions"/>
+  <@taskRow "Check for loose or damaged glass"/>
+  <@taskRow "Tighten all loose nuts, bolts, and electrical terminations"/>
+  <@taskRow "Check power supply & battery condition (record voltage)"/>
+  <@taskRow "Record battery date – attach photographic evidence"/>
+  <@taskRow "Check and secure wiring"/>
+  <@taskRow "Clean track and check bottom guide rail"/>
+  <@taskRow "Clean track wheels"/>
+  <@taskRow "Check finger, head & body traps (AS5007)"/>
+  <@taskRow "Clean area"/>
+  <@taskRow "Check for vermin-entry gaps (including under doors)"/>
+  <@taskRow "Ensure new service sticker attached with correct dates"/>
+  <@taskRow "Document any door damage"/>
+  <@taskRow "Review battery replacement date (replace if >2 years)"/>
+
+  <!-- NSW LABEL ROW -->
+  <tr>
+    <td class="label" style="font-weight:bold;" colspan="${1 + sub_assets.data?size}">
+      NSW stores only
+    </td>
+  </tr>
+
+  <@taskRow "Restore power and set doors to 'lock' mode"/>
+  <@taskRow "Check doors open via manual green push button activation"/>
+
+</table>
