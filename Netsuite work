@@ -1,91 +1,9 @@
-<#-- TASK LIST (one place to modify tasks) -->
-<#assign taskList = [
-  "Check condition of brush/rubber seals",
-  "Check and adjust door guides",
-  "Check brake distance open/close",
-  "Check door alignment",
-  "Check door clearances",
-  "Check that covers are secured",
-  "Check door leaves and sidelights and adjust as required",
-  "Check the integrity of the holding point fixings",
-  "Check all moving parts for signs of wear",
-  "Check electrical components and replace if necessary",
-  "Test electric locking system",
-  "Check motor and gearbox function and operation",
-  "Check anti crush operation and ensure correct opening",
-  "Check the failsafe mechanism/inverter system",
-  "Check microcomputer control unit and adjust if necessary",
-  "Check alignment and tune the photo electric beams and activation sensors",
-  "Test emergency opening under power failure conditions",
-  "Check for loose or damaged glass",
-  "Tighten all loose nuts, bolts, and electrical terminations",
-  "Check power supply, check battery condition and record voltage",
-  "Record battery date (photo required)",
-  "Check and secure wiring",
-  "Clean track and check bottom guide rail",
-  "Clean track wheels",
-  "Check for finger, head, and body traps as per AS5007",
-  "Clean area",
-  "Check for vermin gaps under/around doors",
-  "Ensure service sticker attached with correct dates",
-  "Document any damage to the door",
-  "Review last battery replacement; replace if older than 2 years"
-] />
+I’ve successfully completed the Oracle NetSuite SuiteFoundation Specialist Certification! 🎓🚀
 
+This milestone strengthens my skills in:
+🔹 Navigation & UI
+🔹 Workflows & Customization
+🔹 Accounting & Item Management
+🔹 Saved Searches & Analytics
 
-<table class="headerTable" style="width:100%; border-collapse:collapse;">
-
-  <!-- Header Row 1 -->
-  <tr>
-    <th rowspan="2" style="text-align:center; border:0.5px solid #000;">Task</th>
-    <th colspan="${sub_assets.data?size}" style="text-align:center; border:0.5px solid #000;">
-      Complete (Y/N)
-    </th>
-  </tr>
-
-  <!-- Header Row 2 -->
-  <tr>
-    <#list sub_assets.data as asset>
-      <th style="text-align:center; border:0.5px solid #000;">
-        <b>${asset.name}</b>
-      </th>
-    </#list>
-  </tr>
-
-
-  <!-- SINGLE LOOP FOR ALL TASK ROWS -->
-  <#list taskList as task>
-    <tr>
-      <td>${task}</td>
-
-      <#-- loop through assets to match dynamic column count -->
-      <#list sub_assets.data as a>
-        <td></td>
-      </#list>
-
-    </tr>
-  </#list>
-
-
-  <!-- NSW LABEL ROW -->
-  <tr>
-    <td class="label" style="font-weight:bold;" colspan="${1 + sub_assets.data?size}">
-      NSW STORES ONLY
-    </td>
-  </tr>
-
-  <!-- NSW tasks (same system) -->
-  <#assign nswTasks = [
-    "Restore power and set doors to 'lock' mode",
-    "Check doors open upon manual activation of the green push button"
-  ] />
-
-  <#list nswTasks as t>
-    <tr>
-      <td>${t}</td>
-      <#list sub_assets.data as a><td></td></#list>
-    </tr>
-  </#list>
-
-</table>
-
+Grateful for the support and excited to apply these skills in upcoming NetSuite projects! 💼
