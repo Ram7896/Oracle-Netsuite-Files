@@ -1,9 +1,35 @@
-I’ve successfully completed the Oracle NetSuite SuiteFoundation Specialist Certification! 🎓🚀
+ // Helper: returns everything after the first " : " (with spaces), or the original if not found
+    function getAfterFirstColonBlock(str) {
+      if (!str || typeof str !== 'string') return str;
+      var idx = str.indexOf(' : ');
+      return idx >= 0 ? str.substring(idx + 3).trim() : str;
+    }var names = Object.keys(results);
+        names.forEach(function (name) {
+          if (Array.isArray(results[name])) {
+            if (results[name].length == 0) results[name] = '';
+            else if (name != 'custrecord_nxc_add_comm_parts')
+              results[name] = results[name][0].text;
+          }
+          else results[name] = results[name];
+        });
 
-This milestone strengthens my skills in:
-🔹 Navigation & UI
-🔹 Workflows & Customization
-🔹 Accounting & Item Management
-🔹 Saved Searches & Analytics
+        // >>> Modification: transform results.name to only "S/N 39884 : Carpark Internal Entry"
+        if (results.name) {
+          results.name = getAfterFirstColonBlock(results.name);
+        }
 
-Grateful for the support and excited to apply these skills in upcoming NetSuite projects! 💼
+        // Push into assets and log
+        assets.push(results);
+        log.debug("Asset Details:", results.name);
+        log.debug("Customer Asset Id:",results.custrecord_nxc_customer_asset_id);
+
+      });
+      renderer.addCustomDataSource({
+        format: render.DataSource.OBJECT,
+        alias: 'sub_assets',
+        data: { data: assets }
+      });Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
+13	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
+14	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
+15	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
+16	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID: 509729 S/N 25201 : External Entry:Tag Id:509729  don't modify entair code add this modification in search Asset Tag id with number  take that number add this concatination otherwise leave normally S/N don't do anything
