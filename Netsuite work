@@ -1,35 +1,53 @@
- // Helper: returns everything after the first " : " (with spaces), or the original if not found
-    function getAfterFirstColonBlock(str) {
-      if (!str || typeof str !== 'string') return str;
-      var idx = str.indexOf(' : ');
-      return idx >= 0 ? str.substring(idx + 3).trim() : str;
-    }var names = Object.keys(results);
-        names.forEach(function (name) {
-          if (Array.isArray(results[name])) {
-            if (results[name].length == 0) results[name] = '';
-            else if (name != 'custrecord_nxc_add_comm_parts')
-              results[name] = results[name][0].text;
-          }
-          else results[name] = results[name];
-        });
+// Helper: returns everything after the first " : " (with spaces), or the original if not found
+function getAfterFirstColonBlock(str) {
+    if (!str || typeof str !== 'string') return str;
+    var idx = str.indexOf(' : ');
+    return idx >= 0 ? str.substring(idx + 3).trim() : str;
+}
 
-        // >>> Modification: transform results.name to only "S/N 39884 : Carpark Internal Entry"
-        if (results.name) {
-          results.name = getAfterFirstColonBlock(results.name);
-        }
+// Helper: extract first number found
+function getTagIdNumber(str) {
+    if (!str || typeof str !== 'string') return '';
+    var m = str.match(/\d+/);
+    return m ? m[0] : '';
+}
 
-        // Push into assets and log
-        assets.push(results);
-        log.debug("Asset Details:", results.name);
-        log.debug("Customer Asset Id:",results.custrecord_nxc_customer_asset_id);
+var names = Object.keys(results);
+names.forEach(function (name) {
+    if (Array.isArray(results[name])) {
+        if (results[name].length == 0) results[name] = '';
+        else if (name != 'custrecord_nxc_add_comm_parts')
+            results[name] = results[name][0].text;
+    }
+    else results[name] = results[name];
+});
 
-      });
-      renderer.addCustomDataSource({
-        format: render.DataSource.OBJECT,
-        alias: 'sub_assets',
-        data: { data: assets }
-      });Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
-13	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
-14	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
-15	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID:	Remove
-16	View	Debug	Customer Asset Id:	09/12/2025	11:35 PM		Aldi Door Tag ID: 509729 S/N 25201 : External Entry:Tag Id:509729  don't modify entair code add this modification in search Asset Tag id with number  take that number add this concatination otherwise leave normally S/N don't do anything
+// >>> Modification: transform results.name after colon
+if (results.name) {
+    results.name = getAfterFirstColonBlock(results.name);
+}
+
+// >>> ADD THIS NEW REQUIRED LOGIC <<<
+// Get Tag Id number from search field value: results.custrecord_nxc_customer_asset_id
+var tagIdNum = getTagIdNumber(results.custrecord_nxc_customer_asset_id);
+
+// If Customer Asset Id contains a number → append ":Tag Id:<number>"
+if (tagIdNum) {
+    results.name = results.name + ":Tag Id:" + tagIdNum;
+}
+// If no number → do nothing (keep results.name normally)
+
+// >>> END OF NEW LOGIC <<<
+
+// Push into assets and log
+assets.push(results);
+log.debug("Asset Details:", results.name);
+log.debug("Customer Asset Id:", results.custrecord_nxc_customer_asset_id);
+
+});
+
+renderer.addCustomDataSource({
+    format: render.DataSource.OBJECT,
+    alias: 'sub_assets',
+    data: { data: assets }
+});
