@@ -1,1 +1,15 @@
-
+<tr class="rowHeader" style="padding-top: 2px;">
+    <td colspan="2"><b>Photo Requirement:</b></td>
+</tr>
+<tr>
+    <td colspan="2">
+        <ul>
+            <li>
+                For every commissioned door, provide two photos: inside and outside, clearly showing the modepad, sensors, switches, operator, and floor in the frame.
+            </li>
+            <li>
+                If any parts or doors are found damaged during a repair request or quote, please submit supporting photos.
+            </li>
+        </ul>
+    </td>
+</tr>
