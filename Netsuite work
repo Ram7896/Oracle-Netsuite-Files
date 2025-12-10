@@ -72,7 +72,6 @@
 				valign: middle;
 				text-transform: uppercase;
 			}
-
         	table.projHeader {
         	  	font-size: 10pt;
         	  	font-family: Arial,Helvetica;
@@ -81,7 +80,6 @@
         	  	align: center;
         	  	padding: 15px;
         	}
-
         	span.doorSection {
         	  margin: 0;
         	  padding: 0;
@@ -89,7 +87,6 @@
         	  align: center;
         	  width: 100%;
         	}
-
         	table.doorDetails {
         	  font-size: 10pt;
         	  font-family: Arial,Helvetica;
@@ -99,7 +96,6 @@
         	  background-color: #F7F7F7;
         	  page-break-inside: avoid;
         	}
-
         	table.additionalNotes {
         	  font-size: 10pt;
         	  font-family: Arial,Helvetica;
@@ -108,12 +104,10 @@
         	  margin: 10px;
         	  page-break-inside: avoid;
         	}
-
         	td.additionalNotes {
         	  border-bottom: 0.5px solid gray;
         	  height: 12pt;
         	}
-
         	table.partsUsed {
         	  font-size: 10pt;
         	  font-family: Arial,Helvetica;
@@ -123,17 +117,14 @@
         	  margin: 10px;
         	  page-break-inside: avoid;
         	}
-
         	th.partsUsed {
         	  border-style: none;
         	  align: center;
         	}
-
         	td.partsUsed {
         	  border: 0.5px solid gray;
         	  height: 12pt;
         	}
-
         	table.followUps {
         	  font-size: 10pt;
         	  font-family: Arial,Helvetica;
@@ -142,7 +133,6 @@
         	  margin: 10px;
         	  page-break-inside: avoid;
         	}
-
         	table.signatures {
         	  font-size: 10pt;
         	  font-family: Arial,Helvetica;
@@ -153,47 +143,18 @@
         	  cellmargin: 10px;
         	  cellborder-bottom: 0.5 solid gray;
         	}
-
         	span.doorSection {
         	  margin: 0;
         	  padding: 0;
         	  page-break-inside: never;
         	}
-
         	span.notesSection {
         	  margin: 0;
         	  padding: 0;
         	  page-break-inside: never;
         	  page-break-before: always;
         	}
-
-			/* ----------------------------- */
-			/*     FIXED ALIGNMENT (ONLY)    */
-			/* ----------------------------- */
-
-			td {
-				padding: 3px 2px;
-				vertical-align: top;
-			}
-
-			table.projHeader td {
-				padding: 4px 2px;
-			}
-
-			table.projHeader tr {
-				line-height: 12pt;
-			}
-
-			table.projHeader {
-				border-spacing: 0px;
-			}
-
-			td[align="right"] { text-align: right; }
-			td[align="left"] { text-align: left; }
-			td[valign="middle"] { vertical-align: middle; }
-
 		</style>
-
 		<macrolist>
 			<macro id="ai_header">
 				<table class="header">
@@ -241,7 +202,6 @@
 					</tr>
 				</table>
 			</macro>
-
 			<macro id="ai_footer">
 				<table align="right" class="footer">
 					<tr>
@@ -252,8 +212,8 @@
 			</macro>
 		</macrolist>
 	</head>
-
 	<body header="ai_header" header-height="19%" footer="ai_footer" footer-height="3%" padding="0.5in 0.5in 0.5in 0.5in" size="A4">
+
 
 		<table class="projHeader">
         	<tr class="projHeader" style="padding-bottom: 2px;">
@@ -265,43 +225,35 @@
         	<tr class="projHeader" style="padding-bottom: 2px; padding-top: 2px">
 				<td colspan="2"><b>Address:  </b>${site.custrecord_nx_asset_address_text?replace("<br />",", ","r")}</td>
         	</tr>
-
         	<#if case.contact!='' || case.phone!=''>
-        	<tr class="projHeader" style="padding-bottom: 2px; padding-top: 2px">
-				<td colspan="2">
-					<#if case.contact!=''>
-						<b>Customer Contact: </b>
-						<#if case_contact.entityid != ''>${case_contact.entityid?replace("&","&amp;","r")}</#if>
-						<#if case_contact.phone != ''> / ${case_contact.phone}</#if>
-						<#if case_contact.mobilephone != ''> / ${case_contact.mobilephone}</#if>
-						<#if case_contact.email != ''> ( ${case_contact.email?html} )</#if>
-					</#if>
-				</td>
-        	</tr>
+        	  	<tr class="projHeader" style="padding-bottom: 2px; padding-top: 2px">
+        	  	  	<td colspan="2"><#if case.contact!=''>
+					<b>Customer Contact: </b><#if case_contact.entityid != ''>${case_contact.entityid?replace("&","&amp;","r")}</#if>
+											 <#if case_contact.phone != ''> / ${case_contact.phone}</#if>
+											 <#if case_contact.mobilephone != ''> / ${case_contact.mobilephone}</#if>
+											 <#if case_contact.email != ''> ( ${case_contact.email?html} )</#if>
+					</#if></td>
+        	  	</tr>
         	</#if>
-
 			<#if site.custrecordcustrecord_nxc_site_notes!=''>
-       	  	<tr class="projHeader" style="padding-top: 2px;">
-       	  		<td colspan="2"><b>Site Notes:  </b>${site.custrecordcustrecord_nxc_site_notes?replace("&","&amp;","r")}</td>
-       	  	</tr>
+       	  	  	<tr class="projHeader" style="padding-top: 2px;">
+       	  	  	  	<td colspan="2"><b>Site Notes:  </b>${site.custrecordcustrecord_nxc_site_notes?replace("&","&amp;","r")}</td>
+       	  	  	</tr>
        	  	</#if>
-
         	<tr class="projHeader" style="padding-top: 2px;">
         	  	<td colspan="2"><b>Case Details:  </b><br />${case.custevent_nx_case_details}</td>
         	</tr>
-
 			<tr class="projHeader" style="padding-top: 2px;">
         	  	<td colspan="2"><b>Photo Requirement:</b></td>
         	</tr>	
-
-			<tr class="projHeader" style="padding-top: 2px;">
-				<td colspan="2">
-					- For every commissioned door, provide two photos: inside and outside, clearly showing the modepad, sensors, switches, operator, and floor in the frame.<br/>
-					- If any parts or doors are found damaged during a repair request or quote, please submit supporting photos.
-				</td>
-			</tr>
+	<tr class="projHeader" style="padding-top: 2px;">
+    <td colspan="2">
+        - For every commissioned door, provide two photos: inside and outside, clearly showing the modepad, sensors, switches, operator, and floor in the frame.<br/>
+        - If any parts or doors are found damaged during a repair request or quote, please submit supporting photos.
+   	 </td>
+	</tr>
       	</table>
-
+	
 		<#list sub_assets.data as asset>
 			<table class="doorDetails">
         	  <tr>
@@ -309,29 +261,24 @@
         	    <td><#if (asset.custrecord_nxc_master_code)?? && asset.custrecord_nxc_master_code!=''><b>Master Code: </b>${(asset.custrecord_nxc_master_code)?html}</#if></td>
         	    <td colspan="2"><#if (asset.custrecord_nxc_manufacture_date)?? && asset.custrecord_nxc_manufacture_date?string!=''><b>Manufacture Date: </b>${asset.custrecord_nxc_manufacture_date}</#if></td>
         	  </tr>
-
         	  <#if (asset.custrecord_na_nxc_location_on_site)?? && asset.custrecord_na_nxc_location_on_site!=''>
         	    <tr>
         	      <td colspan="4"><b>Location Onsite: </b>${asset.custrecord_na_nxc_location_on_site?html}</td>
         	    </tr>
-        	  </#if>
-
+        	    </#if>
         	  <tr>
         	    <#if (asset.custrecord_nxc_make)?? && asset.custrecord_nxc_make!=''><td colspan="2"><b>Make: </b>${asset.custrecord_nxc_make}</td></#if>
         	    <#if (asset.custrecord_nxc_model)?? && asset.custrecord_nxc_model!=''><td colspan="2"><b>Model: </b>${asset.custrecord_nxc_model}</td></#if>
         	  </tr>
-
         	  <tr>
         	    <td colspan="2"><#if (asset.custrecord_nxc_locking)?? && asset.custrecord_nxc_locking!=''><b>Locking Type: </b>${asset.custrecord_nxc_locking}</#if></td>
         	    <td colspan="2"><#if (asset.custrecord_nxc_asset_type)?? && asset.custrecord_nxc_asset_type!=''><b>Door Type: </b>${asset.custrecord_nxc_asset_type}</#if></td>
         	  </tr>
-
-              <#if (asset.custrecord_nxc_asset_notes)?? && asset.custrecord_nxc_asset_notes!=''>
+            <#if (asset.custrecord_nxc_asset_notes)?? && asset.custrecord_nxc_asset_notes!=''>
               <tr>
                 <td colspan="4"><b>Asset Notes: </b>${(asset.custrecord_nxc_asset_notes)?html}</td>
               </tr>
-              </#if>
-
+            </#if>
         	</table>
 		</#list>
 
@@ -400,3 +347,4 @@
 
 	</body>
 </pdf>
+
