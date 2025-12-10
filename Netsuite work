@@ -1,6 +1,6 @@
-<td colspan="2">
-  <list style="list-style-type: '- ';">
-    <li>For every commissioned door, provide two photos: inside and outside, clearly showing the modepad, sensors, switches, operator, and floor in the frame.</li>
-    <li>If any parts or doors are found damaged during a repair request or quote, please submit supporting photos.</li>
-  </list>
-</td>
+<tr>
+      <td width="14pt" valign="top" style="padding-right:6px; vertical-align:top;">-</td>
+      <td style="vertical-align:top;">
+        For every commissioned door, provide two photos: inside and outside, clearly showing the modepad, sensors, switches, operator, and floor in the frame.
+      </td>
+    </tr>
