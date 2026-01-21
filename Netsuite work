@@ -1,52 +1,40 @@
- var case_joins = search.lookupFields({
-                type: record.Type.SUPPORT_CASE,
-                id: params.case_id,
-                columns: ['custevent_nx_case_asset',
-                    'startdate',
-                    'custevent_nxc_sub_assets',
-                    'custevent1',
-                    'custevent3',
-                    'contact',
-                    'company',
-                    'custevent_case_asset_site_notes'
-                ]
-            });
-            // Load sub-asset fields
-            var asset_results = [];
-            var case_assets = case_joins.custevent_nxc_sub_assets;
-            var proj_assets = case_joins.custevent1;
-            var dateStr = [];
-            var startDateStr = case_joins.startdate;
-            log.debug("Start Date:", startDateStr);
-            var siteNotes = case_joins.custevent_case_asset_site_notes;
-            log.debug("site Notes:", siteNotes);
-            var cleanedNotes = siteNotes.replace(/\*/g, '');
-            log.debug("CleanedNotes:",cleanedNotes);
-            var siteDetails = [];
-            siteDetails.push(
-                cleanedNotes
-            );
-             log.debug("siteNotes:",siteDetails);
- renderer.addCustomDataSource({
-                format: render.DataSource.OBJECT,
-                alias: 'siteNotes',
-                data: { data: siteDetails }
-            });
+var case_joins = search.lookupFields({
+    type: record.Type.SUPPORT_CASE,
+    id: params.case_id,
+    columns: [
+        'custevent_case_asset_site_notes'
+    ]
+});
 
-<table class="headerTable">
-  <tr>
-      <td>Details</td>
-      <td>${siteNotes.data}></td>
-  </tr>
-  <tr>
-    <td><b>PO Number</b></td>
-    <td>${case.custevent_nx_case_purchaseorder}</td>
-  </tr>
-</table>	View	Debug	CleanedNotes:	21/01/2026	10:28 PM	Rajesh Yerramchetty	Customer Service Instructions:
-Portal 1: SAP Ariba New Store Supply & Install Ordering & Invoicing All orders are placed by Regions in SAP Ariba. Accept all WOs in SAP Ariba Submit all Quotes in SAP Ariba Portal 2: ServiceChannel Repair & Maintenance works Ordering & Invoicing All orders are placed by Regions in ServiceChannel. Accept all WOs in ServiceChannel Submit all Quotes in ServiceChannel Portal 3: Pegasus Pegasus induction is renewed annually at $30 per tech
+var siteNotes = case_joins.custevent_case_asset_site_notes || '';
+log.debug("Raw Site Notes", siteNotes);
 
-Office Site Notes:
-Aldi Travel Allowance: the return travel cost incurred to Aldi of a distance exceeding 80km measured as a radius from the nearest Major City GPO (Canberra NSW 2600) to an Aldi Store GPO (Yass NSW 2582) Chargeable Travel: 59.1km (oneway) x 2 = 118.2km (return) - 160km = $-41.8 x $3.50/km = none
+// Remove *
+var cleanedNotes = siteNotes.replace(/\*/g, '').trim();
+log.debug("Cleaned Notes", cleanedNotes);
 
-Site Notes (for tech):
-Notify store manager prior to arrival Pegasus online induction required (MANDATORY) Sign in/out via QR scan (MANDATORY) Store Phone No 02 6226 1499
+// Convert multi-line text into array (line by line)
+var siteDetails = cleanedNotes.split(/\r?\n/);
+
+renderer.addCustomDataSource({
+    format: render.DataSource.OBJECT,
+    alias: 'siteNotes',
+    data: {
+        list: siteDetails
+    }
+});
+<table class="headerTable" style="width:100%; border-collapse: collapse;">
+    <tr>
+        <th style="border:1px solid #000; padding:5px;">Details</th>
+    </tr>
+
+    <#if siteNotes.list?has_content>
+        <#list siteNotes.list as note>
+            <tr>
+                <td style="border:1px solid #000; padding:5px;">
+                    ${note}
+                </td>
+            </tr>
+        </#list>
+    </#if>
+</table>
