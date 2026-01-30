@@ -1,282 +1,36 @@
-<?xml version="1.0"?>
-<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
-<pdf>
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
+define(['N/runtime'], function (runtime) {
 
-<head>
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 10pt;
+    function pageInit(context) {
+
+        var currentRole = runtime.getCurrentUser().role;
+        var rec = context.currentRecord;
+        var selectField = rec.getField({ fieldId: 'custrecord_select_field' });
+
+        if (!selectField) return;
+
+        // Clear all options first
+        selectField.removeSelectOption({ value: null });
+
+        // Example Role IDs (replace with actual)
+        var RAM_ROLE_ID = 123;   // Ram role internal ID
+        var RAJ_ROLE_ID = 456;   // Raj role internal ID
+
+        if (currentRole === RAM_ROLE_ID) {
+            selectField.insertSelectOption({ value: 'a', text: 'A' });
+            selectField.insertSelectOption({ value: 'b', text: 'B' });
+        }
+
+        if (currentRole === RAJ_ROLE_ID) {
+            selectField.insertSelectOption({ value: 'c', text: 'C' });
+            selectField.insertSelectOption({ value: 'd', text: 'D' });
+        }
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 10px;
-    }
-
-    th, td {
-      padding: 4px;
-      font-size: 9pt;
-    }
-
-    th {
-      background-color: #EEE;
-      font-weight: bold;
-      text-align: center;
-      border: 0.5px solid #000;
-    }
-
-    td {
-      border: 0.5px solid #000;
-    }
-
-    .headerTable td {
-      border: none;
-    }
-
-    .label {
-      font-weight: bold;
-      background-color: #f5f5f5;
-    }
-
-    .logoCell {
-      text-align: center;
-      vertical-align: middle;
-    }
-  </style>
-
-  <macrolist>
-    <macro id="ai_footer">
-      <table width="100%">
-        <tr>
-          <td width="33%"></td>
-          <td width="34%" align="center">
-            Page <pagenumber/> of <totalpages/>
-          </td>
-          <td width="33%"></td>
-        </tr>
-      </table>
-    </macro>
-  </macrolist>
-</head>
-
-<body footer="ai_footer">
-
-<#assign baseURL = "https://5238530-sb2.app.netsuite.com">
-
-<!-- ===================== -->
-<!-- AUTOMATIC ENTRY DOOR -->
-<!-- ===================== -->
-
-<table>
-  <tr>
-    <td class="logoCell">
-      <img src="${baseURL + img.logo?xml}" width="240" height="100"/>
-    </td>
-  </tr>
-</table>
-
-<h2>1.&nbsp;&nbsp;&nbsp;AUTOMATIC ENTRY DOOR</h2>
-
-<table class="headerTable">
-  <tr>
-    <td class="label">Company</td>
-    <td class="label">Technician Name</td>
-    <td>${technician.name}</td>
-  </tr>
-  <tr>
-    <td rowspan="3" class="logoCell">
-      <img src="${subsidiary.pagelogo@url}" width="230" height="70"/>
-    </td>
-    <td class="label">Store Name</td>
-    <td>${case.custevent_nx_case_asset}</td>
-  </tr>
-  <tr>
-    <td class="label">Date of Service</td>
-    <td></td>
-  </tr>
-  <tr>
-    <td class="label">Service of Month / Case Number</td>
-    <td>${date_str.data} / ${case.casenumber}</td>
-  </tr>
-</table>
-
-<#assign taskList=[
-  "Check condition of brush/rubber seals",
-  "Check and adjust door guides",
-  "Check brake distance open/close",
-  "Check door alignment",
-  "Check door clearances",
-  "Check that covers are secured",
-  "Check door leaves and sidelights and adjust as required",
-  "Check the integrity of the holding point fixings",
-  "Check all moving parts for signs of wear",
-  "Check electrical components and replace if necessary",
-  "Test electric locking system",
-  "Check motor and gearbox function and operation",
-  "Check anti crush operation and ensure correct opening",
-  "Check the failsafe mechanism/inverter system",
-  "Check microcomputer control unit and adjust if necessary",
-  "Check alignment and tune the photo electric beams and activation sensors",
-  "Test emergency opening under power failure conditions",
-  "Check for loose or damaged glass",
-  "Tighten all loose nuts, bolts, and electrical terminations",
-  "Check power supply, check battery condition and record voltage",
-  "Record battery date (photo required)",
-  "Check and secure wiring",
-  "Clean track and check bottom guide rail",
-  "Clean track wheels",
-  "Check for finger, head, and body traps as per AS5007",
-  "Clean area",
-  "Check for vermin gaps under/around doors",
-  "Ensure service sticker attached with correct dates",
-  "Document any damage to the door",
-  "Review last battery replacement; replace if older than 2 years"
-] />
-
-<table>
-  <tr>
-    <th rowspan="2"
-        style="padding:${(sub_assets.data?size <= 1)?string('15px','40px')};
-               vertical-align:middle;">
-      Task
-    </th>
-    <th colspan="${sub_assets.data?size}">
-      Complete (Y / N)
-    </th>
-  </tr>
-
-  <tr>
-    <#list sub_assets.data as asset>
-      <th>${asset.name}</th>
-    </#list>
-  </tr>
-
-  <#list taskList as task>
-    <tr>
-      <td>${task}</td>
-      <#list sub_assets.data as a>
-        <td></td>
-      </#list>
-    </tr>
-  </#list>
-
-  <tr>
-    <td class="label" colspan="${1 + sub_assets.data?size}">
-      NSW STORES ONLY
-    </td>
-  </tr>
-
-  <#assign nswTasks=[
-    "Restore power and set doors to 'lock' mode",
-    "Check doors open upon manual activation of the green push button"
-  ] />
-
-  <#list nswTasks as t>
-    <tr>
-      <td>${t}</td>
-      <#list sub_assets.data as a>
-        <td></td>
-      </#list>
-    </tr>
-  </#list>
-</table>
-
-<!-- PAGE BREAK -->
-<div style="page-break-before:always;"></div>
-
-<!-- ========================= -->
-<!-- AUTOMATIC SLIDING DOOR -->
-<!-- ========================= -->
-
-<#if flagged_names?? && flagged_names.data?has_content>
-
-<table>
-  <tr>
-    <td class="logoCell">
-      <img src="${baseURL + sliding.logo?xml}" width="240" height="100"/>
-    </td>
-  </tr>
-</table>
-
-<h2>2.&nbsp;&nbsp;&nbsp;AUTOMATIC SLIDING DOOR (BACK OF HOUSE)</h2>
-
-<table class="headerTable">
-  <tr>
-    <td class="label">Company</td>
-    <td class="label">Technician Name</td>
-    <td>${technician.name}</td>
-  </tr>
-  <tr>
-    <td rowspan="3" class="logoCell">
-      <img src="${subsidiary.pagelogo@url}" width="230" height="70"/>
-    </td>
-    <td class="label">Store Name</td>
-    <td>${case.custevent_nx_case_asset}</td>
-  </tr>
-  <tr>
-    <td class="label">Date of Service</td>
-    <td></td>
-  </tr>
-  <tr>
-    <td class="label">Service of Month / Case Number</td>
-    <td>${date_str.data} / ${case.casenumber}</td>
-  </tr>
-</table>
-
-<#assign taskList=[
-  "Check and adjust door guides",
-  "Check brake distance open/close",
-  "Check door alignment",
-  "Check door clearances",
-  "Check that covers are secured",
-  "Check door leaves and adjust as required",
-  "Check the integrity of the holding point fixings",
-  "Check all moving parts for signs of wear",
-  "Check electrical components and replace if necessary",
-  "Test electric locking system",
-  "Check motor and gearbox function and operation",
-  "Check the failsafe mechanism/inverter system",
-  "Check microcomputer control unit and adjust if necessary",
-  "Check alignment and tune the photo electric beams",
-  "Check emergency opening under power failure",
-  "Tighten all loose nuts and electrical terminations",
-  "Check battery condition and record voltage",
-  "Record battery date",
-  "Check and secure wiring",
-  "Clean track",
-  "Clean track wheels",
-  "Clean area",
-  "Check for vermin gaps",
-  "Document any damage"
-] />
-
-<table>
-  <tr>
-    <th>Task</th>
-    <th colspan="${flagged_names.data?size}">Complete (Y / N)</th>
-  </tr>
-
-  <tr>
-    <th>Door Details</th>
-    <#list flagged_names.data as asset>
-      <th>${asset}</th>
-    </#list>
-  </tr>
-
-  <#list taskList as task>
-    <tr>
-      <td>${task}</td>
-      <#list flagged_names.data as a>
-        <td></td>
-      </#list>
-    </tr>
-  </#list>
-</table>
-
-</#if>
-
-</body>
-</pdf>
-
+    return {
+        pageInit: pageInit
+    };
+});
