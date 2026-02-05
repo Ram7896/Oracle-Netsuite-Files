@@ -1,36 +1,107 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType ClientScript
+ * @NScriptType Suitelet
  */
-define(['N/runtime'], function (runtime) {
+define(['N/ui/serverWidget'], (ui) => {
 
-    function pageInit(context) {
-
-        var currentRole = runtime.getCurrentUser().role;
-        var rec = context.currentRecord;
-        var selectField = rec.getField({ fieldId: 'custrecord_select_field' });
-
-        if (!selectField) return;
-
-        // Clear all options first
-        selectField.removeSelectOption({ value: null });
-
-        // Example Role IDs (replace with actual)
-        var RAM_ROLE_ID = 123;   // Ram role internal ID
-        var RAJ_ROLE_ID = 456;   // Raj role internal ID
-
-        if (currentRole === RAM_ROLE_ID) {
-            selectField.insertSelectOption({ value: 'a', text: 'A' });
-            selectField.insertSelectOption({ value: 'b', text: 'B' });
+    const onRequest = (context) => {
+        if (context.request.method === 'GET') {
+            createForm(context, '', '');
+        } else {
+            const ss1Code = context.request.parameters.custpage_ss1_code || '';
+            const convertedCode = convertToSS2(ss1Code);
+            createForm(context, ss1Code, convertedCode);
         }
+    };
 
-        if (currentRole === RAJ_ROLE_ID) {
-            selectField.insertSelectOption({ value: 'c', text: 'C' });
-            selectField.insertSelectOption({ value: 'd', text: 'D' });
-        }
+    function createForm(context, ss1Code, ss2Code) {
+        const form = ui.createForm({
+            title: 'SuiteScript 1.0 → 2.x Converter'
+        });
+
+        form.addFieldGroup({
+            id: 'custpage_fg',
+            label: 'Converter'
+        });
+
+        // Left side - SuiteScript 1.0
+        const ss1Field = form.addField({
+            id: 'custpage_ss1_code',
+            type: ui.FieldType.TEXTAREA,
+            label: 'SuiteScript 1.0 Code',
+            container: 'custpage_fg'
+        });
+        ss1Field.defaultValue = ss1Code;
+        ss1Field.updateDisplaySize(60, 25);
+
+        // Right side - SuiteScript 2.x
+        const ss2Field = form.addField({
+            id: 'custpage_ss2_code',
+            type: ui.FieldType.TEXTAREA,
+            label: 'Converted SuiteScript 2.x Code',
+            container: 'custpage_fg'
+        });
+        ss2Field.defaultValue = ss2Code;
+        ss2Field.updateDisplaySize(60, 25);
+        ss2Field.updateDisplayType({
+            displayType: ui.FieldDisplayType.INLINE
+        });
+
+        form.addSubmitButton({
+            label: 'Convert to SuiteScript 2.x'
+        });
+
+        context.response.writePage(form);
     }
 
-    return {
-        pageInit: pageInit
-    };
+    /**
+     * Basic rule-based converter
+     */
+    function convertToSS2(code) {
+        let output = code;
+
+        // API replacements
+        const rules = [
+            { from: /nlapiCreateRecord\(/g, to: 'record.create(' },
+            { from: /nlapiLoadRecord\(/g, to: 'record.load(' },
+            { from: /nlapiSubmitRecord\(/g, to: 'rec.save(' },
+            { from: /setFieldValue/g, to: 'setValue' },
+            { from: /getFieldValue/g, to: 'getValue' },
+            { from: /nlapiLogExecution\(/g, to: 'log.debug(' },
+            { from: /nlapiSearchRecord/g, to: 'search.create' }
+        ];
+
+        rules.forEach(rule => {
+            output = output.replace(rule.from, rule.to);
+        });
+
+        // Wrap in SS 2.1 structure
+        output =
+`/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ */
+define(['N/record', 'N/log', 'N/search'], (record, log, search) => {
+
+${output}
+
+    return {};
 });
+`;
+
+        return output;
+    }
+
+    return { onRequest };
+});
+
+
+
+var rec = nlapiCreateRecord('customer');
+rec.setFieldValue('companyname', 'ABC');
+nlapiSubmitRecord(rec);
+
+let rec = record.create('customer');
+rec.setValue({ fieldId: 'companyname', value: 'ABC' });
+rec.save();
+
