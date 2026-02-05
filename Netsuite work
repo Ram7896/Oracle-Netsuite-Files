@@ -24,25 +24,25 @@ define(['N/ui/serverWidget'], (ui) => {
             label: 'Converter'
         });
 
-        // Left side - SuiteScript 1.0
+        // --- SuiteScript 1.0 Input ---
         const ss1Field = form.addField({
             id: 'custpage_ss1_code',
             type: ui.FieldType.TEXTAREA,
             label: 'SuiteScript 1.0 Code',
-            container: 'custpage_fg'
+            container: 'custpage_fg',
+            displaySize: { width: 60, height: 25 }
         });
         ss1Field.defaultValue = ss1Code;
-        ss1Field.updateDisplaySize(60, 25);
 
-        // Right side - SuiteScript 2.x
+        // --- SuiteScript 2.x Output ---
         const ss2Field = form.addField({
             id: 'custpage_ss2_code',
             type: ui.FieldType.TEXTAREA,
             label: 'Converted SuiteScript 2.x Code',
-            container: 'custpage_fg'
+            container: 'custpage_fg',
+            displaySize: { width: 60, height: 25 }
         });
         ss2Field.defaultValue = ss2Code;
-        ss2Field.updateDisplaySize(60, 25);
         ss2Field.updateDisplayType({
             displayType: ui.FieldDisplayType.INLINE
         });
@@ -54,13 +54,9 @@ define(['N/ui/serverWidget'], (ui) => {
         context.response.writePage(form);
     }
 
-    /**
-     * Basic rule-based converter
-     */
     function convertToSS2(code) {
         let output = code;
 
-        // API replacements
         const rules = [
             { from: /nlapiCreateRecord\(/g, to: 'record.create(' },
             { from: /nlapiLoadRecord\(/g, to: 'record.load(' },
@@ -75,7 +71,6 @@ define(['N/ui/serverWidget'], (ui) => {
             output = output.replace(rule.from, rule.to);
         });
 
-        // Wrap in SS 2.1 structure
         output =
 `/**
  * @NApiVersion 2.1
@@ -94,14 +89,3 @@ ${output}
 
     return { onRequest };
 });
-
-
-
-var rec = nlapiCreateRecord('customer');
-rec.setFieldValue('companyname', 'ABC');
-nlapiSubmitRecord(rec);
-
-let rec = record.create('customer');
-rec.setValue({ fieldId: 'companyname', value: 'ABC' });
-rec.save();
-
