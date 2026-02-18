@@ -515,4 +515,140 @@ define(['N/record', 'N/search', 'N/https', 'N/runtime', 'N/log', 'N/encode', 'N/
             reduce,
             summarize
         };
+
+
+
+#
+View
+Type
+Title
+Date
+Time
+User
+Details
+Remove
+1	View	Error	ReduceErrors	02/18/2026	3:09 am	-System-	Reduce phase errors: {}	Remove
+2	View	Error	MapErrors	02/18/2026	3:09 am	-System-	Map phase errors: {}	Remove
+3	View	Audit	Summary	02/18/2026	3:09 am	-System-	Map/Reduce finished. Usage: 354	Remove
+4	View	Audit	Skip	02/18/2026	3:09 am	-System-	No cached WMS order 12512288	Remove
+5	View	Error	ReduceError	02/18/2026	3:09 am	-System-	
+{
+   type: "error.SuiteScriptError",
+   name: "USER_ERROR",
+   message: "You must enter at least one line item for this transaction.",
+   id: "",
+   stack: [
+      "Error\n    at RecordInvoker.save (suitescript/resources/javascript/record/serverRecordService.js:391:13)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:489:28)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "USER_ERROR",
+      details: "You must enter at least one line item for this transaction.",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at RecordInvoker.save (suitescript/resources/javascript/record/serverRecordService.js:391:13)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:489:28)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}
+Remove
+6	View	Error	ReduceError	02/18/2026	3:09 am	-System-	
+{
+   type: "error.SuiteScriptError",
+   name: "USER_ERROR",
+   message: "You must enter at least one line item for this transaction.",
+   id: "",
+   stack: [
+      "Error\n    at RecordInvoker.save (suitescript/resources/javascript/record/serverRecordService.js:391:13)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:489:28)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "USER_ERROR",
+      details: "You must enter at least one line item for this transaction.",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at RecordInvoker.save (suitescript/resources/javascript/record/serverRecordService.js:391:13)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:489:28)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}
+Remove
+7	View	Audit	Skip	02/18/2026	3:09 am	-System-	No cached WMS order 12418735	Remove
+8	View	Audit	Skip	02/18/2026	3:09 am	-System-	No cached WMS order 12417355	Remove
+9	View	Audit	Skip	02/18/2026	3:09 am	-System-	No cached WMS order 12402397	Remove
+10	View	Error	ReduceError	02/18/2026	3:09 am	-System-	
+{
+   type: "error.SuiteScriptError",
+   name: "YOU_HAVE_AN_INVALID_SALES_ORDER_1_OR_AN_INVALID_FULFILLMENT_REQUEST_2",
+   message: "You have an invalid Sales Order 19040 or an invalid Fulfillment Request 20096.",
+   id: "",
+   stack: [
+      "Error\n    at suitescript/resources/javascript/record/recordImpl.js:124:12\n    at Function.transformRecord_raw (suitescript/resources/javascript/record/recordImpl.js:122:24)\n    at suitescript/resources/javascript/record/recordImpl.js:110:32\n    at Object.transformRecord (suitescript/resources/javascript/record/recordImpl.js:108:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:344:30)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "YOU_HAVE_AN_INVALID_SALES_ORDER_1_OR_AN_INVALID_FULFILLMENT_REQUEST_2",
+      details: "You have an invalid Sales Order 19040 or an invalid Fulfillment Request 20096.",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at suitescript/resources/javascript/record/recordImpl.js:124:12\n    at Function.transformRecord_raw (suitescript/resources/javascript/record/recordImpl.js:122:24)\n    at suitescript/resources/javascript/record/recordImpl.js:110:32\n    at Object.transformRecord (suitescript/resources/javascript/record/recordImpl.js:108:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:344:30)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}
+Remove
+11	View	Audit	Skip	02/18/2026	3:09 am	-System-	No cached WMS order 12374857	Remove
+12	View	Error	ReduceError	02/18/2026	3:09 am	-System-	
+{
+   type: "error.SuiteScriptError",
+   name: "YOU_HAVE_AN_INVALID_SALES_ORDER_1_OR_AN_INVALID_FULFILLMENT_REQUEST_2",
+   message: "You have an invalid Sales Order 19050 or an invalid Fulfillment Request 19052.",
+   id: "",
+   stack: [
+      "Error\n    at suitescript/resources/javascript/record/recordImpl.js:124:12\n    at Function.transformRecord_raw (suitescript/resources/javascript/record/recordImpl.js:122:24)\n    at suitescript/resources/javascript/record/recordImpl.js:110:32\n    at Object.transformRecord (suitescript/resources/javascript/record/recordImpl.js:108:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:344:30)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "YOU_HAVE_AN_INVALID_SALES_ORDER_1_OR_AN_INVALID_FULFILLMENT_REQUEST_2",
+      details: "You have an invalid Sales Order 19050 or an invalid Fulfillment Request 19052.",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at suitescript/resources/javascript/record/recordImpl.js:124:12\n    at Function.transformRecord_raw (suitescript/resources/javascript/record/recordImpl.js:122:24)\n    at suitescript/resources/javascript/record/recordImpl.js:110:32\n    at Object.transformRecord (suitescript/resources/javascript/record/recordImpl.js:108:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:344:30)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}
+Remove
+13	View	Error	ReduceError	02/18/2026	3:09 am	-System-	
+{
+   type: "error.SuiteScriptError",
+   name: "YOU_HAVE_AN_INVALID_SALES_ORDER_1_OR_AN_INVALID_FULFILLMENT_REQUEST_2",
+   message: "You have an invalid Sales Order 18803 or an invalid Fulfillment Request 18839.",
+   id: "",
+   stack: [
+      "Error\n    at suitescript/resources/javascript/record/recordImpl.js:124:12\n    at Function.transformRecord_raw (suitescript/resources/javascript/record/recordImpl.js:122:24)\n    at suitescript/resources/javascript/record/recordImpl.js:110:32\n    at Object.transformRecord (suitescript/resources/javascript/record/recordImpl.js:108:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:344:30)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "YOU_HAVE_AN_INVALID_SALES_ORDER_1_OR_AN_INVALID_FULFILLMENT_REQUEST_2",
+      details: "You have an invalid Sales Order 18803 or an invalid Fulfillment Request 18839.",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at suitescript/resources/javascript/record/recordImpl.js:124:12\n    at Function.transformRecord_raw (suitescript/resources/javascript/record/recordImpl.js:122:24)\n    at suitescript/resources/javascript/record/recordImpl.js:110:32\n    at Object.transformRecord (suitescript/resources/javascript/record/recordImpl.js:108:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:344:30)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}
+Remove
+14	View	Audit	Cache Built	02/18/2026	3:09 am	-System-	Closed orders cached: 184
     });
