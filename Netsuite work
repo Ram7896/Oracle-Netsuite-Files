@@ -1,1 +1,238 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType MapReduceScript
+ * @NModuleScope SameAccount
+ */
+define([
+    'N/record', 'N/search', 'N/https',
+    'N/runtime', 'N/log', 'N/encode',
+    'N/error', 'N/cache'
+], (record, search, https, runtime, log, encode, error, cache) => {
+
+    const IFR_RECORD_TYPE = 'fulfillmentrequest';
+    const IFR_PROCESSED_FLAG = 'custbody_if_processed';
+    const WMS_REF_FIELD = 'custbody_wms_order_id';
+
+    const CRED_REC_TYPE = 'customrecord_wms_integration_credentials';
+    const CLIENT_ID_FIELD = 'custrecord_wms_client_id';
+    const CLIENT_SECRET_FIELD = 'custrecord_wms_client_secret';
+    const TOKEN_URL_FIELD = 'custrecord_wms_token_url';
+
+    let cachedToken = null;
+    let tokenExpiry = 0;
+
+    /* ===================== CREDENTIALS ===================== */
+
+    function getCredentials() {
+        const r = search.create({
+            type: CRED_REC_TYPE,
+            filters: [['isinactive', 'is', 'F']],
+            columns: [CLIENT_ID_FIELD, CLIENT_SECRET_FIELD, TOKEN_URL_FIELD]
+        }).run().getRange({ start: 0, end: 1 });
+
+        if (!r || !r.length) throw 'WMS credentials not found';
+
+        return {
+            clientId: r[0].getValue(CLIENT_ID_FIELD),
+            clientSecret: r[0].getValue(CLIENT_SECRET_FIELD),
+            tokenUrl: r[0].getValue(TOKEN_URL_FIELD),
+            apiBase: 'https://secure-wms.com'
+        };
+    }
+
+    function getAccessToken(creds) {
+        const now = Date.now();
+        if (cachedToken && now < tokenExpiry) return cachedToken;
+
+        const auth = encode.convert({
+            string: `${creds.clientId}:${creds.clientSecret}`,
+            inputEncoding: encode.Encoding.UTF_8,
+            outputEncoding: encode.Encoding.BASE_64
+        });
+
+        const resp = https.post({
+            url: creds.tokenUrl,
+            headers: {
+                Authorization: `Basic ${auth}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'grant_type=client_credentials'
+        });
+
+        const json = JSON.parse(resp.body);
+        cachedToken = json.access_token;
+        tokenExpiry = now + (json.expires_in || 300) * 1000 - 60000;
+
+        return cachedToken;
+    }
+
+    /* ===================== WMS CACHE ===================== */
+
+    function buildClosedOrderCache(creds, token) {
+        const c = cache.getCache({ name: 'WMS_CLOSED_ORDERS', scope: cache.Scope.PRIVATE });
+        let page = 1, more = true;
+
+        while (more) {
+            const url =
+                `${creds.apiBase}/orders?rql=${encodeURIComponent('ReadOnly.isClosed==true')}` +
+                `&detail=All&itemdetail=All&pgsiz=200&pgnum=${page}`;
+
+            const r = https.get({
+                url,
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const list = JSON.parse(r.body).ResourceList || [];
+            list.forEach(o => {
+                const id = o.ReadOnly?.OrderId;
+                if (id) c.put({ key: String(id), value: JSON.stringify(o), ttl: 14400 });
+            });
+
+            more = list.length === 200;
+            page++;
+
+            if (runtime.getCurrentScript().getRemainingUsage() < 500) break;
+        }
+    }
+
+    /* ===================== INPUT ===================== */
+
+    function getInputData() {
+        const creds = getCredentials();
+        const token = getAccessToken(creds);
+        buildClosedOrderCache(creds, token);
+
+        return search.create({
+            type: IFR_RECORD_TYPE,
+            filters: [
+                [WMS_REF_FIELD, 'isnotempty', ''],
+                'AND',
+                [IFR_PROCESSED_FLAG, 'is', 'F']
+            ],
+            columns: ['internalid', 'createdfrom', WMS_REF_FIELD]
+        });
+    }
+
+    function map(context) {
+        const r = JSON.parse(context.value);
+        context.write({
+            key: r.id,
+            value: {
+                ifrId: r.id,
+                soId: r.values.createdfrom?.value,
+                wmsOrderId: r.values[WMS_REF_FIELD]
+            }
+        });
+    }
+
+    /* ===================== REDUCE ===================== */
+
+    function reduce(context) {
+        const { ifrId, soId, wmsOrderId } = context.values.map(JSON.parse)[0];
+
+        try {
+            /* ---- Reload IFR (retry safe) ---- */
+            const ifr = record.load({ type: IFR_RECORD_TYPE, id: ifrId });
+
+            if (ifr.getValue(IFR_PROCESSED_FLAG)) {
+                log.audit('Skip Retry', ifrId);
+                return;
+            }
+
+            if (String(ifr.getValue('createdfrom')) !== String(soId)) {
+                log.audit('Skip Invalid IFR', ifrId);
+                return;
+            }
+
+            /* ---- Duplicate IF protection ---- */
+            const existing = search.create({
+                type: 'itemfulfillment',
+                filters: [
+                    ['createdfrom', 'anyof', soId],
+                    'AND',
+                    [WMS_REF_FIELD, 'is', wmsOrderId]
+                ],
+                columns: ['internalid']
+            }).run().getRange({ start: 0, end: 1 });
+
+            if (existing.length) {
+                log.audit('Skip Existing IF', ifrId);
+                return;
+            }
+
+            /* ---- WMS Cache ---- */
+            const c = cache.getCache({ name: 'WMS_CLOSED_ORDERS', scope: cache.Scope.PRIVATE });
+            const raw = c.get({ key: String(wmsOrderId) });
+            if (!raw) {
+                log.audit('Skip No WMS Order', wmsOrderId);
+                return;
+            }
+
+            const wmsOrder = JSON.parse(raw);
+            const wmsLines = (wmsOrder.OrderItems || [])
+                .map(l => ({
+                    sku: l.ItemIdentifier?.Sku,
+                    qty: Number(l.Qty) || 0
+                }))
+                .filter(l => l.sku && l.qty > 0);
+
+            if (!wmsLines.length) {
+                log.audit('Skip No WMS Lines', wmsOrderId);
+                return;
+            }
+
+            /* ---- Transform ---- */
+            const ifRec = record.transform({
+                fromType: record.Type.SALES_ORDER,
+                fromId: soId,
+                toType: record.Type.ITEM_FULFILLMENT,
+                isDynamic: true,
+                defaultValues: { fftreqid: ifrId }
+            });
+
+            let receivedLines = 0;
+            const lc = ifRec.getLineCount({ sublistId: 'item' });
+
+            for (let i = 0; i < lc; i++) {
+                ifRec.selectLine({ sublistId: 'item', line: i });
+
+                const itemId = ifRec.getCurrentSublistValue({ sublistId: 'item', fieldId: 'item' });
+                const match = wmsLines.find(w => w.sku == itemId);
+
+                if (!match) {
+                    ifRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'itemreceive', value: false });
+                } else {
+                    ifRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'itemreceive', value: true });
+                    ifRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: match.qty });
+                    receivedLines++;
+                }
+                ifRec.commitLine({ sublistId: 'item' });
+            }
+
+            if (receivedLines === 0) {
+                log.audit('Skip No Receivable Lines', ifrId);
+                return;
+            }
+
+            const ifId = ifRec.save();
+
+            record.submitFields({
+                type: IFR_RECORD_TYPE,
+                id: ifrId,
+                values: { [IFR_PROCESSED_FLAG]: true }
+            });
+
+            log.audit('SUCCESS', `IF ${ifId}`);
+
+        } catch (e) {
+            log.error('ReduceError', e);
+        }
+    }
+
+    function summarize(s) {
+        log.audit('Summary', JSON.stringify(s.usage));
+    }
+
+    return { getInputData, map, reduce, summarize };
+});
 
