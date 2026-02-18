@@ -1,60 +1,518 @@
---Journal Line Sublists Standardized to Keyed for Reliable Line-Level Updates: Each line has a unique line key and integrations (REST, CSV, and SOAP) can reference
-these keys to update only the intended lines.
---Improved Custom GL Lines Plug-in Functionality for Secondary Accounting Books:custom GL Lines Plug-in functionality has been improved to support transactions in 
-secondary accounting books for all subsidiaries that have GL impact.
-Custom GL Line Plug-in didn't support inter-company transactions, consequently, the plug-in only run for the primary subsidiary, and the secondary subsidiaries were 
-excluded even if the transaction had GL impact on their accounting books. This created inconsistencies between the primary and secondary accounting books.
---Ability to Change Posting Period on Journal Entries with Pending Approval Status: Now we can change the posting period field in pending approval status this change 
-applies to Journal Entry, Intercompany Journal Entry,Advanced Intercompany Journal Entry, and Statistical Journal Entry types.
-Adavantage: which creates journal entries for vendor bills that must post to the same accounting period.Previously, users could only update the posting period after a 
-journal entry was approved. Any attempt to change the posting period on a journal entry pending approval wasn't saved, often requiring additional edits and increasing 
-the risk of posting to the wrong period.
---Automatic Approval for Reclassification Journal Entries:NetSuite now automatically approves all reclassification journal entries, eliminating the need for manual 
-approval. This update prevents multiple reclassification journal entries from being approved, avoiding duplicate GL impacts.The Approvral box no longer displays 
-the reclassification JE and Schedule Reclassification JE Pages and the following fields disabled in netsuite for all creating and existing.(Approvalstatus,Nextapprover,
-Approved box).
---Primary Record Filtering for Address Subrecords:Address-related subrecords (such as address and addressbook) are now filtered automatically for only those addresses 
-linked to the specific primary record you're viewing (for example, a particular customer,vendor, or employee).
-NetSuite shows only the relevant addresses that are associated with the main record, improving data accuracy and privacy while preventing over-fetching of unrelated 
-addresses. This change also helps standardize how address data appears in your searches, reports, and integrations.
---Login Notification:Administarator role can setup the login notification in their accounts(Use NIST standards).(It means whenever user login its shows the notification 
-they need to acknowledge to login) in backend they maintaining the log audit trails(Date,time and user acknowledge and compilance message)
---Limited Number of Certificates per Integration Record: 1.maximum of five active certificates for each integration record 2.The number of revoked certificates remains 
-unlimited.3.You can check the list of certificates on the OAuth 2.0 Client Credentials (M2M) Setup page.
---Support for Multiple Redirect URIs:supports multiple Redirect URIs for integration records that use the OAuth 2.0 authorization code grant flow
-Manage OAuth 2.0 Client Credentials Certificates Using the Client Credentials Certificate Rotation Endpoint:you can use the certificate rotation endpoint to manage 
-certificates programmatically. This enables you to list, create, or revoke certificates used for the OAuth 2.0 client credentials flow.
---PKCE(Proof Key Code exchange(its prevents authorization code interception by requiring a dynamic code_challenge (using S256 method) and code_verifier during token exchange.))
-Required for OAuth 2.0 Authorization Code Grant Flow in NetSuite 2027.1:Currently, PKCE is an optional security extension for the OAuth 2.0 authorization code 
-grant flow that uses the confidential client. PKCE is only required with the use of public client.As Netsuite 2027.1 upgrade heppen newly created integration must 
-include the PKCE parameters in their requests to the authorization and token endpoints.(Both public and private clients).
---End of Support for New Integrations Using the Tokenbased Authentication (TBA) feature in 2027.1:Support ends for oauth 1.0 instead of this we need to use oauth 2.0 
-before 2027.1.
---SaaS Fields Available for Items Import:supports the following software-as-a-service (SaaS) fields for accounts with the SaaS Metric Reporting feature enabled.
-(SaaS Metric Tracking - It is a Boolean field, and if the value is set to true, the next two fields become available.SaaS Metric Start Date - Required field.SaaS Metric 
-End Date - Optional field.)
---New Time-Off Permission:to provide better control over employee access to the Time-Off Request records and the Time-Off portlet in the Employee Center.
-None: Restricts users so they can't create, view, cancel, or access Time-Off Request records or the
-Time-Off portlet. This level can be assigned only to Employee Center roles.
-View: Allows users to view Time-Off Request records and the Time-Off portlet. Users, however, can't
-create or cancel requests. Users with the Chief People Officer (CPO) or Human Resources Generalist
-(HRG) role and supervisors with this level can view requests but can't approve or reject them.
-Edit: Allows users to view and create their own time-off requests from both the record and the TimeOff portlet. Users can cancel future-dated requests. CPO or HRG roles and supervisors with this level
-can approve and reject time-off requests.
-Advanced Pricing: Transactions and Reports(SO,Inv,estimate,cs,cr,return Autori):When you try to add item in transaction based on customer its auto checking the price 
-rules in case found accordingly its updating otherwise its whosing default value.To use this feature(Setup > Company > Enable Features Sales tab enable Adavance pricing.
-You can manage rules Lists > Accounting > Price Rules. Manage price levels Setup > Lists > Accounting.
+/**
+ * @NApiVersion 2.1
+ * @NScriptType MapReduceScript
+ * @NModuleScope SameAccount
+ *
+ * Purpose:
+ * - Connect to WMS via token auth (client_credentials)
+ * - Retrieve closed/fulfilled orders
+ * - Transform SO -> Item Fulfillment (linking FFT req) and handle quantities/serials
+ * - Mark IFR as processed
+ */
+define(['N/record', 'N/search', 'N/https', 'N/runtime', 'N/log', 'N/encode', 'N/error', 'N/cache'],
+    (record, search, https, runtime, log, encode, error, cache) => {
+
+        // ---------- CONFIG ----------
+        const IFR_RECORD_TYPE = 'fulfillmentrequest';
+        const WMS_REF_FIELD = 'custbody_wms_order_id';
+        const IFR_PROCESSED_FLAG = 'custbody_if_processed';
+        const IFR_WMS_TRACKING = 'custbody_wms_tracking';
+
+        const CRED_REC_TYPE = 'customrecord_wms_integration_credentials';
+        const CLIENT_ID_FIELD = 'custrecord_wms_client_id';
+        const CLIENT_SECRET_FIELD = 'custrecord_wms_client_secret';
+        const TOKEN_URL_FIELD = 'custrecord_wms_token_url';
+
+
+        //const WMS_STATIC_RQL = 'ReadOnly.CustomerIdentifier.id==706;ReadOnly.FacilityIdentifier.id==9;ReadOnly.isClosed==true';
+        const PAGE_SIZE = 100;
+
+        let cachedToken = null;
+        let tokenExpiry = 0;
+
+
+        // ---------- HELPERS ----------
+
+
+        function getCredentials() {
+            log.debug('getCredentials', 'Starting credential lookup.');
+            const results = search.create({
+                type: CRED_REC_TYPE,
+                filters: [['isinactive', 'is', 'F']],
+                columns: [CLIENT_ID_FIELD, CLIENT_SECRET_FIELD, TOKEN_URL_FIELD]
+            }).run().getRange({ start: 0, end: 1 });
+
+            if (!results || results.length === 0) {
+                log.error('getCredentials', 'WMS credentials not found.');
+                throw new Error('WMS credentials not found.');
+            }
+
+            const row = results[0];
+            log.debug('getCredentials', 'Credentials retrieved successfully.');
+            return {
+                clientId: row.getValue(CLIENT_ID_FIELD),
+                clientSecret: row.getValue(CLIENT_SECRET_FIELD),
+                tokenUrl: row.getValue(TOKEN_URL_FIELD),
+                apiBase: 'https://secure-wms.com'
+            };
+        }
+
+        function getAccessToken(creds) {
+            log.debug('getAccessToken', 'Attempting to fetch/use cached token.');
+            const now = Date.now();
+            if (cachedToken && tokenExpiry && now < tokenExpiry - 1000) {
+                log.debug('Token', 'Using cached token.');
+                return cachedToken;
+            }
+
+            const basicAuth = `${creds.clientId}:${creds.clientSecret}`;
+            const authHeader = 'Basic ' + encode.convert({
+                string: basicAuth,
+                inputEncoding: encode.Encoding.UTF_8,
+                outputEncoding: encode.Encoding.BASE_64
+            });
+
+            const bodyStr = 'grant_type=client_credentials';
+            log.debug('getAccessToken', `Requesting new token from ${creds.tokenUrl}`);
+            const resp = https.post({
+                url: creds.tokenUrl,
+                headers: {
+                    'Authorization': authHeader,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: bodyStr
+            });
+
+            if (resp.code !== 200) {
+                log.error('TokenError', `Token request failed: ${resp.code} ${resp.body}`);
+                throw new Error(`Failed to get access token: ${resp.code}`);
+            }
+
+            const json = JSON.parse(resp.body);
+            const token = json.access_token || json.accessToken || json.token;
+            const expiresIn = parseInt(json.expires_in || json.expiresIn || 300, 10);
+            if (!token) {
+                log.error('TokenError', 'Access token missing in response body.');
+                throw new Error('Token missing access_token');
+            }
+
+            tokenExpiry = Date.now() + (isNaN(expiresIn) ? 300 : expiresIn) * 1000 - 60 * 1000;
+            log.debug('TokenAcquired', `Token successfully acquired. Expires at ${new Date(tokenExpiry).toISOString()}`);
+            cachedToken = token;
+            return token;
+        }
+
+
+        function buildClosedOrderCache(creds, token) {
+
+            const rql = 'ReadOnly.isClosed==true';
+            const base = creds.apiBase.replace(/\/$/, '');
+
+            let page = 1;
+            const pageSize = 200;
+            let more = true;
+
+            const map = {};
+
+            while (more) {
+
+                const url =
+                    `${base}/orders` +
+                    `?rql=${encodeURIComponent(rql)}` +
+                    `&detail=All&itemdetail=All` +
+                    `&pgsiz=${pageSize}` +
+                    `&pgnum=${page}`;
+
+                const resp = https.get({
+                    url,
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: 'application/json'
+                    }
+                });
+
+                if (resp.code !== 200) {
+                    throw Error(`WMS page fetch failed page=${page}`);
+                }
+
+                const body = JSON.parse(resp.body);
+                const list = body.ResourceList || [];
+
+                list.forEach(o => {
+
+                    const id =
+                        o.ReadOnly?.OrderId ||
+                        o.readOnly?.orderId ||
+                        o.OrderId;
+
+                    if (id) map[String(id)] = o;
+                });
+
+                more = list.length === pageSize;
+                page++;
+
+                if (runtime.getCurrentScript().getRemainingUsage() < 500) {
+                    log.audit('Pagination Yield',
+                        'Stopping early to protect governance');
+                    break;
+                }
+            }
+
+            const c = cache.getCache({
+                name: 'WMS_CLOSED_ORDERS',
+                scope: cache.Scope.PRIVATE
+            });
+
+            Object.keys(map).forEach(orderId => {
+                c.put({
+                    key: orderId,
+                    value: JSON.stringify(map[orderId]),
+                    ttl: 14400
+                });
+            });
+
+
+            log.audit('Cache Built',
+                `Closed orders cached: ${Object.keys(map).length}`);
+        }
+
+        function buildNsItemMapForSkus(skuList) {
+
+            const map = {};
+            const uniq = Array.from(new Set(skuList.filter(Boolean)));
+
+            if (!uniq.length) return map;
+
+            const filters = [];
+            uniq.forEach((sku, i) => {
+                if (i > 0) filters.push('OR');
+                filters.push(['itemid', 'is', sku]);
+            });
+
+
+            const s = search.create({
+                type: search.Type.ITEM,
+                filters: filters,
+                columns: ['internalid', 'itemid']
+            });
+
+            s.run().each(r => {
+                const sku = r.getValue('itemid');
+                map[sku] = {
+                    itemId: r.getValue('internalid'),
+                    itemName: sku
+                };
+                return true;
+            });
+
+            return map;
+        }
+
+
+
+        function sanitizeSerial(serial) {
+            if (!serial && serial !== 0) return null;
+            return String(serial).replace(/[\r\n]+/g, '').trim();
+        }
+
+        function extractSkuFromWmsLine(line) {
+            if (!line) return null;
+            if (line.ItemIdentifier && line.ItemIdentifier.Sku) return line.ItemIdentifier.Sku;
+            if (line.itemIdentifier && line.itemIdentifier.sku) return line.itemIdentifier.sku;
+            return line.sku || line.Sku || null;
+        }
+
+        // ---------- ENTRY POINTS ----------
+        function getInputData() {
+
+            const ifrSearch = search.create({
+                type: 'fulfillmentrequest',
+                filters: [
+                    ['custbody_wms_order_id', 'isnotempty', ''],
+                    'AND',
+                    [IFR_PROCESSED_FLAG, 'is', 'F']
+
+                ],
+                columns: [
+                    'internalid',
+                    'createdfrom',
+                    'custbody_wms_order_id'
+                ]
+            });
+
+            // -------- Build WMS cache ONCE --------
+            const creds = getCredentials();
+            const token = getAccessToken(creds);
+            buildClosedOrderCache(creds, token);
+
+            return ifrSearch;
+        }
+
+
+        function map(context) {
+
+            const r = JSON.parse(context.value);
+
+            context.write({
+                key: r.id,
+                value: JSON.stringify({
+                    ifrId: r.id,
+                    soId: r.values.createdfrom.value,
+                    wmsOrderId: r.values.custbody_wms_order_id
+                })
+            });
+        }
+
+
+
+        function buildInventoryNumberMap(serialList, itemId) {
+            const map = {};
+            const uniq = Array.from(new Set((serialList || []).filter(Boolean)));
+            if (uniq.length === 0) return map;
+
+            // Build OR group for text field `inventorynumber`
+            const serialOrGroup = [];
+            uniq.forEach((sn, idx) => {
+                if (idx > 0) serialOrGroup.push('OR');
+                serialOrGroup.push(['inventorynumber', 'is', sn]);
+            });
+
+            // filters: (serial in uniq) AND (item == itemId)
+            const filters = [
+                serialOrGroup,
+                'AND',
+                ['item', 'anyof', itemId]
+            ];
+
+            const s = search.create({
+                type: 'inventorynumber',
+                filters,
+                columns: ['internalid', 'inventorynumber']
+            });
+
+            s.run().each(r => {
+                map[r.getValue('inventorynumber')] = r.getValue('internalid');
+                return true;
+            });
+
+            log.debug("buildInventoryNumberMap inv number map", map);
+            return map;
+        }
+
+
+        function reduce(context) {
+
+            const payload = JSON.parse(context.values[0]);
+            const { ifrId, soId, wmsOrderId } = payload;
+            if (!soId) {
+                log.error('Skip', `IFR ${ifrId} has no Sales Order`);
+                return;
+            }
+
+            try {
+
+                // -------- Read Cache --------
+                const c = cache.getCache({
+                    name: 'WMS_CLOSED_ORDERS',
+                    scope: cache.Scope.PRIVATE
+                });
+
+                const raw = c.get({ key: String(wmsOrderId) });
+
+                if (!raw) {
+                    log.audit('Skip', `No cached WMS order ${wmsOrderId}`);
+                    return;
+                }
+
+                const wmsOrder = JSON.parse(raw);
+
+
+                if (!wmsOrder) {
+                    log.audit('Skip', `No closed WMS order for ${wmsOrderId}`);
+                    return;
+                }
+
+                const rawLines = wmsOrder.OrderItems || [];
+
+                const wmsLines = rawLines.map(l => ({
+                    sku: extractSkuFromWmsLine(l),
+                    qty: Number(l.Qty) || 0,
+                    serialNumbers: l.SerialNumbers || []
+                })).filter(l => l.qty > 0 && l.sku);
+
+                const ifRec = record.transform({
+                    fromType: record.Type.SALES_ORDER,
+                    fromId: soId,
+                    toType: record.Type.ITEM_FULFILLMENT,
+                    isDynamic: true,
+                    defaultValues: { fftreqid: ifrId }
+                });
+
+                const existing = search.create({
+                    type: 'itemfulfillment',
+                    filters: [
+                        ['createdfrom', 'anyof', soId],
+                        'AND',
+                        ['custbody_wms_order_id', 'is', wmsOrderId]
+                    ],
+                    columns: ['internalid']
+                }).run().getRange({ start: 0, end: 1 });
+
+                if (existing.length) {
+                    log.audit('Skip', 'IF already exists');
+                    return;
+                }
+
+
+                const skuMap = buildNsItemMapForSkus(
+                    wmsLines.map(l => l.sku)
+                );
+
+                const idToLine = {};
+                wmsLines.forEach(l => {
+                    const m = skuMap[l.sku];
+                    if (m) idToLine[m.itemId] = l;
+                });
+
+                const lc = ifRec.getLineCount({ sublistId: 'item' });
+
+                for (let i = 0; i < lc; i++) {
+
+                    ifRec.selectLine({ sublistId: 'item', line: i });
+
+                    const itemId = ifRec.getCurrentSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'item'
+                    });
+
+                    const wmsLine = idToLine[itemId];
+
+                    if (!wmsLine) {
+                        ifRec.setCurrentSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'itemreceive',
+                            value: false
+                        });
+                        ifRec.commitLine({ sublistId: 'item' });
+                        continue;
+                    }
+
+                    ifRec.setCurrentSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'quantity',
+                        value: wmsLine.qty
+                    });
+                    ifRec.setCurrentSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'itemreceive',
+                        value: true
+                    });
+
+
+                    /* -------- SERIAL ASSIGNMENT ADD START -------- */
+
+                    if (wmsLine.serialNumbers && wmsLine.serialNumbers.length) {
+
+                        const cleanSerials = wmsLine.serialNumbers
+                            .map(sanitizeSerial)
+                            .filter(Boolean);
+
+                        if (cleanSerials.length !== wmsLine.qty) {
+                            log.error('SerialQtyMismatch',
+                                `Item ${itemId} qty=${wmsLine.qty} serials=${cleanSerials.length}`);
+                        }
+
+
+                        const invMap = buildInventoryNumberMap(
+                            cleanSerials,
+                            itemId
+                        );
+
+                        const hasInvDetail = ifRec.hasCurrentSublistSubrecord({
+                            sublistId: 'item',
+                            fieldId: 'inventorydetail'
+                        });
+
+                        if (!hasInvDetail) {
+                            log.audit('No Inventory Detail', `Item ${itemId} is not serialized/lot`);
+                            ifRec.commitLine({ sublistId: 'item' });
+                            continue;
+                        }
 
 
 
 
+                        const invDetail = ifRec.getCurrentSublistSubrecord({
+                            sublistId: 'item',
+                            fieldId: 'inventorydetail'
+                        });
+
+                        cleanSerials.forEach(sn => {
+
+                            const invId = invMap[sn];
+
+                            if (!invId) {
+                                log.error('Serial Missing',
+                                    `Serial ${sn} not found for item ${itemId}`);
+                                return;
+                            }
+
+                            invDetail.selectNewLine({
+                                sublistId: 'inventoryassignment'
+                            });
+
+                            invDetail.setCurrentSublistValue({
+                                sublistId: 'inventoryassignment',
+                                fieldId: 'issueinventorynumber',
+                                value: invId
+                            });
+
+                            invDetail.setCurrentSublistValue({
+                                sublistId: 'inventoryassignment',
+                                fieldId: 'quantity',
+                                value: 1
+                            });
+
+                            invDetail.commitLine({
+                                sublistId: 'inventoryassignment'
+                            });
+                        });
+                    }
+
+                    /* -------- SERIAL ASSIGNMENT ADD END -------- */
 
 
+                    ifRec.commitLine({ sublistId: 'item' });
+                }
+
+                const ifId = ifRec.save();
+
+                record.submitFields({
+                    type: 'fulfillmentrequest',
+                    id: ifrId,
+                    values: { custbody_if_processed: true }
+                });
+
+                log.audit('SUCCESS', ifId);
+
+            } catch (e) {
+                log.error('ReduceError', e);
+            }
+        }
 
 
+        function summarize(summary) {
+            const usage = summary.usage ? JSON.stringify(summary.usage) : 'n/a';
+            log.audit('Summary', `Map/Reduce finished. Usage: ${usage}`);
+            if (summary.mapSummary && summary.mapSummary.errors) log.error('MapErrors', `Map phase errors: ${JSON.stringify(summary.mapSummary.errors)}`);
+            if (summary.reduceSummary && summary.reduceSummary.errors) log.error('ReduceErrors', `Reduce phase errors: ${JSON.stringify(summary.reduceSummary.errors)}`);
+        }
 
-
-
-
-
-
+        return {
+            getInputData,
+            map,
+            reduce,
+            summarize
+        };
+    });
