@@ -1,175 +1,57 @@
-{
-   ReadOnly: {
-      OrderId: 12453507,
-      AsnCandidate: 0,
-      RouteCandidate: 0,
-      FullyAllocated: true,
-      DeferNotification: false,
-      IsClosed: true,
-      ProcessDate: "2026-02-17T19:51:18",
-      PickStarted: false,
-      PackStarted: true,
-      PackDoneDate: "2026-02-17T19:50:52.457",
-      LoadedState: 0,
-      RouteSent: false,
-      AsnSent: false,
-      Packages: [
-         {
-            PackageId: 228896272,
-            PackageTypeId: 2,
-            PackageDefIdentifier: {
-               Name: "18 X 12 X 14",
-               Id: 482
-            },
-            Length: 18,
-            Width: 12,
-            Height: 14,
-            Weight: 43.1,
-            Description: "18 X 12 X 14",
-            CreateDate: "2026-02-17T21:50:40.9133333",
-            Cod: false,
-            Ucc128: 1151,
-            CartonId: "00000000000000011518",
-            PackageContents: [
-               {
-                  PackageContentId: 151574251,
-                  PackageId: 228896272,
-                  OrderItemId: 12619995,
-                  ReceiveItemId: 4659635,
-                  Qty: 1,
-                  CreateDate: "2026-02-17T21:50:40.93",
-                  SerialNumbers: [
-                     "0500100032"
-                  ]
-               }
-            ]
-         }
-      ],
-      "ShippingPallets": [],
-      "OutboundSerialNumbers": [],
-      ParcelLabelType: 0,
-      CustomerIdentifier: {
-         Name: "AURADINE",
-         Id: 706
-      },
-      FacilityIdentifier: {
-         Name: "EDI TEST",
-         Id: 9
-      },
-      WarehouseTransactionSourceType: 7,
-      TransactionEntryType: 4,
-      CreationDate: "2026-01-28T02:07:01.82",
-      CreatedByIdentifier: {
-         Name: "Anil Vadakapuram ",
-         Id: 1987
-      },
-      LastModifiedDate: "2026-02-17T19:52:19.543",
-      LastModifiedByIdentifier: {
-         Name: "Rodney -",
-         Id: 1806
-      },
-      Status: 1,
-      ChargesPending: false
-   },
-   OrderItems: [
-      {
-         ReadOnly: {
-            OrderItemId: 12619995,
-            FullyAllocated: true,
-            UnitIdentifier: {
-               Name: "Each",
-               Id: 1
-            },
-            OriginalPrimaryQty: 1,
-            IsOrderQtySecondary: false,
-            Allocations: [
-               {
-                  ReceiveItemId: 4659635,
-                  Qty: 1,
-                  ProperlyPickedPrimary: 0,
-                  ProperlyPickedSecondary: 0,
-                  LoadedOut: false,
-                  RowVersion: "AAAAAC6Efb0"
-               }
-            ],
-            IsInsert: false,
-            MaxToAllocateFromPickLine: 0,
-            RowVersion: "AAAAAC6Efbw"
-         },
-         ItemIdentifier: {
-            Sku: "810-000007",
-            Id: 210479
-         },
-         Qualifier: "",
-         Qty: 1,
-         WeightImperial: 42,
-         WeightMetric: 19.0512,
-         "SavedElements": [],
-         IsInsert: false,
-         "_links": []
-      }
-   ],
-   ReferenceNum: "SO347 - IFR56",
-   Notes: "",
-   NumUnits1: 1,
-   TotalWeight: 43.1,
-   TotalVolume: 1.75,
-   AddFreightToCod: false,
-   UpsIsResidential: false,
-   "FulfillInvInfo": {},
-   RoutingInfo: {
-      IsCod: false,
-      IsInsurance: false,
-      RequiresDeliveryConf: false,
-      RequiresReturnReceipt: false,
-      TrackingNumber: "TEST2/17/26"
-   },
-   "Billing": {},
-   ShipTo: {
-      IsQuickLookup: false,
-      ContactId: 10492545,
-      CompanyName: "Marathon Digital Holdings, Inc.",
-      Address1: "Test1",
-      Address2: "Address: 4th floor, Indiqube hexa, Sector 6",
-      City: "Bengaluru",
-      State: "MN",
-      Zip: "560102",
-      Country: "US",
-      IsAddressResidential: false,
-      AddressStatus: 0
-   },
-   "SavedElements": [],
-   ParcelOption: {
-      OrderId: 12453507,
-      DeliveryConfirmationType: "",
-      DeliveredDutyPaid: 0,
-      DryIceWeight: 0,
-      InsuranceAmount: 0,
-      InsuranceType: 0,
-      InternationalContentsType: "",
-      InternationalNonDelivery: "",
-      OrderScannedFlag: false,
-      ResidentialFlag: false,
-      SaturdayDeliveryFlag: false,
-      TaxIdentifiers: "",
-      CarrierAccountNumber: "",
-      CarrierSelectionV2: false,
-      ShipDate: "",
-      ChosenRate: ""
-   },
-   "Inserts": [],
-   "_links": []
-}const rawLines = wmsOrder.OrderItems || [];
-                log.debug("Raw Lines:", rawLines);
-                const list = wmsOrder.Packages;
-                log.debug("Packages List:", list);
+/**
+ * Build WMS lines with serial numbers from
+ * ReadOnly -> Packages -> PackageContents -> SerialNumbers
+ */
 
-                const wmsLines = rawLines.map(l => ({
-                    sku: extractSkuFromWmsLine(l),
-                    qty: Number(l.Qty) || 0,
-                    serialNumbers: l.SerialNumbers || []
-                })).filter(l => l.qty > 0 && l.sku);
-                log.debug("WMS Lines:", wmsLines);
-                log.debug("Sales Order Id:", soId);
-                log.debug("IfR Id:", ifrId);
-                log.debug("WMS Order Id:", wmsOrderId);
+// -------------------------------
+// STEP 0: Inputs already available
+// -------------------------------
+const rawLines = wmsOrder.OrderItems || [];
+log.debug("Raw Lines", rawLines);
+
+// -------------------------------
+// STEP 1: Correct Packages path
+// -------------------------------
+const packages = (wmsOrder.ReadOnly && wmsOrder.ReadOnly.Packages) || [];
+log.debug("Packages", packages);
+
+// -------------------------------
+// STEP 2: Build OrderItemId → SerialNumbers map
+// -------------------------------
+const serialMap = {};
+
+packages.forEach(pkg => {
+    const contents = pkg.PackageContents || [];
+    contents.forEach(pc => {
+        const orderItemId = pc.OrderItemId;
+
+        if (!serialMap[orderItemId]) {
+            serialMap[orderItemId] = [];
+        }
+
+        if (pc.SerialNumbers && pc.SerialNumbers.length) {
+            serialMap[orderItemId].push(...pc.SerialNumbers);
+        }
+    });
+});
+
+log.debug("Serial Map", serialMap);
+
+// -------------------------------
+// STEP 3: Build WMS lines
+// -------------------------------
+const wmsLines = rawLines
+    .map(l => ({
+        sku: extractSkuFromWmsLine(l),
+        qty: Number(l.Qty) || 0,
+        serialNumbers: serialMap[l.ReadOnly.OrderItemId] || []
+    }))
+    .filter(l => l.qty > 0 && l.sku);
+
+// -------------------------------
+// STEP 4: Debug final output
+// -------------------------------
+log.debug("WMS Lines", wmsLines);
+log.debug("Sales Order Id", soId);
+log.debug("IFR Id", ifrId);
+log.debug("WMS Order Id", wmsOrderId);
