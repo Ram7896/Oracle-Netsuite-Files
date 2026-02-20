@@ -1,222 +1,175 @@
-/**
- * @NApiVersion 2.1
- * @NScriptType MapReduceScript
- * @NModuleScope SameAccount
- */
-define(['N/record', 'N/search', 'N/https', 'N/runtime', 'N/log', 'N/encode', 'N/error', 'N/cache'],
-    (record, search, https, runtime, log, encode, error, cache) => {
+{
+   ReadOnly: {
+      OrderId: 12453507,
+      AsnCandidate: 0,
+      RouteCandidate: 0,
+      FullyAllocated: true,
+      DeferNotification: false,
+      IsClosed: true,
+      ProcessDate: "2026-02-17T19:51:18",
+      PickStarted: false,
+      PackStarted: true,
+      PackDoneDate: "2026-02-17T19:50:52.457",
+      LoadedState: 0,
+      RouteSent: false,
+      AsnSent: false,
+      Packages: [
+         {
+            PackageId: 228896272,
+            PackageTypeId: 2,
+            PackageDefIdentifier: {
+               Name: "18 X 12 X 14",
+               Id: 482
+            },
+            Length: 18,
+            Width: 12,
+            Height: 14,
+            Weight: 43.1,
+            Description: "18 X 12 X 14",
+            CreateDate: "2026-02-17T21:50:40.9133333",
+            Cod: false,
+            Ucc128: 1151,
+            CartonId: "00000000000000011518",
+            PackageContents: [
+               {
+                  PackageContentId: 151574251,
+                  PackageId: 228896272,
+                  OrderItemId: 12619995,
+                  ReceiveItemId: 4659635,
+                  Qty: 1,
+                  CreateDate: "2026-02-17T21:50:40.93",
+                  SerialNumbers: [
+                     "0500100032"
+                  ]
+               }
+            ]
+         }
+      ],
+      "ShippingPallets": [],
+      "OutboundSerialNumbers": [],
+      ParcelLabelType: 0,
+      CustomerIdentifier: {
+         Name: "AURADINE",
+         Id: 706
+      },
+      FacilityIdentifier: {
+         Name: "EDI TEST",
+         Id: 9
+      },
+      WarehouseTransactionSourceType: 7,
+      TransactionEntryType: 4,
+      CreationDate: "2026-01-28T02:07:01.82",
+      CreatedByIdentifier: {
+         Name: "Anil Vadakapuram ",
+         Id: 1987
+      },
+      LastModifiedDate: "2026-02-17T19:52:19.543",
+      LastModifiedByIdentifier: {
+         Name: "Rodney -",
+         Id: 1806
+      },
+      Status: 1,
+      ChargesPending: false
+   },
+   OrderItems: [
+      {
+         ReadOnly: {
+            OrderItemId: 12619995,
+            FullyAllocated: true,
+            UnitIdentifier: {
+               Name: "Each",
+               Id: 1
+            },
+            OriginalPrimaryQty: 1,
+            IsOrderQtySecondary: false,
+            Allocations: [
+               {
+                  ReceiveItemId: 4659635,
+                  Qty: 1,
+                  ProperlyPickedPrimary: 0,
+                  ProperlyPickedSecondary: 0,
+                  LoadedOut: false,
+                  RowVersion: "AAAAAC6Efb0"
+               }
+            ],
+            IsInsert: false,
+            MaxToAllocateFromPickLine: 0,
+            RowVersion: "AAAAAC6Efbw"
+         },
+         ItemIdentifier: {
+            Sku: "810-000007",
+            Id: 210479
+         },
+         Qualifier: "",
+         Qty: 1,
+         WeightImperial: 42,
+         WeightMetric: 19.0512,
+         "SavedElements": [],
+         IsInsert: false,
+         "_links": []
+      }
+   ],
+   ReferenceNum: "SO347 - IFR56",
+   Notes: "",
+   NumUnits1: 1,
+   TotalWeight: 43.1,
+   TotalVolume: 1.75,
+   AddFreightToCod: false,
+   UpsIsResidential: false,
+   "FulfillInvInfo": {},
+   RoutingInfo: {
+      IsCod: false,
+      IsInsurance: false,
+      RequiresDeliveryConf: false,
+      RequiresReturnReceipt: false,
+      TrackingNumber: "TEST2/17/26"
+   },
+   "Billing": {},
+   ShipTo: {
+      IsQuickLookup: false,
+      ContactId: 10492545,
+      CompanyName: "Marathon Digital Holdings, Inc.",
+      Address1: "Test1",
+      Address2: "Address: 4th floor, Indiqube hexa, Sector 6",
+      City: "Bengaluru",
+      State: "MN",
+      Zip: "560102",
+      Country: "US",
+      IsAddressResidential: false,
+      AddressStatus: 0
+   },
+   "SavedElements": [],
+   ParcelOption: {
+      OrderId: 12453507,
+      DeliveryConfirmationType: "",
+      DeliveredDutyPaid: 0,
+      DryIceWeight: 0,
+      InsuranceAmount: 0,
+      InsuranceType: 0,
+      InternationalContentsType: "",
+      InternationalNonDelivery: "",
+      OrderScannedFlag: false,
+      ResidentialFlag: false,
+      SaturdayDeliveryFlag: false,
+      TaxIdentifiers: "",
+      CarrierAccountNumber: "",
+      CarrierSelectionV2: false,
+      ShipDate: "",
+      ChosenRate: ""
+   },
+   "Inserts": [],
+   "_links": []
+}const rawLines = wmsOrder.OrderItems || [];
+                log.debug("Raw Lines:", rawLines);
+                const list = wmsOrder.Packages;
+                log.debug("Packages List:", list);
 
-        const IFR_RECORD_TYPE = 'fulfillmentrequest';
-        const WMS_REF_FIELD = 'custbody_wms_order_id';
-        const IFR_PROCESSED_FLAG = 'custbody_if_processed';
-
-        const CRED_REC_TYPE = 'customrecord_wms_integration_credentials';
-        const CLIENT_ID_FIELD = 'custrecord_wms_client_id';
-        const CLIENT_SECRET_FIELD = 'custrecord_wms_client_secret';
-        const TOKEN_URL_FIELD = 'custrecord_wms_token_url';
-
-        let cachedToken = null;
-        let tokenExpiry = 0;
-
-        /* ================= HELPERS ================= */
-
-        function getCredentials() {
-            const results = search.create({
-                type: CRED_REC_TYPE,
-                filters: [['isinactive', 'is', 'F']],
-                columns: [CLIENT_ID_FIELD, CLIENT_SECRET_FIELD, TOKEN_URL_FIELD]
-            }).run().getRange({ start: 0, end: 1 });
-
-            if (!results || !results.length) {
-                throw Error('WMS credentials not found');
-            }
-
-            return {
-                clientId: results[0].getValue(CLIENT_ID_FIELD),
-                clientSecret: results[0].getValue(CLIENT_SECRET_FIELD),
-                tokenUrl: results[0].getValue(TOKEN_URL_FIELD),
-                apiBase: 'https://secure-wms.com'
-            };
-        }
-
-        function getAccessToken(creds) {
-            if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-
-            const basicAuth = encode.convert({
-                string: `${creds.clientId}:${creds.clientSecret}`,
-                inputEncoding: encode.Encoding.UTF_8,
-                outputEncoding: encode.Encoding.BASE_64
-            });
-
-            const resp = https.post({
-                url: creds.tokenUrl,
-                headers: {
-                    Authorization: `Basic ${basicAuth}`,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'grant_type=client_credentials'
-            });
-
-            const json = JSON.parse(resp.body);
-            cachedToken = json.access_token;
-            tokenExpiry = Date.now() + (json.expires_in * 1000) - 60000;
-            return cachedToken;
-        }
-
-        // ===== FIX START =====
-        // Correct serial extraction from WMS Packages
-        function extractSerialsFromWmsOrder(wmsOrder, orderItemId) {
-            const serials = [];
-            (wmsOrder.ReadOnly?.Packages || []).forEach(pkg => {
-                (pkg.PackageContents || []).forEach(pc => {
-                    if (String(pc.OrderItemId) === String(orderItemId)) {
-                        (pc.SerialNumbers || []).forEach(sn => serials.push(sn));
-                    }
-                });
-            });
-            return serials;
-        }
-        // ===== FIX END =====
-
-        function getInputData() {
-
-            const ifrSearch = search.create({
-                type: IFR_RECORD_TYPE,
-                filters: [
-                    [WMS_REF_FIELD, 'isnotempty', ''],
-                    'AND',
-                    [IFR_PROCESSED_FLAG, 'is', 'F']
-                ],
-                columns: ['internalid', 'createdfrom', WMS_REF_FIELD]
-            });
-
-            return ifrSearch;
-        }
-
-        function map(context) {
-            const r = JSON.parse(context.value);
-            context.write({
-                key: r.id,
-                value: JSON.stringify({
-                    ifrId: r.id,
-                    soId: r.values.createdfrom.value,
-                    wmsOrderId: r.values[WMS_REF_FIELD]
-                })
-            });
-        }
-
-        function reduce(context) {
-
-            const payload = JSON.parse(context.values[0]);
-            const { ifrId, soId, wmsOrderId } = payload;
-
-            const ifRec = record.transform({
-                fromType: record.Type.SALES_ORDER,
-                fromId: soId,
-                toType: record.Type.ITEM_FULFILLMENT,
-                isDynamic: true
-            });
-
-            const wmsOrder = {}; // already fetched in your logic
-            const rawLines = wmsOrder.OrderItems || [];
-
-            // ===== FIX START =====
-            const wmsLines = rawLines.map(l => ({
-                sku: l.ItemIdentifier?.Sku,
-                qty: Number(l.Qty) || 0,
-                serialNumbers: extractSerialsFromWmsOrder(
-                    wmsOrder,
-                    l.ReadOnly?.OrderItemId
-                )
-            })).filter(l => l.qty > 0 && l.sku);
-            // ===== FIX END =====
-
-            let hasReceivableLine = false; // ===== FIX =====
-
-            const lineCount = ifRec.getLineCount({ sublistId: 'item' });
-
-            for (let i = 0; i < lineCount; i++) {
-
-                ifRec.selectLine({ sublistId: 'item', line: i });
-
-                const itemId = ifRec.getCurrentSublistValue({
-                    sublistId: 'item',
-                    fieldId: 'item'
-                });
-
-                const wmsLine = wmsLines.find(w => w.qty && w.sku);
-
-                if (!wmsLine) {
-                    ifRec.setCurrentSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'itemreceive',
-                        value: false
-                    });
-                    ifRec.commitLine({ sublistId: 'item' });
-                    continue;
-                }
-
-                ifRec.setCurrentSublistValue({
-                    sublistId: 'item',
-                    fieldId: 'quantity',
-                    value: wmsLine.qty
-                });
-
-                ifRec.setCurrentSublistValue({
-                    sublistId: 'item',
-                    fieldId: 'itemreceive',
-                    value: true
-                });
-
-                hasReceivableLine = true; // ===== FIX =====
-
-                if (wmsLine.serialNumbers.length > 0) {
-
-                    const invDetail = ifRec.getCurrentSublistSubrecord({
-                        sublistId: 'item',
-                        fieldId: 'inventorydetail'
-                    });
-
-                    wmsLine.serialNumbers.forEach(sn => {
-                        invDetail.selectNewLine({ sublistId: 'inventoryassignment' });
-                        invDetail.setCurrentSublistValue({
-                            sublistId: 'inventoryassignment',
-                            fieldId: 'quantity',
-                            value: 1
-                        });
-                        invDetail.commitLine({ sublistId: 'inventoryassignment' });
-                    });
-                }
-
-                ifRec.commitLine({ sublistId: 'item' });
-            }
-
-            // ===== FIX START =====
-            if (!hasReceivableLine) {
-                log.audit('Skip Save', `No receivable lines for SO ${soId}`);
-                return;
-            }
-            // ===== FIX END =====
-
-            const ifId = ifRec.save();
-
-            record.submitFields({
-                type: IFR_RECORD_TYPE,
-                id: ifrId,
-                values: { [IFR_PROCESSED_FLAG]: true }
-            });
-
-            log.audit('SUCCESS', `IF Created ${ifId}`);
-        }
-
-        function summarize(summary) {
-            log.audit('Summary', JSON.stringify(summary.usage));
-        }
-
-        return {
-            getInputData,
-            map,
-            reduce,
-            summarize
-        };
-    });
+                const wmsLines = rawLines.map(l => ({
+                    sku: extractSkuFromWmsLine(l),
+                    qty: Number(l.Qty) || 0,
+                    serialNumbers: l.SerialNumbers || []
+                })).filter(l => l.qty > 0 && l.sku);
+                log.debug("WMS Lines:", wmsLines);
+                log.debug("Sales Order Id:", soId);
+                log.debug("IfR Id:", ifrId);
+                log.debug("WMS Order Id:", wmsOrderId);
