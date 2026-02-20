@@ -1,287 +1,129 @@
-/**
- * @NApiVersion 2.1
- * @NScriptType MapReduceScript
- * @NModuleScope SameAccount
- */
-define([
-    'N/record', 'N/search', 'N/https',
-    'N/runtime', 'N/log', 'N/encode',
-    'N/error', 'N/cache'
-], (record, search, https, runtime, log, encode, error, cache) => {
+function reduce(context) {
+            const ifrId = context.key;
+            log.debug("IF Id:", ifrId);
+            const raw = context.values && context.values.length ? context.values[0] : null;
+            log.debug("raw:", raw);
+            if (!raw) return;
 
-    const IFR_RECORD_TYPE = 'fulfillmentrequest';
-    const WMS_REF_FIELD = 'custbody_wms_order_id';
-    const IFR_PROCESSED_FLAG = 'custbody_if_processed';
-
-    const CRED_REC_TYPE = 'customrecord_wms_integration_credentials';
-    const CLIENT_ID_FIELD = 'custrecord_wms_client_id';
-    const CLIENT_SECRET_FIELD = 'custrecord_wms_client_secret';
-    const TOKEN_URL_FIELD = 'custrecord_wms_token_url';
-
-    let cachedToken = null;
-    let tokenExpiry = 0;
-
-    /* ================= CREDENTIALS ================= */
-
-    function getCredentials() {
-        log.debug('getCredentials', 'Fetching WMS credentials');
-        const res = search.create({
-            type: CRED_REC_TYPE,
-            filters: [['isinactive', 'is', 'F']],
-            columns: [CLIENT_ID_FIELD, CLIENT_SECRET_FIELD, TOKEN_URL_FIELD]
-        }).run().getRange({ start: 0, end: 1 });
-
-        if (!res || !res.length) {
-            throw error.create({ name: 'NO_CREDS', message: 'WMS credentials not found' });
-        }
-
-        return {
-            clientId: res[0].getValue(CLIENT_ID_FIELD),
-            clientSecret: res[0].getValue(CLIENT_SECRET_FIELD),
-            tokenUrl: res[0].getValue(TOKEN_URL_FIELD),
-            apiBase: 'https://secure-wms.com'
-        };
-    }
-
-    function getAccessToken(creds) {
-        const now = Date.now();
-        if (cachedToken && now < tokenExpiry) {
-            log.debug('Token', 'Using cached token');
-            return cachedToken;
-        }
-
-        const auth = encode.convert({
-            string: `${creds.clientId}:${creds.clientSecret}`,
-            inputEncoding: encode.Encoding.UTF_8,
-            outputEncoding: encode.Encoding.BASE_64
-        });
-
-        const resp = https.post({
-            url: creds.tokenUrl,
-            headers: {
-                Authorization: `Basic ${auth}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'grant_type=client_credentials'
-        });
-
-        log.debug('Token Response', resp.body);
-
-        const json = JSON.parse(resp.body);
-        cachedToken = json.access_token;
-        tokenExpiry = now + (json.expires_in * 1000) - 60000;
-
-        return cachedToken;
-    }
-
-    /* ================= WMS CACHE ================= */
-
-    function buildClosedOrderCache(creds, token) {
-        const rql = 'ReadOnly.CustomerIdentifier.id==706;ReadOnly.FacilityIdentifier.id==9;ReadOnly.isClosed==true';
-        let page = 1;
-        let more = true;
-
-        const cacheObj = cache.getCache({
-            name: 'WMS_CLOSED_ORDERS',
-            scope: cache.Scope.PRIVATE
-        });
-
-        while (more) {
-            const url =
-                `${creds.apiBase}/orders?pgnum=${page}&rql=${encodeURIComponent(rql)}&detail=All&itemdetail=All`;
-
-            log.debug('WMS URL', url);
-
-            const resp = https.get({
-                url,
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (resp.code !== 200) {
-                throw error.create({ name: 'WMS_FETCH_FAIL', message: resp.body });
+            let payload;
+            try {
+                payload = JSON.parse(raw);
+                log.debug("Payload:", payload);
+                log.audit('Reduce', `Processing IFR ${ifrId} for SO ${payload.soId}`);
+            } catch (e) {
+                log.error('ParseError', `IFR ${ifrId}: ${e.message}`);
+                return;
             }
 
-            const body = JSON.parse(resp.body);
-            const list = body.ResourceList || [];
-
-            list.forEach(o => {
-                const id = o.ReadOnly?.OrderId;
-                if (id) {
-                    cacheObj.put({
-                        key: String(id),
-                        value: JSON.stringify(o),
-                        ttl: 14400
-                    });
-                }
-            });
-
-            log.debug('WMS Page Loaded', `Page=${page}, Count=${list.length}`);
-            more = list.length === 200;
-            page++;
-
-            if (runtime.getCurrentScript().getRemainingUsage() < 400) break;
-        }
-    }
-
-    /* ================= INPUT ================= */
-
-    function getInputData() {
-        const creds = getCredentials();
-        const token = getAccessToken(creds);
-        buildClosedOrderCache(creds, token);
-
-        return search.create({
-            type: IFR_RECORD_TYPE,
-            filters: [
-                [WMS_REF_FIELD, 'isnotempty', ''],
-                'AND',
-                [IFR_PROCESSED_FLAG, 'is', 'F']
-            ],
-            columns: ['internalid', 'createdfrom', WMS_REF_FIELD]
-        });
-    }
-
-    function map(context) {
-        const r = JSON.parse(context.value);
-        log.debug('Map IFR', r.id);
-
-        context.write({
-            key: r.id,
-            value: {
-                ifrId: r.id,
-                soId: r.values.createdfrom.value,
-                wmsOrderId: r.values.custbody_wms_order_id
-            }
-        });
-    }
-
-    /* ================= REDUCE ================= */
-
-    function sanitizeSerial(sn) {
-        return sn ? String(sn).trim() : null;
-    }
-
-    function extractSku(line) {
-        return line.ItemIdentifier?.Sku || line.itemIdentifier?.sku || null;
-    }
-
-    function reduce(context) {
-        const payload = JSON.parse(context.values[0]);
-        log.debug('Reduce Payload', payload);
-
-        const cacheObj = cache.getCache({
-            name: 'WMS_CLOSED_ORDERS',
-            scope: cache.Scope.PRIVATE
-        });
-
-        const raw = cacheObj.get({ key: payload.wmsOrderId });
-        if (!raw) {
-            log.audit('Skip', 'No WMS cache found');
-            return;
-        }
-
-        const wmsOrder = JSON.parse(raw);
-        const rawLines = wmsOrder.OrderItems || [];
-        const packages = wmsOrder.ReadOnly?.Packages || [];
-
-        /* ===== SKU → SERIAL MAP (FIX) ===== */
-
-        const skuSerialMap = {};
-        packages.forEach(pkg => {
-            (pkg.PackageContents || []).forEach(pc => {
-                const sku = pc.ItemIdentifier?.Sku;
-                if (!sku) return;
-
-                skuSerialMap[sku] = skuSerialMap[sku] || [];
-                (pc.SerialNumbers || []).forEach(sn => {
-                    const clean = sanitizeSerial(sn);
-                    if (clean) skuSerialMap[sku].push(clean);
+            try {
+                // Transform SO to IF in Dynamic Mode to handle subrecords properly
+                const fulfillmentRec = record.transform({
+                    fromType: record.Type.SALES_ORDER,
+                    fromId: payload.soId,
+                    toType: record.Type.ITEM_FULFILLMENT,
+                    isDynamic: true,
+                    defaultValues: { fftreqid: ifrId }
                 });
-            });
-        });
 
-        log.debug('SKU Serial Map', skuSerialMap);
+                // 1. Map SKUs to Item IDs
+                const skus = (payload.wmsLines || []).map(l => l.sku).filter(Boolean);
+                log.debug("Skus:", skus);
+                const skuToNsMap = buildNsItemMapForSkus(skus);
+                log.debug("skuToNsMap:", skuToNsMap);
+                // 2. Map Item IDs to WMS Line Data
+                const idToWmsData = {};
+                payload.wmsLines.forEach(line => {
+                    const nsInfo = skuToNsMap[line.sku];
+                    if (nsInfo && nsInfo.itemId) idToWmsData[nsInfo.itemId] = line;
+                });
 
-        const wmsLines = rawLines.map(l => {
-            const sku = extractSku(l);
-            return {
-                sku,
-                qty: Number(l.Qty) || 0,
-                serials: skuSerialMap[sku] || []
-            };
-        }).filter(l => l.sku && l.qty > 0);
+                const lineCount = fulfillmentRec.getLineCount({ sublistId: 'item' });
+                log.debug("IF Item Line Count:", lineCount);
+                let linesFulfilled = 0;
 
-        log.debug('WMS Lines', wmsLines);
+                for (let i = 0; i < lineCount; i++) {
+                    fulfillmentRec.selectLine({ sublistId: 'item', line: i });
+                    const itemId = fulfillmentRec.getCurrentSublistValue({ sublistId: 'item', fieldId: 'item' });
+                    log.debug("If Item Id:", itemId);
+                    const wmsLine = idToWmsData[itemId];
+                    log.debug("wmsLine:", wmsLine);
 
-        const ifRec = record.transform({
-            fromType: record.Type.SALES_ORDER,
-            fromId: payload.soId,
-            toType: record.Type.ITEM_FULFILLMENT,
-            isDynamic: true,
-            defaultValues: { fftreqid: payload.ifrId }
-        });
+                    // If item not in WMS data, skip this line
+                    if (!wmsLine) {
+                        fulfillmentRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'itemreceive', value: false });
+                        fulfillmentRec.commitLine({ sublistId: 'item' });
+                        continue;
+                    }
 
-        const lineCount = ifRec.getLineCount({ sublistId: 'item' });
+                    fulfillmentRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: wmsLine.qty });
 
-        for (let i = 0; i < lineCount; i++) {
-            ifRec.selectLine({ sublistId: 'item', line: i });
-            const itemId = ifRec.getCurrentSublistValue({ sublistId: 'item', fieldId: 'item' });
+                    log.debug("wmsLine.serialNumbers:", wmsLine.serialNumbers);
+                    log.debug("wmsLine.serialNumbers.length:", wmsLine.serialNumbers.length);
 
-            const wmsLine = wmsLines.find(w => w.sku && w.qty);
-            if (!wmsLine) {
-                ifRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'itemreceive', value: false });
-                ifRec.commitLine({ sublistId: 'item' });
-                continue;
-            }
+                    // 3. Handle Serials via buildInventoryNumberMap
+                    if (wmsLine.serialNumbers && wmsLine.serialNumbers.length > 0) {
+                        log.debug("If Handle Serials via buildInventoryNumberMap");
+                        const serialToIdMap = buildInventoryNumberMap(wmsLine.serialNumbers, itemId);
+                        log.debug("Serial to Map:", serialToIdMap);
 
-            ifRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: wmsLine.qty });
-            ifRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'itemreceive', value: true });
+                        // IMPORTANT: use explicit line index
+                        const invDetail = fulfillmentRec.getCurrentSublistSubrecord({
+                            sublistId: 'item',
+                            fieldId: 'inventorydetail'
+                        });
 
-            if (wmsLine.serials.length) {
-                if (!ifRec.hasCurrentSublistSubrecord({ sublistId: 'item', fieldId: 'inventorydetail' })) {
-                    log.audit('Skip Serial', `Item ${itemId} has no inventory detail`);
-                    ifRec.commitLine({ sublistId: 'item' });
-                    continue;
+                        wmsLine.serialNumbers.forEach(sn => {
+                            const serialInternalId = serialToIdMap[sn];
+                            log.debug({ title: 'Serial', details: { sn, serialInternalId, itemId } });
+
+                            if (serialInternalId) {
+                                invDetail.selectNewLine({ sublistId: 'inventoryassignment' });
+
+                                invDetail.setCurrentSublistValue({
+                                    sublistId: 'inventoryassignment',
+                                    fieldId: 'issueinventorynumber',
+                                    value: serialInternalId
+                                });
+
+                                invDetail.setCurrentSublistValue({
+                                    sublistId: 'inventoryassignment',
+                                    fieldId: 'quantity',
+                                    value: 1
+                                });
+
+                                invDetail.commitLine({ sublistId: 'inventoryassignment' });
+                            } else {
+                                log.error('Serial Not Found', `Serial ${sn} for Item ${itemId} not found in NetSuite or not linked to this item.`);
+                            }
+                        });
+                    }
+
+                    fulfillmentRec.commitLine({ sublistId: 'item' });
+                    linesFulfilled++;
                 }
 
-                const invDetail = ifRec.getCurrentSublistSubrecord({
-                    sublistId: 'item',
-                    fieldId: 'inventorydetail'
-                });
+                if (linesFulfilled > 0) {
+                    const newIfId = fulfillmentRec.save();
+                    log.audit('Success', `IF ${newIfId} created for IFR ${ifrId}`);
+                    if (newIfId) {
+                        var ifrecord = record.load({
+                            type: 'fulfillmentrequest',
+                            id: ifrId,
+                            isDynamic: true,
+                        });
+                        ifrecord.setValue({
+                            fieldId: 'custbody_if_processed',
+                            value: true
+                        });
+                        var ifSave = ifrecord.save();
 
-                wmsLine.serials.forEach(sn => {
-                    invDetail.selectNewLine({ sublistId: 'inventoryassignment' });
-                    invDetail.setCurrentSublistValue({
-                        sublistId: 'inventoryassignment',
-                        fieldId: 'receiptinventorynumber',
-                        value: sn
-                    });
-                    invDetail.setCurrentSublistValue({
-                        sublistId: 'inventoryassignment',
-                        fieldId: 'quantity',
-                        value: 1
-                    });
-                    invDetail.commitLine({ sublistId: 'inventoryassignment' });
-                });
+                        log.debug("If Process Checkbox enabled:", ifSave);
+                    } else {
+                        log.debug("If Fulfill Checkbox Not enabled:");
+                    }
+                }
+
+            } catch (e) {
+                log.error('ReduceError', `IFR ${ifrId}: ${e.message}`);
             }
-
-            ifRec.commitLine({ sublistId: 'item' });
         }
-
-        const ifId = ifRec.save({ enableSourcing: true, ignoreMandatoryFields: true });
-
-        record.submitFields({
-            type: IFR_RECORD_TYPE,
-            id: payload.ifrId,
-            values: { custbody_if_processed: true }
-        });
-
-        log.audit('SUCCESS', `Item Fulfillment ${ifId} created`);
-    }
-
-    function summarize(summary) {
-        log.audit('Summary', summary);
-    }
-
-    return { getInputData, map, reduce, summarize };
-});
