@@ -1,1 +1,129 @@
+function reduce(context) {
+            const ifrId = context.key;
+            log.debug("IF Id:", ifrId);
+            const raw = context.values && context.values.length ? context.values[0] : null;
+            log.debug("raw:", raw);
+            if (!raw) return;
 
+            let payload;
+            try {
+                payload = JSON.parse(raw);
+                log.debug("Payload:", payload);
+                log.audit('Reduce', `Processing IFR ${ifrId} for SO ${payload.soId}`);
+            } catch (e) {
+                log.error('ParseError', `IFR ${ifrId}: ${e.message}`);
+                return;
+            }
+
+            try {
+                // Transform SO to IF in Dynamic Mode to handle subrecords properly
+                const fulfillmentRec = record.transform({
+                    fromType: record.Type.SALES_ORDER,
+                    fromId: payload.soId,
+                    toType: record.Type.ITEM_FULFILLMENT,
+                    isDynamic: true,
+                    defaultValues: { fftreqid: ifrId }
+                });
+
+                // 1. Map SKUs to Item IDs
+                const skus = (payload.wmsLines || []).map(l => l.sku).filter(Boolean);
+                log.debug("Skus:", skus);
+                const skuToNsMap = buildNsItemMapForSkus(skus);
+                log.debug("skuToNsMap:", skuToNsMap);
+                // 2. Map Item IDs to WMS Line Data
+                const idToWmsData = {};
+                payload.wmsLines.forEach(line => {
+                    const nsInfo = skuToNsMap[line.sku];
+                    if (nsInfo && nsInfo.itemId) idToWmsData[nsInfo.itemId] = line;
+                });
+
+                const lineCount = fulfillmentRec.getLineCount({ sublistId: 'item' });
+                log.debug("IF Item Line Count:", lineCount);
+                let linesFulfilled = 0;
+
+                for (let i = 0; i < lineCount; i++) {
+                    fulfillmentRec.selectLine({ sublistId: 'item', line: i });
+                    const itemId = fulfillmentRec.getCurrentSublistValue({ sublistId: 'item', fieldId: 'item' });
+                    log.debug("If Item Id:", itemId);
+                    const wmsLine = idToWmsData[itemId];
+                    log.debug("wmsLine:", wmsLine);
+
+                    // If item not in WMS data, skip this line
+                    if (!wmsLine) {
+                        fulfillmentRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'itemreceive', value: false });
+                        fulfillmentRec.commitLine({ sublistId: 'item' });
+                        continue;
+                    }
+
+                    fulfillmentRec.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: wmsLine.qty });
+
+                    log.debug("wmsLine.serialNumbers:", wmsLine.serialNumbers);
+                    log.debug("wmsLine.serialNumbers.length:", wmsLine.serialNumbers.length);
+
+                    // 3. Handle Serials via buildInventoryNumberMap
+                    if (wmsLine.serialNumbers && wmsLine.serialNumbers.length > 0) {
+                        log.debug("If Handle Serials via buildInventoryNumberMap");
+                        const serialToIdMap = buildInventoryNumberMap(wmsLine.serialNumbers, itemId);
+                        log.debug("Serial to Map:", serialToIdMap);
+
+                        // IMPORTANT: use explicit line index
+                        const invDetail = fulfillmentRec.getCurrentSublistSubrecord({
+                            sublistId: 'item',
+                            fieldId: 'inventorydetail'
+                        });
+
+                        wmsLine.serialNumbers.forEach(sn => {
+                            const serialInternalId = serialToIdMap[sn];
+                            log.debug({ title: 'Serial', details: { sn, serialInternalId, itemId } });
+
+                            if (serialInternalId) {
+                                invDetail.selectNewLine({ sublistId: 'inventoryassignment' });
+
+                                invDetail.setCurrentSublistValue({
+                                    sublistId: 'inventoryassignment',
+                                    fieldId: 'issueinventorynumber',
+                                    value: serialInternalId
+                                });
+
+                                invDetail.setCurrentSublistValue({
+                                    sublistId: 'inventoryassignment',
+                                    fieldId: 'quantity',
+                                    value: 1
+                                });
+
+                                invDetail.commitLine({ sublistId: 'inventoryassignment' });
+                            } else {
+                                log.error('Serial Not Found', `Serial ${sn} for Item ${itemId} not found in NetSuite or not linked to this item.`);
+                            }
+                        });
+                    }
+
+                    fulfillmentRec.commitLine({ sublistId: 'item' });
+                    linesFulfilled++;
+                }
+
+                if (linesFulfilled > 0) {
+                    const newIfId = fulfillmentRec.save();
+                    log.audit('Success', `IF ${newIfId} created for IFR ${ifrId}`);
+                    if (newIfId) {
+                        var ifrecord = record.load({
+                            type: 'fulfillmentrequest',
+                            id: ifrId,
+                            isDynamic: true,
+                        });
+                        ifrecord.setValue({
+                            fieldId: 'custbody_if_processed',
+                            value: true
+                        });
+                        var ifSave = ifrecord.save();
+
+                        log.debug("If Process Checkbox enabled:", ifSave);
+                    } else {
+                        log.debug("If Fulfill Checkbox Not enabled:");
+                    }
+                }
+
+            } catch (e) {
+                log.error('ReduceError', `IFR ${ifrId}: ${e.message}`);
+            }
+        }
