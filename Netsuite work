@@ -1,4 +1,4 @@
-/**
+
  * Build WMS lines with serial numbers from
  * ReadOnly -> Packages -> PackageContents -> SerialNumbers
  */
