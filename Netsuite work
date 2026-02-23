@@ -1,1 +1,54 @@
 
+/* -------- SERIAL ASSIGNMENT ADD START -------- */
+
+if (wmsLines.serialNumbers && wmsLines.serialNumbers.length > 0) {
+
+    const cleanSerials = wmsLines.serialNumbers
+        .map(sanitizeSerial)
+        .filter(Boolean);
+
+    // ✅ PLACE invMap HERE (THIS IS THE ONLY CORRECT PLACE)
+    const invMap = buildInventoryNumberMap(cleanSerials, itemId);
+
+    let invDetail;
+    try {
+        invDetail = ifRec.getCurrentSublistSubrecord({
+            sublistId: "item",
+            fieldId: "inventorydetail"
+        });
+    } catch (e) {
+        log.error("Inventory Detail Missing", "inventorydetail not available");
+        ifRec.commitLine({ sublistId: "item" });
+        continue;
+    }
+
+    cleanSerials.forEach(sn => {
+        const invId = invMap[sn];
+        if (!invId) {
+            log.error("Serial Missing", `Serial ${sn} not found for item ${itemId}`);
+            return;
+        }
+
+        invDetail.selectNewLine({
+            sublistId: "inventoryassignment"
+        });
+
+        invDetail.setCurrentSublistValue({
+            sublistId: "inventoryassignment",
+            fieldId: "issueinventorynumber",
+            value: invId
+        });
+
+        invDetail.setCurrentSublistValue({
+            sublistId: "inventoryassignment",
+            fieldId: "quantity",
+            value: 1
+        });
+
+        invDetail.commitLine({
+            sublistId: "inventoryassignment"
+        });
+    });
+}
+
+/* -------- SERIAL ASSIGNMENT ADD END -------- */
