@@ -1,54 +1,166 @@
+{
+   type: "error.SuiteScriptError",
+   name: "USER_ERROR",
+   message: "Please configure the inventory detail in line 1 of the item list.",
+   id: "",
+   stack: [
+      "Error\n    at RecordInvoker.save (suitescript/resources/javascript/record/serverRecordService.js:391:13)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:528:40)"
+   ],
+   cause: {
+      type: "internal error",
+      code: "USER_ERROR",
+      details: "Please configure the inventory detail in line 1 of the item list.",
+      userEvent: null,
+      stackTrace: [
+         "Error\n    at RecordInvoker.save (suitescript/resources/javascript/record/serverRecordService.js:391:13)\n    at NetSuiteObject.thenableFunction() (suitescript/resources/javascript/record/proxy.js:115:24)\n    at Object.reduce (/SuiteScripts/MR - Automate IFR from WMS.js:528:40)"
+      ],
+      notifyOff: false
+   },
+   notifyOff: false,
+   userFacing: true
+}else {
+                    const ifRec = record.transform({
+                        fromType: record.Type.SALES_ORDER,
+                        fromId: soId,
+                        toType: record.Type.ITEM_FULFILLMENT,
+                        isDynamic: true,
+                        defaultValues: { fftreqid: ifrId }
+                        //defaultValues: { inventorylocation: soLoc }
+                    });
+                    //log.debug("If transform triggered");
+                    const skuMap = buildNsItemMapForSkus(
+                        wmsLine.map(l => l.sku)
+                    );
+                    log.debug("SKU Map:", skuMap);
+                    const idToLine = {};
+                    wmsLine.forEach(l => {
+                        const m = skuMap[l.sku];
+                        if (m) idToLine[m.itemId] = l;
+                    });
 
-/* -------- SERIAL ASSIGNMENT ADD START -------- */
+                    const lc = ifRec.getLineCount({ sublistId: 'item' });
+                    log.debug("IF Line COunt:", lc);
+                    for (let i = 0; i < lc; i++) {
 
-if (wmsLines.serialNumbers && wmsLines.serialNumbers.length > 0) {
+                        ifRec.selectLine({ sublistId: 'item', line: i });
 
-    const cleanSerials = wmsLines.serialNumbers
-        .map(sanitizeSerial)
-        .filter(Boolean);
+                        const itemId = ifRec.getCurrentSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'item'
+                        });
 
-    // ✅ PLACE invMap HERE (THIS IS THE ONLY CORRECT PLACE)
-    const invMap = buildInventoryNumberMap(cleanSerials, itemId);
+                        const wmsLines = idToLine[itemId];
+                        //log.debug("WMS Lines after Item Id:", wmsLines);
+                        if (!wmsLines) {
+                            ifRec.setCurrentSublistValue({
+                                sublistId: 'item',
+                                fieldId: 'itemreceive',
+                                value: false
+                            });
+                            ifRec.commitLine({ sublistId: 'item' });
+                            continue;
+                        }
+                        log.debug("Item receive completed");
+                        var itemInternalId = getItemInternalId(wmsLines.sku);
+                        //log.debug("Item Internal Id:", itemInternalId);
 
-    let invDetail;
-    try {
-        invDetail = ifRec.getCurrentSublistSubrecord({
-            sublistId: "item",
-            fieldId: "inventorydetail"
-        });
-    } catch (e) {
-        log.error("Inventory Detail Missing", "inventorydetail not available");
-        ifRec.commitLine({ sublistId: "item" });
-        continue;
-    }
+                        log.debug("Item set successfully:", wmsLines.qty);
+                        var qtyset = ifRec.setCurrentSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'quantity',
+                            value: wmsLines.qty
+                        });
+                        //log.debug("Quantity Set Successfully", qtyset);
+                        /*ifRec.setCurrentSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'itemreceive',
+                            value: true
+                        });*/
+                        //log.debug("Wms Serial Numbers:", wmsLine.serialNumbers);
+                        /* -------- SERIAL ASSIGNMENT ADD START -------- */
 
-    cleanSerials.forEach(sn => {
-        const invId = invMap[sn];
-        if (!invId) {
-            log.error("Serial Missing", `Serial ${sn} not found for item ${itemId}`);
-            return;
-        }
+                        // --- Correction: use wmsLines (current line), not wmsLine (array) ---
+                        if (wmsLines.serialNumbers && wmsLines.serialNumbers.length > 0) {
+                            log.debug("If Wms Serial Numbers:", wmsLines.serialNumbers);
+                            const cleanSerials = wmsLines.serialNumbers
+                                .map(sanitizeSerial)
+                                .filter(Boolean);
+                            log.debug("WMS quantity:", wmsLines.qty);
+                            log.debug("Clean Serials:", cleanSerials);
+                            if (cleanSerials.length !== wmsLines.qty) {
+                                log.error('SerialQtyMismatch',
+                                    `Item ${itemId} qty=${wmsLines.qty} serials=${cleanSerials.length}`);
+                            }
 
-        invDetail.selectNewLine({
-            sublistId: "inventoryassignment"
-        });
+                            // Build map { serialNumber : internalId }
+                            const invMap = buildInventoryNumberMap(cleanSerials, itemId);
+                            log.debug("INV Map Details:", invMap);
+                            // Now inventorydetail subrecord will exist
+                            let invDetail;
+                            try {
+                                invDetail = ifRec.getCurrentSublistSubrecord({
+                                    sublistId: "item",
+                                    fieldId: "inventorydetail"
+                                });
+                            } catch (e) {
+                                log.error("Inventory Detail Missing", "inventorydetail subrecord not available");
+                                ifRec.commitLine({ sublistId: "item" });
+                                continue;
+                            }
+                            log.debug("INv Details:", invDetail);
+                            cleanSerials.forEach(sn => {
+                                log.debug("Clean Serials Forr Loop entred");
+                                const invId = invMap[sn];
+                                log.debug("Inv Id:", invId);
+                                if (!invId) {
+                                    log.error("Serial Missing", `Serial ${sn} was not found in inventory`);
+                                    return;
+                                }
 
-        invDetail.setCurrentSublistValue({
-            sublistId: "inventoryassignment",
-            fieldId: "issueinventorynumber",
-            value: invId
-        });
+                                invDetail.selectNewLine({
+                                    sublistId: "inventoryassignment"
+                                });
 
-        invDetail.setCurrentSublistValue({
-            sublistId: "inventoryassignment",
-            fieldId: "quantity",
-            value: 1
-        });
+                                // MUST USE internal ID for serialized numbers
+                                invDetail.setCurrentSublistValue({
+                                    sublistId: "inventoryassignment",
+                                    fieldId: "issueinventorynumber",
+                                    value: invId
+                                });
 
-        invDetail.commitLine({
-            sublistId: "inventoryassignment"
-        });
-    });
-}
+                                invDetail.setCurrentSublistValue({
+                                    sublistId: "inventoryassignment",
+                                    fieldId: "quantity",
+                                    value: 1
+                                });
 
-/* -------- SERIAL ASSIGNMENT ADD END -------- */
+                                invDetail.commitLine({
+                                    sublistId: "inventoryassignment"
+                                });
+                            });
+                        }
+
+                        /* -------- SERIAL ASSIGNMENT ADD END -------- */
+
+                        ifRec.commitLine({ sublistId: "item" });
+                    }
+                    log.debug("If Saved Successfully");
+                    const ifId = ifRec.save();
+                    log.debug("If Saved Successfully", ifId);
+                    if (ifId) {
+
+                        var ifrrecord = record.load({
+                            type: 'fulfillmentrequest',
+                            id: ifrId,
+                            isDynamic: true
+                        });
+                        ifrrecord.setValue({
+                            fieldId: 'custbody_if_processed',
+                            value: true
+                        });
+                        var ifrsave = ifrrecord.save();
+
+                        log.debug("Ifr saved sucessfully:", ifrsave);
+                    }
+                    log.audit('SUCCESS', ifId);
+                }
