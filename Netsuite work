@@ -1,1 +1,113 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ * @description SS1.0 to SS2.1 Converter using OpenAI GPT-4o-mini.
+ */
 
+define(['N/ui/serverWidget', 'N/https', 'N/log'], 
+(serverWidget, https, log) => {
+
+    // YOUR API KEY
+    const OPENAI_API_KEY = 'AIzaSyBk1W9IufiempJLpbuyXumgyc6qWimzOkw';
+
+    const onRequest = (context) => {
+        const { request, response } = context;
+
+        if (request.method === 'GET') {
+            const form = createConverterForm('', '');
+            response.writePage(form);
+        } 
+
+        else if (request.method === 'POST') {
+            const script10 = request.parameters.custpage_ss10 || '';
+            const convertedScript = convertScript(script10);
+
+            const form = createConverterForm(script10, convertedScript);
+            response.writePage(form);
+        }
+    };
+
+    /**
+     * Build the UI Form
+     */
+    function createConverterForm(inputVal, outputVal) {
+        const form = serverWidget.createForm({
+            title: 'SuiteScript 1.0 → 2.1 AI Converter'
+        });
+
+        const inputField = form.addField({
+            id: 'custpage_ss10',
+            type: serverWidget.FieldType.LONGTEXT,
+            label: 'Paste SuiteScript 1.0 Code'
+        });
+        inputField.defaultValue = inputVal;
+        inputField.updateDisplaySize({ height: 25, width: 80 });
+
+        const outputField = form.addField({
+            id: 'custpage_ss21',
+            type: serverWidget.FieldType.LONGTEXT,
+            label: 'Converted SuiteScript 2.1 Result'
+        });
+        outputField.defaultValue = outputVal;
+        outputField.updateDisplaySize({ height: 25, width: 80 });
+
+        form.addSubmitButton({
+            label: inputVal ? 'Convert Again' : 'Convert Script'
+        });
+
+        return form;
+    }
+
+    /**
+     * API Logic
+     */
+    function convertScript(script10) {
+        try {
+            if (!script10) return "Please provide source code.";
+
+            const prompt = "Convert the following NetSuite SuiteScript 1.0 code to SuiteScript 2.1. " +
+                           "Use modern ES6 syntax. Ensure proper module mapping. " +
+                           "Return ONLY the code without any markdown formatting.\n\n" + 
+                           script10;
+
+            const payload = {
+                model: "gpt-4o-mini",
+                messages: [
+                    { role: "system", content: "You are a professional NetSuite developer." },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.1
+            };
+
+            const apiResponse = https.post({
+                url: "https://api.openai.com/v1/chat/completions",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + OPENAI_API_KEY
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = JSON.parse(apiResponse.body);
+
+            if (result.error) {
+                return "OpenAI Error: " + result.error.message;
+            }
+
+            if (result.choices && result.choices.length > 0) {
+                let content = result.choices[0].message.content;
+                // Clean up any markdown code blocks returned by the AI
+                return content.replace(/```javascript|```js|```/g, '').trim();
+            }
+
+            return "Unexpected Response Format.";
+
+        } catch (e) {
+            log.error("Conversion Error", e);
+            return "Error: " + e.message;
+        }
+    }
+
+    return { onRequest };
+
+});
