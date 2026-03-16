@@ -1,14 +1,11 @@
 /**
  * @NApiVersion 2.1
  * @NScriptType Suitelet
- * @description SS1.0 to SS2.1 Converter using Google Gemini API.
+ * @description SS1.0 to SS2.1 Converter using Anthropic Claude API.
  */
 
-define(['N/ui/serverWidget', 'N/https', 'N/log'], 
-(serverWidget, https, log) => {
-
-    // Your Google API Key
-    const GEMINI_API_KEY = 'AIzaSyBk1W9IufiempJLpbuyXumgyc6qWimzOkw';
+define(['N/ui/serverWidget', 'N/https', 'N/log', 'N/runtime'],
+(serverWidget, https, log, runtime) => {
 
     const onRequest = (context) => {
         const { request, response } = context;
@@ -20,7 +17,6 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
         else if (request.method === 'POST') {
             const script10 = request.parameters.custpage_ss10 || '';
             const convertedScript = convertScript(script10);
-
             const form = createConverterForm(script10, convertedScript);
             response.writePage(form);
         }
@@ -28,7 +24,7 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
 
     function createConverterForm(inputVal, outputVal) {
         const form = serverWidget.createForm({
-            title: 'SuiteScript 1.0 → 2.1 Gemini Converter'
+            title: 'SuiteScript 1.0 → 2.1 Claude AI Converter'
         });
 
         const inputField = form.addField({
@@ -46,6 +42,9 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
         });
         outputField.defaultValue = outputVal;
         outputField.updateDisplaySize({ height: 25, width: 80 });
+        outputField.updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.INLINE
+        });
 
         form.addSubmitButton({
             label: inputVal ? 'Convert Again' : 'Convert Script'
@@ -56,41 +55,71 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
 
     function convertScript(script10) {
         try {
-            if (!script10) return "Please provide source code.";
+            if (!script10.trim()) return "Please provide source code.";
 
-            // Gemini API Endpoint
-            const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY;
+            // ✅ Fetch API key securely from Script Parameter
+            const CLAUDE_API_KEY = runtime.getCurrentScript().getParameter({
+                name: 'custscript_claude_api_key'
+            });
+
+            if (!CLAUDE_API_KEY) {
+                return "Error: Claude API key not configured in Script Parameters.";
+            }
+
+            // Claude API endpoint
+            const url = 'https://api.anthropic.com/v1/messages';
 
             const payload = {
-                contents: [{
-                    parts: [{
-                        text: "You are a NetSuite expert. Convert this SuiteScript 1.0 code to 2.1 using modern ES6 syntax. Provide ONLY the code, no markdown code blocks:\n\n" + script10
-                    }]
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 8192,
+                system: `You are a NetSuite SuiteScript expert. Convert SuiteScript 1.0 code to SuiteScript 2.1.
+Rules:
+- Use ES6+ syntax (const, let, arrow functions, template literals, destructuring)
+- Use proper define([...], (...) => { }) AMD module format
+- Add @NApiVersion 2.1 and @NScriptType JSDoc annotations
+- Replace all nlapiXxx / nlobjXxx calls with proper N/ module equivalents
+- Import only the required N/ modules
+- Add proper error handling with try/catch where appropriate
+- Output ONLY the converted code, no explanations, no markdown fences`,
+                messages: [{
+                    role: 'user',
+                    content: `Convert this SuiteScript 1.0 code to SuiteScript 2.1:\n\n${script10}`
                 }]
             };
 
             const apiResponse = https.post({
-                url: url,
-                headers: { "Content-Type": "application/json" },
+                url,
+                headers: {
+                    'Content-Type':            'application/json',
+                    'x-api-key':               CLAUDE_API_KEY,
+                    'anthropic-version':       '2023-06-01'
+                },
                 body: JSON.stringify(payload)
             });
+
+            if (apiResponse.code !== 200) {
+                log.error('Claude HTTP Error', apiResponse.body);
+                return `HTTP Error ${apiResponse.code}: ${apiResponse.body}`;
+            }
 
             const result = JSON.parse(apiResponse.body);
 
             if (result.error) {
-                return "Google API Error: " + result.error.message;
+                return `Claude API Error: ${result.error.message}`;
             }
 
-            // Extracting response from Gemini's nested JSON structure
-            if (result.candidates && result.candidates[0].content.parts[0].text) {
-                return result.candidates[0].content.parts[0].text.trim();
+            // Extract text from Claude's response structure
+            const text = result?.content?.[0]?.text;
+            if (text) {
+                // Strip any accidental markdown code fences
+                return text.replace(/^```[\w]*\n?/gm, '').replace(/^```$/gm, '').trim();
             }
 
-            return "Unexpected Response Format.";
+            return "Unexpected response format from Claude API.";
 
         } catch (e) {
-            log.error("Conversion Error", e);
-            return "Error: " + e.message;
+            log.error('Conversion Error', { message: e.message, stack: e.stack });
+            return `Error: ${e.message}`;
         }
     }
 
