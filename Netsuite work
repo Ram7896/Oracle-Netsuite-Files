@@ -1,128 +1,178 @@
 /**
  * @NApiVersion 2.1
  * @NScriptType Suitelet
- * @description SS1.0 to SS2.1 Converter using Anthropic Claude API.
+ * @description SuiteScript 1.0 → 2.1 Converter using ChatGPT
  */
 
 define(['N/ui/serverWidget', 'N/https', 'N/log', 'N/runtime'],
 (serverWidget, https, log, runtime) => {
 
-    const onRequest = (context) => {
-        const { request, response } = context;
+const onRequest = (context) => {
 
-        if (request.method === 'GET') {
-            const form = createConverterForm('', '');
-            response.writePage(form);
-        } 
-        else if (request.method === 'POST') {
-            const script10 = request.parameters.custpage_ss10 || '';
-            const convertedScript = convertScript(script10);
-            const form = createConverterForm(script10, convertedScript);
-            response.writePage(form);
+    const request = context.request;
+    const response = context.response;
+
+    if (request.method === 'GET') {
+
+        const form = createForm('', '');
+        response.writePage(form);
+
+    } else {
+
+        const ss10Code = request.parameters.custpage_ss10 || '';
+
+        let convertedCode = '';
+
+        if (ss10Code) {
+            convertedCode = convertScript(ss10Code);
         }
-    };
 
-    function createConverterForm(inputVal, outputVal) {
-        const form = serverWidget.createForm({
-            title: 'SuiteScript 1.0 → 2.1 Claude AI Converter'
-        });
+        const form = createForm(ss10Code, convertedCode);
+        response.writePage(form);
 
-        const inputField = form.addField({
-            id: 'custpage_ss10',
-            type: serverWidget.FieldType.LONGTEXT,
-            label: 'Paste SuiteScript 1.0 Code'
-        });
-        inputField.defaultValue = inputVal;
-        inputField.updateDisplaySize({ height: 25, width: 80 });
-
-        const outputField = form.addField({
-            id: 'custpage_ss21',
-            type: serverWidget.FieldType.LONGTEXT,
-            label: 'Converted SuiteScript 2.1 Result'
-        });
-        outputField.defaultValue = outputVal;
-        outputField.updateDisplaySize({ height: 25, width: 80 });
-        outputField.updateDisplayType({
-            displayType: serverWidget.FieldDisplayType.INLINE
-        });
-
-        form.addSubmitButton({
-            label: inputVal ? 'Convert Again' : 'Convert Script'
-        });
-
-        return form;
     }
+};
 
-    function convertScript(script10) {
-        try {
-            if (!script10.trim()) return "Please provide source code.";
 
-            // ✅ Fetch API key securely from Script Parameter
-            const CLAUDE_API_KEY = runtime.getCurrentScript().getParameter({
-                name: 'custscript_claude_api_key'
-            });
+/* ---------------- FORM UI ---------------- */
 
-            if (!CLAUDE_API_KEY) {
-                return "Error: Claude API key not configured in Script Parameters.";
-            }
+function createForm(inputValue, outputValue) {
 
-            // Claude API endpoint
-            const url = 'https://api.anthropic.com/v1/messages';
+    const form = serverWidget.createForm({
+        title: 'AI SuiteScript 1.0 → 2.1 Converter'
+    });
 
-            const payload = {
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 8192,
-                system: `You are a NetSuite SuiteScript expert. Convert SuiteScript 1.0 code to SuiteScript 2.1.
+    const input = form.addField({
+        id: 'custpage_ss10',
+        type: serverWidget.FieldType.LONGTEXT,
+        label: 'Paste SuiteScript 1.0 Code'
+    });
+
+    input.updateDisplaySize({
+        height: 25,
+        width: 100
+    });
+
+    input.defaultValue = inputValue || '';
+
+
+    const output = form.addField({
+        id: 'custpage_ss21',
+        type: serverWidget.FieldType.LONGTEXT,
+        label: 'Converted SuiteScript 2.1'
+    });
+
+    output.updateDisplaySize({
+        height: 25,
+        width: 100
+    });
+
+    output.updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE
+    });
+
+    output.defaultValue = outputValue || '';
+
+    form.addSubmitButton({
+        label: 'Convert Script'
+    });
+
+    return form;
+
+}
+
+
+/* ---------------- OPENAI API CALL ---------------- */
+
+function convertScript(script10) {
+
+    try {
+
+        const apiKey = runtime.getCurrentScript().getParameter({
+            name: 'custscript_openai_api_key'
+        });
+
+        if (!apiKey) {
+            return 'Error: OpenAI API Key not configured.';
+        }
+
+        const url = 'https://api.openai.com/v1/chat/completions';
+
+        const payload = {
+
+            model: 'gpt-4o-mini',
+
+            messages: [
+
+                {
+                    role: 'system',
+                    content: `
+You are a NetSuite SuiteScript expert.
+
+Convert SuiteScript 1.0 code to SuiteScript 2.1.
+
 Rules:
-- Use ES6+ syntax (const, let, arrow functions, template literals, destructuring)
-- Use proper define([...], (...) => { }) AMD module format
-- Add @NApiVersion 2.1 and @NScriptType JSDoc annotations
-- Replace all nlapiXxx / nlobjXxx calls with proper N/ module equivalents
-- Import only the required N/ modules
-- Add proper error handling with try/catch where appropriate
-- Output ONLY the converted code, no explanations, no markdown fences`,
-                messages: [{
-                    role: 'user',
-                    content: `Convert this SuiteScript 1.0 code to SuiteScript 2.1:\n\n${script10}`
-                }]
-            };
-
-            const apiResponse = https.post({
-                url,
-                headers: {
-                    'Content-Type':            'application/json',
-                    'x-api-key':               CLAUDE_API_KEY,
-                    'anthropic-version':       '2023-06-01'
+- Use ES6 syntax (const, let, arrow functions)
+- Use define([...], (...) => {})
+- Replace nlapi functions with N/ modules
+- Add @NApiVersion 2.1
+- Add @NScriptType
+- Output only converted code
+`
                 },
-                body: JSON.stringify(payload)
-            });
 
-            if (apiResponse.code !== 200) {
-                log.error('Claude HTTP Error', apiResponse.body);
-                return `HTTP Error ${apiResponse.code}: ${apiResponse.body}`;
-            }
+                {
+                    role: 'user',
+                    content: script10
+                }
 
-            const result = JSON.parse(apiResponse.body);
+            ],
 
-            if (result.error) {
-                return `Claude API Error: ${result.error.message}`;
-            }
+            temperature: 0
+        };
 
-            // Extract text from Claude's response structure
-            const text = result?.content?.[0]?.text;
-            if (text) {
-                // Strip any accidental markdown code fences
-                return text.replace(/^```[\w]*\n?/gm, '').replace(/^```$/gm, '').trim();
-            }
+        const apiResponse = https.post({
 
-            return "Unexpected response format from Claude API.";
+            url: url,
 
-        } catch (e) {
-            log.error('Conversion Error', { message: e.message, stack: e.stack });
-            return `Error: ${e.message}`;
+            headers: {
+
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey
+
+            },
+
+            body: JSON.stringify(payload)
+
+        });
+
+
+        if (apiResponse.code !== 200) {
+
+            log.error('OpenAI Error', apiResponse.body);
+
+            return 'API Error: ' + apiResponse.body;
+
         }
+
+
+        const result = JSON.parse(apiResponse.body);
+
+        const output = result.choices[0].message.content;
+
+        return output;
+
+
+    } catch (e) {
+
+        log.error('Conversion Error', e);
+
+        return 'Error: ' + e.message;
+
     }
 
-    return { onRequest };
+}
+
+return { onRequest };
+
 });
-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
