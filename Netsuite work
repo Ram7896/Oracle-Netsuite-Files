@@ -1,14 +1,14 @@
 /**
  * @NApiVersion 2.1
  * @NScriptType Suitelet
- * @description SS1.0 to SS2.1 Converter using OpenAI GPT-4o-mini.
+ * @description SS1.0 to SS2.1 Converter using Google Gemini API.
  */
 
 define(['N/ui/serverWidget', 'N/https', 'N/log'], 
 (serverWidget, https, log) => {
 
-    // YOUR API KEY
-    const OPENAI_API_KEY = 'AIzaSyBk1W9IufiempJLpbuyXumgyc6qWimzOkw';
+    // Your Google API Key
+    const GEMINI_API_KEY = 'AIzaSyBk1W9IufiempJLpbuyXumgyc6qWimzOkw';
 
     const onRequest = (context) => {
         const { request, response } = context;
@@ -17,7 +17,6 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
             const form = createConverterForm('', '');
             response.writePage(form);
         } 
-
         else if (request.method === 'POST') {
             const script10 = request.parameters.custpage_ss10 || '';
             const convertedScript = convertScript(script10);
@@ -27,12 +26,9 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
         }
     };
 
-    /**
-     * Build the UI Form
-     */
     function createConverterForm(inputVal, outputVal) {
         const form = serverWidget.createForm({
-            title: 'SuiteScript 1.0 → 2.1 AI Converter'
+            title: 'SuiteScript 1.0 → 2.1 Gemini Converter'
         });
 
         const inputField = form.addField({
@@ -58,46 +54,36 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
         return form;
     }
 
-    /**
-     * API Logic
-     */
     function convertScript(script10) {
         try {
             if (!script10) return "Please provide source code.";
 
-            const prompt = "Convert the following NetSuite SuiteScript 1.0 code to SuiteScript 2.1. " +
-                           "Use modern ES6 syntax. Ensure proper module mapping. " +
-                           "Return ONLY the code without any markdown formatting.\n\n" + 
-                           script10;
+            // Gemini API Endpoint
+            const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY;
 
             const payload = {
-                model: "gpt-4o-mini",
-                messages: [
-                    { role: "system", content: "You are a professional NetSuite developer." },
-                    { role: "user", content: prompt }
-                ],
-                temperature: 0.1
+                contents: [{
+                    parts: [{
+                        text: "You are a NetSuite expert. Convert this SuiteScript 1.0 code to 2.1 using modern ES6 syntax. Provide ONLY the code, no markdown code blocks:\n\n" + script10
+                    }]
+                }]
             };
 
             const apiResponse = https.post({
-                url: "https://api.openai.com/v1/chat/completions",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + OPENAI_API_KEY
-                },
+                url: url,
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
 
             const result = JSON.parse(apiResponse.body);
 
             if (result.error) {
-                return "OpenAI Error: " + result.error.message;
+                return "Google API Error: " + result.error.message;
             }
 
-            if (result.choices && result.choices.length > 0) {
-                let content = result.choices[0].message.content;
-                // Clean up any markdown code blocks returned by the AI
-                return content.replace(/```javascript|```js|```/g, '').trim();
+            // Extracting response from Gemini's nested JSON structure
+            if (result.candidates && result.candidates[0].content.parts[0].text) {
+                return result.candidates[0].content.parts[0].text.trim();
             }
 
             return "Unexpected Response Format.";
@@ -109,5 +95,4 @@ define(['N/ui/serverWidget', 'N/https', 'N/log'],
     }
 
     return { onRequest };
-
 });
