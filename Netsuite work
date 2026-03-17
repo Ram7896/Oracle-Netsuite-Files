@@ -1,1 +1,73 @@
+<#if asset.custrecord_nx_asset_type?trim?lower_case == "roller door">
 
+    <!-- ✅ CUSTOM FORMAT (ONLY FOR ROLLER DOOR) -->
+    <table class="doorDetails">
+        <tr>
+            <td><b>Type of Asset</b></td>
+            <td>${asset.custrecord_nxc_asset_type!""}</td>
+            <td><b>Customer Asset ID</b></td>
+            <td>${asset.custrecord_nxc_customer_asset_id!""}</td>
+        </tr>
+        <tr>
+            <td><b>Serial Number</b></td>
+            <td>${asset.custrecord_nx_asset_serial!""}</td>
+            <td><b>Make / Model</b></td>
+            <td>${asset.custrecord_nxc_make!""} / ${asset.custrecord_nxc_model!""}</td>
+        </tr>
+        <tr>
+            <td><b>Location Onsite</b></td>
+            <td>${asset.custrecord_na_nxc_location_on_site!""}</td>
+            <td><b>Door Type</b></td>
+            <td>${asset.custrecord_nxc_asset_type!""}</td>
+        </tr>
+        <tr>
+            <td><b>Locking Type</b></td>
+            <td>${asset.custrecord_nxc_locking!""}</td>
+            <td><b>Dimension</b></td>
+            <td>
+                ${asset.custrecord_nxc_door_width_m!""} mm Width x 
+                ${asset.custrecord_nxc_door_height_m!""} mm Height
+            </td>
+        </tr>
+        <tr>
+            <td><b>Non-Autoingress Model</b></td>
+            <td>${asset.custrecord_ai_nonai_model!""}</td>
+            <td><b>Additional Model Info</b></td>
+            <td>${asset.custrecord_ai_adnl_model_info!""}</td>
+        </tr>
+    </table>
+
+<#else>
+
+    <!-- ✅ NORMAL FORMAT FOR ALL OTHER ASSETS -->
+    <table class="doorDetails">
+        <tr>
+            <td colspan="2"><b>Serial Number: </b>${asset.custrecord_nx_asset_serial!""}</td>
+            <td colspan="2"><b>Master Code: </b>${asset.custrecord_nxc_master_code!""}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><b>Customer Asset Id: </b>${asset.custrecord_nxc_customer_asset_id!""}</td>
+            <td colspan="2"><b>Manufacture Date: </b>${asset.custrecord_nxc_manufacture_date!""}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><b>Location Onsite: </b>${asset.custrecord_na_nxc_location_on_site!""}</td>
+            <td colspan="2"><b>Make/Model: </b>${asset.custrecord_nxc_make!""} / ${asset.custrecord_nxc_model!""}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><b>Locking Type: </b>${asset.custrecord_nxc_locking!""}</td>
+            <td colspan="2"><b>Door Type: </b>${asset.custrecord_nxc_asset_type!""}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><b>Door Width: </b>${asset.custrecord_nxc_door_width_m!""}</td>
+            <td colspan="2"><b>Door Height: </b>${asset.custrecord_nxc_door_height_m!""}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><b>Non-Autoingress Model:</b>${asset.custrecord_ai_nonai_model!""}</td>
+            <td colspan="2"><b>Additional Model Information:</b>${asset.custrecord_ai_adnl_model_info!""}</td>
+        </tr>
+        <tr>
+            <td colspan="4"><b>Asset Notes: </b>${asset.custrecord_nxc_asset_notes!""}</td>
+        </tr>
+    </table>
+
+</#if>
