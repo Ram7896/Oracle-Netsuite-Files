@@ -1,73 +1,8 @@
-<#if asset.custrecord_nx_asset_type?trim?lower_case == "roller door">
+Hi Abbas,
 
-    <!-- ✅ CUSTOM FORMAT (ONLY FOR ROLLER DOOR) -->
-    <table class="doorDetails">
-        <tr>
-            <td><b>Type of Asset</b></td>
-            <td>${asset.custrecord_nxc_asset_type!""}</td>
-            <td><b>Customer Asset ID</b></td>
-            <td>${asset.custrecord_nxc_customer_asset_id!""}</td>
-        </tr>
-        <tr>
-            <td><b>Serial Number</b></td>
-            <td>${asset.custrecord_nx_asset_serial!""}</td>
-            <td><b>Make / Model</b></td>
-            <td>${asset.custrecord_nxc_make!""} / ${asset.custrecord_nxc_model!""}</td>
-        </tr>
-        <tr>
-            <td><b>Location Onsite</b></td>
-            <td>${asset.custrecord_na_nxc_location_on_site!""}</td>
-            <td><b>Door Type</b></td>
-            <td>${asset.custrecord_nxc_asset_type!""}</td>
-        </tr>
-        <tr>
-            <td><b>Locking Type</b></td>
-            <td>${asset.custrecord_nxc_locking!""}</td>
-            <td><b>Dimension</b></td>
-            <td>
-                ${asset.custrecord_nxc_door_width_m!""} mm Width x 
-                ${asset.custrecord_nxc_door_height_m!""} mm Height
-            </td>
-        </tr>
-        <tr>
-            <td><b>Non-Autoingress Model</b></td>
-            <td>${asset.custrecord_ai_nonai_model!""}</td>
-            <td><b>Additional Model Info</b></td>
-            <td>${asset.custrecord_ai_adnl_model_info!""}</td>
-        </tr>
-    </table>
+I hope you are doing well. I am writing to inform you about some difficulties I am currently facing at my PG accommodation in Hyderabad.
+Due to the ongoing Israel–Iran conflict, LPG supplies across India have been severely affected. Recent reports show that the conflict has disrupted global LPG supply routes, causing a shortage in Indian cities, including Hyderabad. As a result, many restaurants and hotels are operating with limited cylinders or are temporarily shut down, and my PG is also unable to provide food due to this supply issue.
+Because of these unexpected challenges, it has become difficult to manage daily meals and my routine. Considering this, I kindly request approval to work from home temporarily until the situation stabilizes. I will ensure that my work productivity remains unaffected, and I will be fully available during all working hours.
 
-<#else>
-
-    <!-- ✅ NORMAL FORMAT FOR ALL OTHER ASSETS -->
-    <table class="doorDetails">
-        <tr>
-            <td colspan="2"><b>Serial Number: </b>${asset.custrecord_nx_asset_serial!""}</td>
-            <td colspan="2"><b>Master Code: </b>${asset.custrecord_nxc_master_code!""}</td>
-        </tr>
-        <tr>
-            <td colspan="2"><b>Customer Asset Id: </b>${asset.custrecord_nxc_customer_asset_id!""}</td>
-            <td colspan="2"><b>Manufacture Date: </b>${asset.custrecord_nxc_manufacture_date!""}</td>
-        </tr>
-        <tr>
-            <td colspan="2"><b>Location Onsite: </b>${asset.custrecord_na_nxc_location_on_site!""}</td>
-            <td colspan="2"><b>Make/Model: </b>${asset.custrecord_nxc_make!""} / ${asset.custrecord_nxc_model!""}</td>
-        </tr>
-        <tr>
-            <td colspan="2"><b>Locking Type: </b>${asset.custrecord_nxc_locking!""}</td>
-            <td colspan="2"><b>Door Type: </b>${asset.custrecord_nxc_asset_type!""}</td>
-        </tr>
-        <tr>
-            <td colspan="2"><b>Door Width: </b>${asset.custrecord_nxc_door_width_m!""}</td>
-            <td colspan="2"><b>Door Height: </b>${asset.custrecord_nxc_door_height_m!""}</td>
-        </tr>
-        <tr>
-            <td colspan="2"><b>Non-Autoingress Model:</b>${asset.custrecord_ai_nonai_model!""}</td>
-            <td colspan="2"><b>Additional Model Information:</b>${asset.custrecord_ai_adnl_model_info!""}</td>
-        </tr>
-        <tr>
-            <td colspan="4"><b>Asset Notes: </b>${asset.custrecord_nxc_asset_notes!""}</td>
-        </tr>
-    </table>
-
-</#if>
+Thank you for your understanding and support.
+Please let me know if you need any further details.
