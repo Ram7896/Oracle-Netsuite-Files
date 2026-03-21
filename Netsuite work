@@ -1,10 +1,19 @@
 <td>
-				<#if asset.custrecord_nxc_door_width_m?has_content 
-  			    && asset.custrecord_nxc_door_height_m?has_content>
+    <#if asset.custrecord_nxc_door_width_m?has_content 
+        && asset.custrecord_nxc_door_height_m?has_content>
+        
+        ${asset.custrecord_nxc_door_width_m} mm Width x 
+        ${asset.custrecord_nxc_door_height_m} mm Height
 
-                    ${asset.custrecord_nxc_door_width_m} mm Width x 
-                    ${asset.custrecord_nxc_door_height_m} mm Height
-				 <#else>
-				   ${asset.custrecord_nxc_door_width_m}
-				</#if>
-                </td>
+    <#elseif asset.custrecord_nxc_door_width_m?has_content>
+        
+        ${asset.custrecord_nxc_door_width_m} mm Width
+
+    <#elseif asset.custrecord_nxc_door_height_m?has_content>
+        
+        ${asset.custrecord_nxc_door_height_m} mm Height
+
+    <#else>
+        
+    </#if>
+</td>
