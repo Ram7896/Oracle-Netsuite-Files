@@ -1,8 +1,10 @@
-Hi Abbas,
+<td>
+				<#if asset.custrecord_nxc_door_width_m?has_content 
+  			    && asset.custrecord_nxc_door_height_m?has_content>
 
-I hope you are doing well. I am writing to inform you about some difficulties I am currently facing at my PG accommodation in Hyderabad.
-Due to the ongoing Israel–Iran conflict, LPG supplies across India have been severely affected. Recent reports show that the conflict has disrupted global LPG supply routes, causing a shortage in Indian cities, including Hyderabad. As a result, many restaurants and hotels are operating with limited cylinders or are temporarily shut down, and my PG is also unable to provide food due to this supply issue.
-Because of these unexpected challenges, it has become difficult to manage daily meals and my routine. Considering this, I kindly request approval to work from home temporarily until the situation stabilizes. I will ensure that my work productivity remains unaffected, and I will be fully available during all working hours.
-
-Thank you for your understanding and support.
-Please let me know if you need any further details.
+                    ${asset.custrecord_nxc_door_width_m} mm Width x 
+                    ${asset.custrecord_nxc_door_height_m} mm Height
+				 <#else>
+				   ${asset.custrecord_nxc_door_width_m}
+				</#if>
+                </td>
