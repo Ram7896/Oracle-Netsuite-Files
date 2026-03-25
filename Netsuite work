@@ -1,19 +1,2 @@
-<td>
-    <#if asset.custrecord_nxc_door_width_m?has_content 
-        && asset.custrecord_nxc_door_height_m?has_content>
-        
-        ${asset.custrecord_nxc_door_width_m} mm Width x 
-        ${asset.custrecord_nxc_door_height_m} mm Height
-
-    <#elseif asset.custrecord_nxc_door_width_m?has_content>
-        
-        ${asset.custrecord_nxc_door_width_m} mm Width
-
-    <#elseif asset.custrecord_nxc_door_height_m?has_content>
-        
-        ${asset.custrecord_nxc_door_height_m} mm Height
-
-    <#else>
-        
-    </#if>
-</td>
+New netsuite account request
+https://nlcorp.extforms.netsuite.com/app/site/crm/externalcustrecordpage.nl/compid.NLCORP/.f?formid=8256&h=AAFdikaIIsNiQCQ-XSKownV3tsVH3NXwAG7sgaa4XMFORgu3an8&redirect_count=1&did_javascript_redirect=T
