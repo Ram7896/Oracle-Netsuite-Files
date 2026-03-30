@@ -1,2 +1,38 @@
-New netsuite account request
-https://nlcorp.extforms.netsuite.com/app/site/crm/externalcustrecordpage.nl/compid.NLCORP/.f?formid=8256&h=AAFdikaIIsNiQCQ-XSKownV3tsVH3NXwAG7sgaa4XMFORgu3an8&redirect_count=1&did_javascript_redirect=T
+/**
+ *@NApiVersion 2.1
+ *@NScriptType ClientScript
+ */
+define(['N/currentRecord'], function (currentRecord) {
+
+    function pageInit(context) {
+        try {
+            var rec = currentRecord.get();
+
+            var lineCount = rec.getLineCount({
+                sublistId: 'itempricing'
+            });
+
+            for (var i = 0; i < lineCount; i++) {
+                rec.selectLine({
+                    sublistId: 'itempricing',
+                    line: i
+                });
+
+                var field = rec.getCurrentSublistField({
+                    sublistId: 'itempricing',
+                    fieldId: 'unitprice'
+                });
+
+                if (field) {
+                    field.isDisabled = true;
+                }
+            }
+        } catch (e) {
+            console.log('Error: ' + e.message);
+        }
+    }
+
+    return {
+        pageInit: pageInit
+    };
+});
