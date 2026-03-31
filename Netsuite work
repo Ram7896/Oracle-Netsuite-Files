@@ -1,10 +1,35 @@
- <table class="header" style="width: 100%;"><tr>
-				<td align="left" style="width: 60%;"><span class="title">${record@title?upper_case}</span></td>
-				<td align="center">
-					<#if subsidiary.logo?length != 0 >
-						<img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
-					<#elseif companyInformation.logoUrl?length != 0 >
-						<img src="${companyInformation.logoUrl}" style="margin: 7px; float: left;" />
-					</#if>
-				</td>
-	</tr></table>
+<table class="header" style="width: 100%;">
+  <tr>
+    <td align="left" style="width: 60%;">
+      <span class="title">${record@title?upper_case}</span>
+    </td>
+
+    <td align="center">
+      <#-- Get current date -->
+      <#assign today = .now?date>
+      <#assign cutoff = "2026-03-31"?date("yyyy-MM-dd")>
+
+      <#-- Condition based on date -->
+      <#if today <= cutoff>
+        
+        <#-- BEFORE or ON March 31, 2026 -->
+        <#if subsidiary.logo?has_content>
+          <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
+        <#elseif companyInformation.logoUrl?has_content>
+          <img src="${companyInformation.logoUrl}" style="margin: 7px; float: left;" />
+        </#if>
+
+      <#else>
+        
+        <#-- FROM April 1, 2026 -->
+        <#if subsidiary.custrecord_subsidiary_logo?has_content>
+          <img src="${subsidiary.custrecord_subsidiary_logo@url}" style="margin: 7px; float: left;" />
+        <#elseif subsidiary.logo?has_content>
+          <#-- Optional fallback -->
+          <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
+        </#if>
+
+      </#if>
+    </td>
+  </tr>
+</table>
