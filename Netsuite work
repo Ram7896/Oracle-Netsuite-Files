@@ -3,32 +3,31 @@
     <td align="left" style="width: 60%;">
       <span class="title">${record@title?upper_case}</span>
     </td>
-<td>
-<#assign today = .now?date>
-<#assign cutoff = "04/01/2026"?date("MM/dd/yyyy")>
 
-<#if today <= cutoff>
+    <td>
+      <#-- Convert transaction date to string (safe comparison) -->
+      <#assign trandate = record.trandate?string("yyyy-MM-dd")>
 
-    <!-- BEFORE April 1, 2026 -->
-    <#if subsidiary.logo?has_content>
-        <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
+      <#if trandate <= "2026-04-01">
 
-    <#elseif companyInformation.logoUrl?has_content>
-        <img src="${companyInformation.logoUrl}" style="margin: 7px; float: left;" />
+        <!-- BEFORE OR ON April 1, 2026 -->
+        <#if subsidiary.logo?has_content>
+          <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
+        <#elseif companyInformation.logoUrl?has_content>
+          <img src="${companyInformation.logoUrl}" style="margin: 7px; float: left;" />
+        </#if>
 
-    </#if>
+      <#else>
 
-<#else>
+        <!-- AFTER April 1, 2026 -->
+        <#if subsidiary.custrecord_subsidiary_update_logo?has_content>
+          <img src="${subsidiary.custrecord_subsidiary_update_logo@url}" style="margin: 7px; float: left;" />
+        <#elseif subsidiary.logo?has_content>
+          <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
+        </#if>
 
-    <!-- ON or AFTER April 1, 2026 -->
-    <#if subsidiary.custrecord_subsidiary_update_logo?has_content>
-        <img src="${subsidiary.custrecord_subsidiary_update_logo@url}" style="margin: 7px; float: left;" />
-
-    <#elseif subsidiary.logo?has_content>
-        <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
-
-    </#if>
-    </#if>
+      </#if>
     </td>
+
   </tr>
 </table>
