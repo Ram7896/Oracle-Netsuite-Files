@@ -1,1 +1,10 @@
-https://media.licdn.com/dms/image/v2/D5622AQFf2cmRAuzmqA/feedshare-shrink_1280/B56Zy1KUJJKEAc-/0/1772565906190?e=1776297600&v=beta&t=3vNV7jXl0V3L8kFG6uJCR9bkthX_TPPwpA0MN_AtGwg
+ <table class="header" style="width: 100%;"><tr>
+				<td align="left" style="width: 60%;"><span class="title">${record@title?upper_case}</span></td>
+				<td align="center">
+					<#if subsidiary.logo?length != 0 >
+						<img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
+					<#elseif companyInformation.logoUrl?length != 0 >
+						<img src="${companyInformation.logoUrl}" style="margin: 7px; float: left;" />
+					</#if>
+				</td>
+	</tr></table>
