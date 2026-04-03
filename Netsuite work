@@ -1,4 +1,5 @@
-<?xml version="1.0"?><!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
 <pdf>
 <head>
 	<link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}" src-bold="${nsfont.NotoSans_Bold}" src-italic="${nsfont.NotoSans_Italic}" src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
@@ -16,38 +17,34 @@
     <macrolist>
         <macro id="nlheader">
             
-<table class="header" style="width: 100%;"><tr>
-<td style="width: 60%;" align="left"><span style="font-size: 24pt;"><strong> Invoice</strong></span></td>
-<td align="center"><#if companyInformation.logoUrl?length != 0> <@filecabinet nstype="image" style="float: left; margin: 7px;" src="${companyInformation.logoUrl}" /> </#if></td>
-</tr></table>
-<table class="header" style="width: 100%;"><tr><!-- Left Column for Company Information -->
-<td style="width: 55.122%; vertical-align: top;">
-<p><strong>${companyInformation.companyName}</strong><br />${companyInformation.mainaddress_text}</p>
-</td>
-<!-- Right Column for Account Info, Date, and Transaction ID -->
-<td style="width: 44.9189%; vertical-align: top; text-align: right; padding-right: 30px;">
-<table style="width: 106.791%; text-align: right;"><tr>
-<td style="width: 100%;"><strong>${record.accountnumber@label?upper_case}:</strong> &nbsp;${record.accountnumber}</td>
+<table class="header" style="width: 100%; font-size: 10pt;"><tr>
+<td style="width: 50.0613%;" rowspan="3"><#if companyInformation.logoUrl?length != 0> <@filecabinet nstype="image" style="float: left; margin: 7px;" src="${companyInformation.logoUrl}" /> </#if></td>
+<td style="width: 50.0613%;" align="right"><span class="title">Packing Slip</span></td>
 </tr>
 <tr>
-<td class="label" style="width: 100%;"><strong>${record.trandate@label?upper_case}:</strong> &nbsp;${record.trandate}</td>
+<td style="width: 50.0613%;" align="right"><span class="number">#${record.tranid}</span></td>
 </tr>
 <tr>
-<td class="label" style="width: 100%;"><strong>${record.tranid@label?upper_case}:</strong> &nbsp;${record.tranid}</td>
-</tr></table>
-</td>
+<td style="width: 50.0613%;" align="right">${record.trandate}</td>
+</tr>
+<!-- New row for company address, below the logo -->
+<tr>
+<td style="text-align: right; padding-top: 10px; width: 100.123%;" colspan="2"><span class="nameandaddress">${companyInformation.companyName}</span><br /><span class="nameandaddress">${companyInformation.addressText}</span></td>
 </tr></table>
 
         </macro>
         <macro id="nlfooter">
             
-<table class="footer" style="width: 100%;"><tr>
+<table class="footer"><tr><#if preferences.PRINT_BARCODES>
+<td><barcode codetype="code128" showtext="true" value="${record.tranid}"/></td>
+</#if>
 <td align="right"><pagenumber/> of <totalpages/></td>
 </tr></table>
 
         </macro>
     </macrolist>
-    <style type="text/css">* {
+    <style>
+		* {
 		<#if .locale == "zh_CN">
 			font-family: NotoSans, NotoSansCJKsc, sans-serif;
 		<#elseif .locale == "zh_TW">
@@ -59,7 +56,7 @@
 		<#elseif .locale == "th_TH">
 			font-family: NotoSans, NotoSansThai, sans-serif;
 		<#else>
-			font-family: Arial, NotoSans, sans-serif;
+			font-family: NotoSans, sans-serif;
 		</#if>
 		}
 		table {
@@ -71,8 +68,8 @@
             font-size: 8pt;
             vertical-align: middle;
             padding: 5px 6px 3px;
-            background-color: #657796;
-            color: #ffffff;
+            background-color: #e3e3e3;
+            color: #333333;
         }
         td {
             padding: 4px 6px;
@@ -83,104 +80,31 @@
             color: #333333;
         }
         table.header td {
-            padding: 4px 6px;
+            padding: 0;
             font-size: 10pt;
-        }
-     	table.header td.label {
-            padding: 4px 6px;
-            font-size: 10pt;
-          	font-weight: bold;
-        }
-      	table.header td.value {
-            padding: 4px 6px;
-            font-size: 9pt;
         }
         table.footer td {
             padding: 0;
             font-size: 8pt;
         }
         table.itemtable th {
-            font-size: 9pt;
-          	padding-bottom: 10px;
+            padding-bottom: 10px;
             padding-top: 10px;
         }
-      	table.itemtable td {
-            font-size: 9pt;
-          	padding-bottom: 10px;
-            padding-top: 10px;
-        }
-      	table.addresstable {
-            border: 0px;
-          	padding-top: 0px;
-            padding-bottom: 0px;
-          	margin-top: 0px;
-          	margin-bottom: 0px;
-        }
-      	table.body {
-        	padding-top: 0px;
-            padding-bottom: 0px;
-          	margin-top: 0px;
-          	margin-bottom: 0px;
-      	}
-      	table.body tr {
-            border: 0px;
-          	border-collapse: collapse;
-        }
-        table.body th {
-            font-size: 9pt;
-          	padding: 8px;
-          	align: center;
-        }
-      	table.body td {
-          	font-size: 9pt;  
-          	padding: 5px;
-          	align: center;
-          	vertical-align: middle;
-          	border: .5px;
-            border-color: #657796;
-          	border-collapse: collapse;
-        }
-        table.total {
-            page-break-inside: avoid;
-        }
-        tr.totalrow {
-            background-color: #ffffff;
-            line-height: 150%;
-        }
-        td.totalboxtop {
-            font-size: 12pt;
-            background-color: #e3e3e3;
+        table.body td {
+            padding-top: 2px;
         }
         td.addressheader {
-            font-size: 10pt;
-            padding-top: 0px;
-            padding-bottom: 0px;
-          	margin-top: 0px;
-          	margin-bottom: 0px;
-          	vertical-align: bottom;
+            font-size: 8pt;
+            font-weight: bold;
+            padding-top: 6px;
+            padding-bottom: 2px;
         }
         td.address {
-            font-size: 9pt;
-          	padding-top: 0px;
-          	padding-bottom: 0px;
-          	margin-top: 0px;
-          	margin-bottom: 0px;
-          	line-height: 150%;
-        }
-        td.totalboxmid {
-            font-size: 28pt;
-            padding-top: 20px;
-            background-color: #e3e3e3;
-        }
-        td.totalboxbot {
-            background-color: #e3e3e3;
-            font-weight: bold;
-        }
-      	table.remarks {
-            font-size: 9pt;
+            padding-top: 0;
         }
         span.title {
-            font-size: 24pt;
+            font-size: 28pt;
         }
         span.number {
             font-size: 16pt;
@@ -189,137 +113,115 @@
             font-weight: bold;
             line-height: 150%;
         }
-        hr {
+        div.returnform {
             width: 100%;
-            color: #d3d3d3;
-            background-color: #d3d3d3;
+            /* To ensure minimal height of return form */
+            height: 200pt;
+            page-break-inside: avoid;
+            page-break-after: avoid;
+        }
+        hr {
+            border-top: 1px dashed #d3d3d3;
+            width: 100%;
+            color: #ffffff;
+            background-color: #ffffff;
             height: 1px;
         }
-</style>
+    </style>
 </head>
-<body header="nlheader" header-height="15%" footer="nlfooter" footer-height="20pt" padding="0.8in" size="Letter">
-    <table class="addresstable" style="width: 100%;"><tr>
-<td class="addressheader" colspan="5"><strong>${record.billaddress@label?upper_case}</strong></td>
-<td class="addressheader" colspan="5"><strong>${record.shipaddress@label?upper_case}</strong></td>
-</tr>
-<tr style="border: 0px currentColor;">
-<td class="addressheader" colspan="5"><hr style="padding-top: 0px; padding-bottom: 0px; margin-top: 0px; margin-bottom: 0px; vertical-align: middle;" /></td>
-<td class="addressheader" colspan="5"><hr style="padding-top: 0px; padding-bottom: 0px; margin-top: 0px; margin-bottom: 0px; vertical-align: top;" /></td>
+<body header="nlheader" header-height="15%" footer="nlfooter" footer-height="20pt" padding="0.5in 0.5in 0.5in 0.5in" size="Letter">
+    <table style="width: 100%; margin-top: 10px;"><tr>
+<td class="addressheader">${salesorder.shipaddress@label}</td>
 </tr>
 <tr>
-<td class="address" colspan="5">${record.billaddress}</td>
-<td class="address" colspan="5">${record.shipaddress}</td>
+<td class="address">${salesorder.shipaddress}</td>
 </tr></table>
-&nbsp;
-<table class="body" style="width: 100%;"><tr>
-<th>${record.salesrep@label?upper_case}</th>
-<th>${record.otherrefnum@label?upper_case}</th>
-<th>${record.shipmethod@label?upper_case}</th>
-<th>${record.duedate@label?upper_case}</th>
-<th>${record.terms@label?upper_case}</th>
+<table class="body" style="width: 100%; margin-top: 10px;"><tr>
+<th>${record.trandate@label}</th>
+<th>${salesorder.linkedtrackingnumbers@label}</th>
+<th>${record.shipmethod@label}</th>
+<th>Factory Packing List # / EC Document #</th>
 </tr>
 <tr>
-<td>${record.salesrep}</td>
-<td>${record.otherrefnum}</td>
+<td>${record.trandate}</td>
+<td>${salesorder.linkedtrackingnumbers}</td>
 <td>${record.shipmethod}</td>
-<td>${record.duedate}</td>
-<td>${record.terms}</td>
+<td>${record.custbody_factory_packing}</td>
 </tr></table>
-<br /><#if record.item?has_content> <!-- check if record has tax amount/rate first --> <#assign tax_amt = false> <#assign tax_rate = false> <!-- "_st" fields added for SuiteTax compatibility / different field ids are checked--> <#assign tax_amt_st = false> <#assign tax_rate_st = false> <#list record.item as item> <#if (item.tax1amt?length != 0) ><#assign tax_amt = true></#if> <#if (item.taxamount?length != 0) ><#assign tax_amt_st = true></#if> <#if (item.taxrate1?length != 0) ><#assign tax_rate = true></#if> <#if (item.taxrate?length != 0) ><#assign tax_rate_st = true></#if> </#list> <!-- end check -->
-<table class="itemtable" style="width: 100%;"><!-- start items --><#list record.item as item><#if item_index==0>
+<table class="body" style="width: 100%; margin-top: 10px;"><tr>
+<th>${"Importer of Record"}</th>
+<th>${'Consignee'}</th>
+<th>${"Contact Window"}</th>
+<th>${"Freight Forwarder"}</th>
+</tr>
+<tr>
+<td>${salesorder.billaddress}</td>
+<td>${salesorder.shipaddress}</td>
+<td>${record.custbody_contact_window}</td>
+<td>${record.custbody_freight_forwarder}</td>
+</tr></table>
+<table class="body" style="width: 100%; margin-top: 10px;"><tr>
+<th>${"Notify Party (Customs Broker)"}</th>
+<th>${"Manufacturer (Ship From)"}</th>
+<th>${"HTS Code"}</th>
+</tr>
+<tr>
+<td>${record.custbody_notify_party}</td>
+<td>${record.custbody_manufacturer_ship_from}</td>
+<td>${record.custbody_hts_code}</td>
+</tr></table>
+<#if salesorder.item?has_content>
+<table class="itemtable" style="width: 100%; margin-top: 10px;">
 <thead>
 <tr>
-<th colspan="8">${item.item@label?upper_case}</th>
-<th colspan="7">${item.description@label?upper_case}</th>
-<#if tax_amt>
-<th colspan="4">${item.tax1amt@label?upper_case}</th>
-<#elseif tax_amt_st>
-<th colspan="4">TAX AMT</th>
-</#if> <#if tax_rate> <!-- <th colspan="2">${item.taxrate1@label?upper_case}</th> -->
-<th colspan="3" align="center">&nbsp;TAX<br />RATE</th>
-<#elseif tax_rate_st>
-<th colspan="3" align="center">&nbsp;TAX<br />RATE</th>
-</#if> <!-- <th align="center" colspan="3">${item.quantity@label?upper_case}</th> -->
-<th colspan="2" align="center">QTY</th>
-<th colspan="5" align="center">${item.rate@label?upper_case}</th>
-<th colspan="5" align="center">${item.amount@label?upper_case}</th>
+<th colspan="12">${salesorder.item[0].item@label}</th>
+<th colspan="3">${salesorder.item[0].options@label}</th>
+<th colspan="3">Unit Price</th>
+<th colspan="6">Original Item</th>
+<th colspan="4" align="right">${salesorder.item[0].quantityordered@label}</th>
+<th colspan="4" align="right">${salesorder.item[0].quantity@label}</th>
 </tr>
 </thead>
-</#if><tr style="background-color: &lt;!--mce:protected %3c%23if%20%28item_index%20%25%202%29%20%3d%3d%200%3e--&gt;#ffffff&lt;!--mce:protected %3c%23else%3e--&gt;#e1e6ee&lt;!--mce:protected %3c/%23if%3e--&gt;;">
-<td colspan="8">${item.item}</td>
-<td colspan="7">${item.description}</td>
-<#if tax_amt>
-<td colspan="4">${item.tax1amt}</td>
-<#elseif tax_amt_st>
-<td colspan="4">${item.taxamount}</td>
-</#if> <#if tax_rate>
-<td colspan="3" align="center">${item.taxrate1}</td>
-<#elseif tax_rate_st>
-<td colspan="3" align="center">${item.taxrate}</td>
-</#if>
-<td colspan="2" align="center">${item.quantity}</td>
-<#assign rateval = item.rate?string(",##0.00") /> <#assign amtval = item.amount?string(",##0.00") />
-<td colspan="5" align="right">${record.custbody_currency_symbol}${rateval}</td>
-<td colspan="5" align="right">${record.custbody_currency_symbol}${amtval}</td>
+<#list salesorder.item as item><tr>
+<td colspan="12"><span class="itemname">${item.item}</span><br />${item.description}</td>
+<td colspan="3">${item.options}</td>
+<td colspan="3">${item.custcolunit_price! "N/A"}</td>
+<td colspan="8">${item.custcol_scm_itemsub_original_item}</td>
+<td colspan="4" align="right">${item.quantity}</td>
 </tr>
-</#list><!-- end items --></table>
-</#if><hr style="border: 2px solid; color: #657796;" />
-<table class="total" style="width: 100%;"><tr class="totalrow">
-<td colspan="4">&nbsp;</td>
-<td align="right"><strong>${record.subtotal@label?upper_case}</strong></td>
-<td align="right">${record.subtotal}</td>
-</tr>
-<tr class="totalrow">
-<td colspan="4">&nbsp;</td>
-<td align="right"><strong>${record.taxtotal@label?upper_case}</strong></td>
-<td align="right">${record.taxtotal}</td>
-</tr>
-<tr class="totalrow">
-<td colspan="4">&nbsp;</td>
-<td align="right"><strong>${record.shippingcost@label?upper_case}</strong></td>
-<td align="right">${record.shippingcost}</td>
-</tr>
-<tr class="totalrow">
-<td colspan="4">&nbsp;</td>
-<td align="right"><strong>${record.total@label?upper_case}</strong></td>
-<td align="right">${record.total}</td>
-</tr>
-<tr class="totalrow">
-<td colspan="4">&nbsp;</td>
-<td align="right"><strong>${record.amountpaid@label?upper_case}</strong></td>
-<td align="right">${record.amountpaid}</td>
-</tr>
-<tr class="totalrow">
-<td colspan="4">&nbsp;</td>
-<td align="right"><strong>${record.amountremaining@label?upper_case}</strong></td>
-<td align="right">${record.amountremaining}</td>
+</#list></table>
+</#if> <#if preferences.RETURNFORM && returnForm??><hr />
+<div class="returnform">
+<table style="width: 100%; margin-top: 10px;"><tr>
+<td><span class="nameandaddress">${companyInformation.companyName}</span></td>
+<td align="right"><span class="number">${returnForm@title}</span></td>
 </tr></table>
-<table class="comments" style="width: 100%; margin-bottom: 30%; page-break-inside: avoid;">
-    <tr>
-        <td style="font-size: 12pt; font-weight: bold; color: rgb(51, 51, 51); width: 50.0613%;">Comments</td>
-        
-    </tr>
-    <tr>
-        <td style="font-size: 10pt; width: 50.0613%;">
-            <ol>
-                <li>Payment: Cash in advance with PO</li>
-                <li>Terms of Pricing: USA</li>
-                <li>The effective period of this quotation: 30 days</li>
-                <li>The unit price in this quotation doesn't include tax</li>
-                <li>Please include quote number on all correspondence including Purchase Order</li>
-                <li>Units quoted are evaluation units, and do not qualify for warranty</li>
-            </ol>
-        </td>
-        <td style="font-size: 10pt; width: 50.0613%;">
-            <strong>Electronic Payment Instructions:</strong><br />
-            Silicon Valley Bank A Division of First Citizens Bank<br />
-            3003 Tasman Drive, Santa Clara, CA 95054<br />
-            Account of: Auradine, Inc.<br />
-            Account#: 3303561738<br />
-            ABA Routing #: 121140399<br />
-            SWIFT Code: SVBKUS6S
-        </td>
-    </tr>
-</table>
+<table style="width: 100%; margin-top: 10px;"><tr>
+<td class="addressheader" colspan="4">${returnForm.returnAddress}</td>
+<th>${returnForm.rmaNum}</th>
+<th colspan="2">${returnForm.customerName}</th>
+<th>${salesorder.tranid@label}</th>
+</tr>
+<tr>
+<td class="address" colspan="4" rowspan="2">&nbsp;</td>
+<td>&nbsp;</td>
+<td colspan="2">${salesorder.entity}</td>
+<td>${salesorder.tranid}</td>
+</tr>
+<tr>
+<td colspan="4">&nbsp;</td>
+</tr></table>
+<table class="itemtable" style="width: 100%; margin-top: 10px;">
+<thead>
+<tr>
+<th colspan="2">${returnForm.item}</th>
+<th colspan="1">${returnForm.quantity}</th>
+<th colspan="5">${returnForm.reason}</th>
+</tr>
+</thead><tr>
+<td colspan="8">&nbsp;</td>
+</tr></table>
+</div>
+</#if>
 </body>
 </pdf>
