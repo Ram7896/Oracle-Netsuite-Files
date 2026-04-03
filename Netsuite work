@@ -1,33 +1,33 @@
-<table class="header" style="width: 100%;">
-  <tr>
-    <td align="left" style="width: 60%;">
-      <span class="title">${record@title?upper_case}</span>
-    </td>
+NetSuite Requirements
+Based on the NetSuite Adapter documentation and SAP community guidance:
 
-    <td>
-      <#-- Convert transaction date to string (safe comparison) -->
-      <#assign trandate = record.trandate?string("yyyy-MM-dd")>
+NetSuite Token-Based Authentication (TBA) enabled (mandatory). [community.sap.com]
+Roles & Permissions configured for integration (API role).
+SuiteTalk Web Services (SOAP) or REST APIs enabled.
+SuiteScript (RESTlet) enabled if using custom REST endpoints.
+Support for multiple API versions — adapter allows selecting API version. [api.sap.com]
+Custom records/fields documented if your environment has customizations.
+Integration user created with API-only access.
 
-      <#if trandate <= "2026-04-01">
+1.2 SAP Requirements
+From SAP Integration Suite and adapter documents:
 
-        <!-- BEFORE OR ON April 1, 2026 -->
-        <#if subsidiary.logo?has_content>
-          <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
-        <#elseif companyInformation.logoUrl?has_content>
-          <img src="${companyInformation.logoUrl}" style="margin: 7px; float: left;" />
-        </#if>
+SAP Integration Suite subscription (Standard or higher). [api.sap.com]
+Cloud Integration capability enabled.
+NetSuite Adapter for SAP Integration Suite installed (Cloud Foundry). [api.sap.com]
+SAP credentials & API access depending on SAP product:
 
-      <#else>
+SAP ECC → BAPI / IDoc / RFC
+SAP S/4HANA → OData APIs
+SAP Business One → Service Layer APIs
 
-        <!-- AFTER April 1, 2026 -->
-        <#if subsidiary.custrecord_subsidiary_update_logo?has_content>
-          <img src="${subsidiary.custrecord_subsidiary_update_logo@url}" style="margin: 7px; float: left;" />
-        <#elseif subsidiary.logo?has_content>
-          <img src="${subsidiary.logo@url}" style="margin: 7px; float: left;" />
-        </#if>
 
-      </#if>
-    </td>
+Connectivity setup (proxy, firewall rules, OAuth tokens, certificates).
 
-  </tr>
-</table>
+1.3 Infrastructure Requirements
+
+Secure connection (HTTPS/TLS).
+Firewall allowlisting for SAP → NetSuite endpoints.
+For on‑prem SAP systems, SAP Cloud Connector may be required.
+If using ETL middleware (Jitterbit, Celigo, Boomi, KingswaySoft), install their agents.
+
