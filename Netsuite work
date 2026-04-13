@@ -1,1 +1,23 @@
+if (resultsSearch < 0) {
 
+    // ✅ APPLY ONLY FOR JE TYPES
+    if (nsRecord.type == 'journalentry' || 
+        nsRecord.type == 'intercompanyjournalentry' || 
+        nsRecord.type == 'advintercompanyjournalentry') {
+
+        if (jeName == checkMemo) {
+            // ✅ Skip this line and continue loop
+            continue;
+        }
+    }
+
+    // ❌ Otherwise throw error
+    log.debug('adaSubsidiary', adaSubsidiary);
+    log.debug('lineCostCenter', lineCostCenter);
+
+    throw err.create({
+        name: "ADA_INVALID_SUB_CC_COMBO",
+        message: "The subsidiary cost center combo on line " + currentLine + " is invalid",
+        notifyOff: true
+    });
+}
