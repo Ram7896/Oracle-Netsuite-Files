@@ -1,1 +1,213 @@
+/**
+ * @NApiVersion 2.0
+ * @NScriptType ClientScript
+ */
+define(['N/currentRecord', 'N/search'],
+function (currentRecord, search) {
 
+    function validateLine(context) {
+        var nsRecord = context.currentRecord;
+        var toSubsidiary;
+        var lineCostCenter;
+        var resultsSearch;
+        var headerSearchResult;
+        var nsSublist;
+        var cnSublist = context.sublistId;
+
+        if (nsRecord.type == 'purchaseorder' || nsRecord.type == 'invoice') {
+            nsSublist = nsRecord.getSublist({ sublistId: 'item' });
+        } else {
+            nsSublist = nsRecord.getSublist({ sublistId: 'line' });
+        }
+
+        if (cnSublist !== nsSublist.id) {
+            return true;
+        }
+
+        if (nsRecord.type == 'purchaseorder') {
+            toSubsidiary = nsRecord.getCurrentSublistValue({
+                sublistId: 'item',
+                fieldId: 'custcol_to_subsidiary'
+            });
+        }
+
+        var adaSubsidiary = nsRecord.getValue({ fieldId: 'subsidiary' });
+
+        if (nsRecord.type == 'journalentry' || nsRecord.type == 'intercompanyjournalentry' || nsRecord.type == 'advintercompanyjournalentry') {
+            var nsMemo = nsRecord.getValue({ fieldId: "memo" });
+            if (/kickout/i.test(nsMemo)) {
+                return true;
+            }
+
+            lineCostCenter = nsRecord.getCurrentSublistValue({
+                sublistId: 'line',
+                fieldId: 'department'
+            });
+        } else {
+            lineCostCenter = nsRecord.getCurrentSublistValue({
+                sublistId: 'item',
+                fieldId: 'department'
+            });
+        }
+
+        if (nsRecord.type == 'intercompanyjournalentry' || nsRecord.type == 'advintercompanyjournalentry') {
+            adaSubsidiary = nsRecord.getCurrentSublistValue({
+                sublistId: 'line',
+                fieldId: 'linesubsidiary'
+            });
+        }
+
+        var headerCostCenter = nsRecord.getValue({ fieldId: 'department' });
+
+        if (!lineCostCenter || !adaSubsidiary) {
+            return true;
+        }
+
+        // 🔧 DEBUG LOG ADDED
+        log.debug('Validation Data', {
+            subsidiary: adaSubsidiary,
+            toSubsidiary: toSubsidiary,
+            lineCostCenter: lineCostCenter,
+            headerCostCenter: headerCostCenter
+        });
+
+        if (toSubsidiary) {
+            resultsSearch = runSubCombSearch(toSubsidiary, lineCostCenter);
+            headerSearchResult = runSubCombSearch(adaSubsidiary, headerCostCenter);
+        } else if (headerCostCenter) {
+            resultsSearch = runSubCombSearch(adaSubsidiary, lineCostCenter);
+            headerSearchResult = runSubCombSearch(adaSubsidiary, headerCostCenter);
+        } else {
+            resultsSearch = runSubCombSearch(adaSubsidiary, lineCostCenter);
+        }
+
+        // 🔧 SAFER CONDITION
+        if (headerSearchResult && headerSearchResult.length === 0) {
+            alert('Invalid header level Cost Center for subsidiary');
+            return false;
+        } else if (resultsSearch.length == 0) {
+            alert('Invalid line level Cost Center for subsidiary');
+            return false;
+        }
+
+        return true;
+    }
+
+    function saveRecord(context) {
+        var nsRecord = context.currentRecord;
+        var lineCostCenter;
+        var resultsSearch;
+        var lineCount;
+        var recType = nsRecord.type;
+        var toSubsidiary;
+        var headerSearchResult;
+        var lineErrCount = 0;
+        var headErrCount = 0;
+        var linErrNum;
+
+        var comboSearch = buildComboSearch();
+
+        switch (recType) {
+            case 'purchaseorder':
+            case 'invoice':
+                lineCount = nsRecord.getLineCount({ sublistId: 'item' });
+                break;
+            default:
+                lineCount = nsRecord.getLineCount({ sublistId: 'line' });
+                break;
+        }
+
+        for (var i = 0; i < lineCount; i++) {
+
+            if (nsRecord.type == 'purchaseorder') {
+                toSubsidiary = nsRecord.getSublistValue({
+                    sublistId: 'item',
+                    fieldId: 'custcol_to_subsidiary',
+                    line: i
+                });
+            }
+
+            var adaSubsidiary = nsRecord.getValue({ fieldId: 'subsidiary' });
+
+            if (nsRecord.type.includes('journalentry')) {
+                if (/kickout/i.test(nsRecord.getValue({ fieldId: "memo" }))) {
+                    break;
+                }
+
+                lineCostCenter = nsRecord.getSublistValue({
+                    sublistId: 'line',
+                    fieldId: 'department',
+                    line: i
+                });
+            } else {
+                lineCostCenter = nsRecord.getSublistValue({
+                    sublistId: 'item',
+                    fieldId: 'department',
+                    line: i
+                });
+            }
+
+            if (nsRecord.type.includes('intercompanyjournalentry')) {
+                adaSubsidiary = nsRecord.getSublistValue({
+                    sublistId: 'line',
+                    fieldId: 'linesubsidiary',
+                    line: i
+                });
+            }
+
+            var headerCostCenter = nsRecord.getValue({ fieldId: 'department' });
+
+            if (toSubsidiary) {
+                resultsSearch = runSaveSubCombSearch(comboSearch, toSubsidiary, lineCostCenter);
+                headerSearchResult = runSaveSubCombSearch(comboSearch, adaSubsidiary, headerCostCenter);
+            } else if (headerCostCenter) {
+                resultsSearch = runSaveSubCombSearch(comboSearch, adaSubsidiary, lineCostCenter);
+                headerSearchResult = runSaveSubCombSearch(comboSearch, adaSubsidiary, headerCostCenter);
+            } else {
+                resultsSearch = runSaveSubCombSearch(comboSearch, adaSubsidiary, lineCostCenter);
+            }
+
+            // 🔧 FIXED CONDITIONS
+            if (headerSearchResult == -1) {
+                headErrCount++;
+            } else if (resultsSearch == -1) {
+
+                var jeName = nsRecord.getValue({ fieldId: 'memo' });
+
+                var checkNumber = nsRecord.getValue({ fieldId: 'createdfrom' });
+                var checkDetails = search.lookupFields({
+                    type: search.Type.CHECK,
+                    id: checkNumber,
+                    columns: ['memo']
+                });
+
+                var checkMemo = checkDetails.memo;
+
+                if (jeName === checkMemo) {
+                    // 🔧 FIXED INCREMENT
+                    lineErrCount++;
+                } else {
+                    lineErrCount++;
+                    linErrNum = i;
+                    break;
+                }
+            }
+        }
+
+        if (headErrCount > 0) {
+            alert('Invalid header level Cost Center for subsidiary');
+            return false;
+        } else if (lineErrCount > 0) {
+            alert('Invalid line level Cost Center for subsidiary on line ' + linErrNum);
+            return false;
+        }
+
+        return true;
+    }
+
+    return {
+        validateLine: validateLine,
+        saveRecord: saveRecord
+    };
+
+});
