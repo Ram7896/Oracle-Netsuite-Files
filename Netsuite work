@@ -1,213 +1,203 @@
 /**
  * @NApiVersion 2.0
- * @NScriptType ClientScript
+ * @NScriptType UserEventScript
+ * @NModuleScope SameAccount
+ * 
+ * Author: Antonio Sepulveda
+ * Date : 12/12/2019
+ * Description: User event script the validates the cost center and subsidiary 
+ *               combination for Customer Invoices and Journal Entries on CSV Imports
+ *
+ * 06/04/2020: Case 1094: Developed by: Antonio Sepulveda: Migrated by: Jim Tsioles: Added a before load function that will make the journal name field mandatory.
+ * 06/09/2020: Case 1309: Developed by: Antonio Sepulveda: Migrated by: Jim Tsioles: Technical fix: Added validation from client script ada_cs_sub_cc_combo.js  reference case # 1160 that checks if the journal is a kickout.
  */
-define(['N/currentRecord', 'N/search'],
-function (currentRecord, search) {
-
-    function validateLine(context) {
-        var nsRecord = context.currentRecord;
-        var toSubsidiary;
-        var lineCostCenter;
-        var resultsSearch;
-        var headerSearchResult;
-        var nsSublist;
-        var cnSublist = context.sublistId;
-
-        if (nsRecord.type == 'purchaseorder' || nsRecord.type == 'invoice') {
-            nsSublist = nsRecord.getSublist({ sublistId: 'item' });
-        } else {
-            nsSublist = nsRecord.getSublist({ sublistId: 'line' });
-        }
-
-        if (cnSublist !== nsSublist.id) {
-            return true;
-        }
-
-        if (nsRecord.type == 'purchaseorder') {
-            toSubsidiary = nsRecord.getCurrentSublistValue({
-                sublistId: 'item',
-                fieldId: 'custcol_to_subsidiary'
+define(['N/record', 'N/search', 'N/error', 'N/ui/serverWidget'],
+    /**
+     * @param {record} record
+     * @param {search} search
+     * @param {error} err
+     * @param {serverWidget} serverWidget
+     */
+    function (record, search, err, serverWidget) {
+        /**
+         * Function definition to be triggered before record is loaded.
+         *
+         * @param {Object} context
+         * @param {Record} context.newRecord - New record
+         * @param {string} context.type - Trigger type
+         * @param {Form} context.form - Current form
+         * @Since 2015.2
+         */
+        function beforeLoad(context) {
+            var nsForm = context.form;
+            //log.debug('type',recType);
+            //06/04/2020:Case 1094 Code Start AS
+            var nsField = nsForm.getField({
+                id: 'memo'
             });
+
+            nsField.isMandatory = true;
+            //06/04/2020:Case 1094 Code End AS
         }
 
-        var adaSubsidiary = nsRecord.getValue({ fieldId: 'subsidiary' });
 
-        if (nsRecord.type == 'journalentry' || nsRecord.type == 'intercompanyjournalentry' || nsRecord.type == 'advintercompanyjournalentry') {
+        /**
+         * Function definition to be triggered before record is loaded.
+         *
+         * @param {Object} scriptContext
+         * @param {Record} scriptContext.newRecord - New record
+         * @param {Record} scriptContext.oldRecord - Old record
+         * @param {string} scriptContext.type - Trigger type
+         * @Since 2015.2
+         */
+        function beforeSubmit(scriptContext) {
+            if (scriptContext.type == scriptContext.UserEventType.DELETE) {
+                return;
+            }
+            var nsRecord = scriptContext.newRecord;
+            var lineCostCenter;
+            var resultsSearch;
+            var lineCount;
+            ////06/09/2020:Case 1309 Code End AS
             var nsMemo = nsRecord.getValue({ fieldId: "memo" });
-            if (/kickout/i.test(nsMemo)) {
-                return true;
+            var testRegex = /kickout/i;
+            var findKickout = testRegex.test(nsMemo);
+            if (findKickout) {
+                //log.debug('kickout',findKickout);
+                return;
             }
+            //06/09/2020:Case 1309 Code End AS
 
-            lineCostCenter = nsRecord.getCurrentSublistValue({
-                sublistId: 'line',
-                fieldId: 'department'
+            //build the search and return into array  	
+            var comboSearch = buildComboSearch();
+
+            //Get the line number count of the imported file to loop through 
+
+            var numLines = nsRecord.getLineCount({
+                sublistId: 'line'
             });
-        } else {
-            lineCostCenter = nsRecord.getCurrentSublistValue({
-                sublistId: 'item',
-                fieldId: 'department'
-            });
-        }
 
-        if (nsRecord.type == 'intercompanyjournalentry' || nsRecord.type == 'advintercompanyjournalentry') {
-            adaSubsidiary = nsRecord.getCurrentSublistValue({
-                sublistId: 'line',
-                fieldId: 'linesubsidiary'
-            });
-        }
-
-        var headerCostCenter = nsRecord.getValue({ fieldId: 'department' });
-
-        if (!lineCostCenter || !adaSubsidiary) {
-            return true;
-        }
-
-        // 🔧 DEBUG LOG ADDED
-        log.debug('Validation Data', {
-            subsidiary: adaSubsidiary,
-            toSubsidiary: toSubsidiary,
-            lineCostCenter: lineCostCenter,
-            headerCostCenter: headerCostCenter
-        });
-
-        if (toSubsidiary) {
-            resultsSearch = runSubCombSearch(toSubsidiary, lineCostCenter);
-            headerSearchResult = runSubCombSearch(adaSubsidiary, headerCostCenter);
-        } else if (headerCostCenter) {
-            resultsSearch = runSubCombSearch(adaSubsidiary, lineCostCenter);
-            headerSearchResult = runSubCombSearch(adaSubsidiary, headerCostCenter);
-        } else {
-            resultsSearch = runSubCombSearch(adaSubsidiary, lineCostCenter);
-        }
-
-        // 🔧 SAFER CONDITION
-        if (headerSearchResult && headerSearchResult.length === 0) {
-            alert('Invalid header level Cost Center for subsidiary');
-            return false;
-        } else if (resultsSearch.length == 0) {
-            alert('Invalid line level Cost Center for subsidiary');
-            return false;
-        }
-
-        return true;
-    }
-
-    function saveRecord(context) {
-        var nsRecord = context.currentRecord;
-        var lineCostCenter;
-        var resultsSearch;
-        var lineCount;
-        var recType = nsRecord.type;
-        var toSubsidiary;
-        var headerSearchResult;
-        var lineErrCount = 0;
-        var headErrCount = 0;
-        var linErrNum;
-
-        var comboSearch = buildComboSearch();
-
-        switch (recType) {
-            case 'purchaseorder':
-            case 'invoice':
-                lineCount = nsRecord.getLineCount({ sublistId: 'item' });
-                break;
-            default:
-                lineCount = nsRecord.getLineCount({ sublistId: 'line' });
-                break;
-        }
-
-        for (var i = 0; i < lineCount; i++) {
-
-            if (nsRecord.type == 'purchaseorder') {
-                toSubsidiary = nsRecord.getSublistValue({
-                    sublistId: 'item',
-                    fieldId: 'custcol_to_subsidiary',
-                    line: i
-                });
-            }
+            // log.debug('lineCount', numLines);
 
             var adaSubsidiary = nsRecord.getValue({ fieldId: 'subsidiary' });
+            //used to return the line number in which the invalid cost center exist in the import
+            var currentLine = 1;
+            
+            	var jeName = nsRecord.getValue({ fieldId: 'memo' });
+					log.debug("JE Name:",jeName);
+					var checkNumber = nsRecord.getValue({ fieldId: 'createdfrom' });
+					var checkDetails = search.lookupFields({
+						type: search.Type.CHECK,
+						id: checkNumber,
+						columns: ['memo','type']
+					});
+					var checkMemo = checkDetails.memo;
+					log.debug("memo:",checkMemo);
+                    var recType = checkDetails.type;
+                    log.debug("Rec Type:",recType);
+            //Loop through and validate each line  
+            for (lineCount = 0; lineCount < numLines; lineCount++) {
 
-            if (nsRecord.type.includes('journalentry')) {
-                if (/kickout/i.test(nsRecord.getValue({ fieldId: "memo" }))) {
-                    break;
+                currentLine++;
+
+                //get the cost center form the lines           	  
+                lineCostCenter = nsRecord.getSublistValue({
+                    sublistId: 'line',
+                    fieldId: 'department',
+                    line: lineCount
+                });
+
+                if (nsRecord.type == 'intercompanyjournalentry' || nsRecord.type == 'advintercompanyjournalentry') {
+                    //get  line level subsidiary for intercompany journals 
+                    adaSubsidiary = nsRecord.getSublistValue({
+                        sublistId: 'line',
+                        fieldId: 'linesubsidiary',
+                        line: lineCount
+                    });
                 }
 
-                lineCostCenter = nsRecord.getSublistValue({
-                    sublistId: 'line',
-                    fieldId: 'department',
-                    line: i
-                });
-            } else {
-                lineCostCenter = nsRecord.getSublistValue({
-                    sublistId: 'item',
-                    fieldId: 'department',
-                    line: i
-                });
-            }
+                //call function to run the combo search
+                resultsSearch = runSubCombSearch(comboSearch, adaSubsidiary, lineCostCenter);
 
-            if (nsRecord.type.includes('intercompanyjournalentry')) {
-                adaSubsidiary = nsRecord.getSublistValue({
-                    sublistId: 'line',
-                    fieldId: 'linesubsidiary',
-                    line: i
-                });
-            }
-
-            var headerCostCenter = nsRecord.getValue({ fieldId: 'department' });
-
-            if (toSubsidiary) {
-                resultsSearch = runSaveSubCombSearch(comboSearch, toSubsidiary, lineCostCenter);
-                headerSearchResult = runSaveSubCombSearch(comboSearch, adaSubsidiary, headerCostCenter);
-            } else if (headerCostCenter) {
-                resultsSearch = runSaveSubCombSearch(comboSearch, adaSubsidiary, lineCostCenter);
-                headerSearchResult = runSaveSubCombSearch(comboSearch, adaSubsidiary, headerCostCenter);
-            } else {
-                resultsSearch = runSaveSubCombSearch(comboSearch, adaSubsidiary, lineCostCenter);
-            }
-
-            // 🔧 FIXED CONDITIONS
-            if (headerSearchResult == -1) {
-                headErrCount++;
-            } else if (resultsSearch == -1) {
-
-                var jeName = nsRecord.getValue({ fieldId: 'memo' });
-
-                var checkNumber = nsRecord.getValue({ fieldId: 'createdfrom' });
-                var checkDetails = search.lookupFields({
-                    type: search.Type.CHECK,
-                    id: checkNumber,
-                    columns: ['memo']
-                });
-
-                var checkMemo = checkDetails.memo;
-
-                if (jeName === checkMemo) {
-                    // 🔧 FIXED INCREMENT
-                    lineErrCount++;
-                } else {
-                    lineErrCount++;
-                    linErrNum = i;
-                    break;
+                // log.debug("Remaining governance units: " + scriptObj.getRemainingUsage());
+                //If the search results returns a -1 the script will  throw an error
+                if (resultsSearch < 0) {
+                    if(recType == 'check' && jeName == checkMemo){
+                        return true;
+                    }
+                    else{
+                    //Throws the error and stops the file from being imported. 
+                    log.debug('adaSubsidiary', adaSubsidiary);
+                    log.debug('lineCostCenter', lineCostCenter);
+                    throw err.create({
+                        name: "ADA_INVALID_SUB_CC_COMBO",
+                        message: "The subsidiary cost center combo on line " + currentLine + " is invalid",
+                        notifyOff: true
+                    });
+                }
                 }
             }
         }
 
-        if (headErrCount > 0) {
-            alert('Invalid header level Cost Center for subsidiary');
-            return false;
-        } else if (lineErrCount > 0) {
-            alert('Invalid line level Cost Center for subsidiary on line ' + linErrNum);
-            return false;
+        return {
+            beforeLoad: beforeLoad,
+            beforeSubmit: beforeSubmit
+
+        };
+
+        /**
+         * Function definition to run the combo search
+         * 
+         * @param {string} adaSubsidiary - the subsidiary
+         * @param {string} costCenter - cost center to compare against 
+         * 
+         */
+        function runSubCombSearch(searchArray, adaSub, adaCC) {
+            var adaArray = searchArray;
+            var subCombo = adaSub + '-' + adaCC;
+            //log.debug('subcombo',subCombo);
+            var searchResult = adaArray.indexOf(subCombo);
+            //log.debug('searchresult', searchResult);
+            //returns a -1 if no valid combo is found 
+            return searchResult;
         }
+        /***
+         * 
+         * Function builds the array from the custom record 
+         * subsidiary cost center combo for quicker searching 
+         * of valid combos
+         * 
+         */
+        function buildComboSearch() {
+            var subComboList = [];
+            var pageSize = 1000;
+            var start = 0;
+            var results = [];
 
-        return true;
-    }
+            var subComboSearch = search.create({
+                type: 'customrecord_ada_sub_costcenter_combos',
+                columns: [
+                    { name: 'custrecord_ada_subsidiary_combo' },
+                    { name: 'custrecord_ada_costcenter_combo' }
+                ],
+                filters: [
+                    ['isinactive', 'is', 'F']
+                ]
+            });
 
-    return {
-        validateLine: validateLine,
-        saveRecord: saveRecord
-    };
+            do {
+                results = subComboSearch.run().getRange({ start: start, end: start + pageSize });
 
-});
+                for (var i = 0; i < results.length; i++) {
+                    var combo = results[i].getValue({ name: 'custrecord_ada_subsidiary_combo' }) + '-' +
+                        results[i].getValue({ name: 'custrecord_ada_costcenter_combo' });
+                    subComboList.push(combo);
+                }
+
+                start += pageSize;
+            } while (results.length === pageSize);
+
+            log.debug('Total combos retrieved:', subComboList.length);
+            return subComboList;
+        }
+    }); 
