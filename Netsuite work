@@ -1,23 +1,124 @@
-if (resultsSearch < 0) {
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ */
+define(['N/log', 'N/record'], function (log, record) {
+    function beforeLoad(context) {
+        try {
+            if (context.type === context.UserEventType.CREATE && context.request) {
+                var vendorId = context.request.parameters.entity;
+                var ncrId = context.request.parameters.ncid;
+                var items = context.request.parameters.item;
+                var quantities = context.request.parameters.quantity;
+                var finalRate = context.request.parameters.rate;
+                var taxcode = context.request.parameters.taxcode;
 
-    // ✅ APPLY ONLY FOR JE TYPES
-    if (nsRecord.type == 'journalentry' || 
-        nsRecord.type == 'intercompanyjournalentry' || 
-        nsRecord.type == 'advintercompanyjournalentry') {
+                var newRecord = context.newRecord;
 
-        if (jeName == checkMemo) {
-            // ✅ Skip this line and continue loop
-            continue;
+                // Set vendor (body field)
+                if (vendorId) {
+                    newRecord.setValue({
+                        fieldId: 'entity',
+                        value: vendorId
+                    });
+                }
+                if (ncrId) {
+                    newRecord.setValue({
+                        fieldId: 'custbody_igs_ncr_custom_record',
+                        value: ncrId
+                    });
+                }
+
+                // Build line object
+                var itmDetails = [{
+                    itemId: items,
+                    qty: quantities,
+                    rate: finalRate,
+                    tax: taxcode
+                }];
+
+                log.debug("ItemDetails:", itmDetails);
+
+                // Apply line values
+                itmDetails.forEach(function (detail, index) {
+                    newRecord.setSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'item',
+                        line: index,
+                        value: detail.itemId
+                    });
+                    newRecord.setSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'quantity',
+                        line: index,
+                        value: detail.qty
+                    });
+                    if (detail.rate) {
+                         newRecord.setSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'rate',
+                            line: index,
+                            value: detail.rate
+                        });
+                        var finalAmount = detail.qty * detail.rate;
+                        log.debug("Final Amount:",finalAmount);
+                         newRecord.setSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'amount',
+                            line: index,
+                            value: finalAmount
+                        });
+                    }
+                    if (detail.tax) {
+                        newRecord.setSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'taxcode',
+                            line: index,
+                            value: detail.tax
+                        });
+                    }
+                });
+
+                log.debug('Pre-populated VRA', {
+                    vendorId: vendorId,
+                    itmDetails: itmDetails
+                });
+            }
+        } catch (err) {
+            log.error('beforeLoad Error', err);
         }
     }
 
-    // ❌ Otherwise throw error
-    log.debug('adaSubsidiary', adaSubsidiary);
-    log.debug('lineCostCenter', lineCostCenter);
+    function afterSubmit(context) {
+        try {
+            if (context.type === context.UserEventType.CREATE) {
+                var newRecord = context.newRecord;
+                var vraId = newRecord.id;
+                log.debug("VRA Id:", vraId);
+                var ncrId = newRecord.getValue({ fieldId: 'custbody_igs_ncr_custom_record' });
+                log.debug("NCR Id:", ncrId);
+                if (ncrId && vraId) {
+                    // Load the NCR record
+                    var ncrRecord = record.load({
+                        type: 'customrecord3044',
+                        id: ncrId
+                    });
 
-    throw err.create({
-        name: "ADA_INVALID_SUB_CC_COMBO",
-        message: "The subsidiary cost center combo on line " + currentLine + " is invalid",
-        notifyOff: true
-    });
-}
+                    ncrRecord.setValue({
+                        fieldId: 'custrecord_gns_stl_ncrvranumber',
+                        value: vraId
+                    });
+                    var NcId = ncrRecord.save();
+                    log.debug("NCR VRA updated:", NcId);
+                }
+            }
+        } catch (err) {
+            log.error('afterSubmit Error', err);
+        }
+    }
+
+    return {
+        beforeLoad: beforeLoad,
+        afterSubmit: afterSubmit
+    };
+});
