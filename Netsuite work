@@ -1,124 +1,137 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType UserEventScript
+ * @NScriptType ScheduledScript
  */
-define(['N/log', 'N/record'], function (log, record) {
-    function beforeLoad(context) {
+define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
+
+    const EXP_SEARCH_ID = 'customsearch_expense_report_pending'; // Expense reports (checkbox = false)
+    const PROG_MAP_SEARCH_ID = 'customsearch_program_department_map'; // Program → Department mapping
+
+    const execute = () => {
         try {
-            if (context.type === context.UserEventType.CREATE && context.request) {
-                var vendorId = context.request.parameters.entity;
-                var ncrId = context.request.parameters.ncid;
-                var items = context.request.parameters.item;
-                var quantities = context.request.parameters.quantity;
-                var finalRate = context.request.parameters.rate;
-                var taxcode = context.request.parameters.taxcode;
 
-                var newRecord = context.newRecord;
+            // 🔹 1. Load Program Mapping ONCE
+            let programMap = {};
 
-                // Set vendor (body field)
-                if (vendorId) {
-                    newRecord.setValue({
-                        fieldId: 'entity',
-                        value: vendorId
-                    });
+            let progSearch = search.load({
+                id: PROG_MAP_SEARCH_ID
+            });
+
+            progSearch.run().each(res => {
+                let programId = res.getValue({ name: 'custrecord_program' });
+                let deptId = res.getValue({ name: 'custrecord_department' });
+
+                if (programId && deptId) {
+                    programMap[programId] = deptId;
                 }
-                if (ncrId) {
-                    newRecord.setValue({
-                        fieldId: 'custbody_igs_ncr_custom_record',
-                        value: ncrId
-                    });
-                }
+                return true;
+            });
 
-                // Build line object
-                var itmDetails = [{
-                    itemId: items,
-                    qty: quantities,
-                    rate: finalRate,
-                    tax: taxcode
-                }];
+            log.debug('Program Map', programMap);
 
-                log.debug("ItemDetails:", itmDetails);
+            // 🔹 2. Load Expense Reports
+            let expSearch = search.load({
+                id: EXP_SEARCH_ID
+            });
 
-                // Apply line values
-                itmDetails.forEach(function (detail, index) {
-                    newRecord.setSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'item',
-                        line: index,
-                        value: detail.itemId
+            expSearch.run().each(result => {
+
+                let expId = result.id;
+
+                try {
+
+                    let expRec = record.load({
+                        type: record.Type.EXPENSE_REPORT,
+                        id: expId,
+                        isDynamic: true
                     });
-                    newRecord.setSublistValue({
-                        sublistId: 'item',
-                        fieldId: 'quantity',
-                        line: index,
-                        value: detail.qty
+
+                    let lineCount = expRec.getLineCount({
+                        sublistId: 'expense'
                     });
-                    if (detail.rate) {
-                         newRecord.setSublistValue({
-                            sublistId: 'item',
-                            fieldId: 'rate',
-                            line: index,
-                            value: detail.rate
+
+                    let updatedCount = 0;
+
+                    // 🔹 3. Loop Lines
+                    for (let i = 0; i < lineCount; i++) {
+
+                        expRec.selectLine({
+                            sublistId: 'expense',
+                            line: i
                         });
-                        var finalAmount = detail.qty * detail.rate;
-                        log.debug("Final Amount:",finalAmount);
-                         newRecord.setSublistValue({
-                            sublistId: 'item',
-                            fieldId: 'amount',
-                            line: index,
-                            value: finalAmount
+
+                        let program = expRec.getCurrentSublistValue({
+                            sublistId: 'expense',
+                            fieldId: 'custcol_program'
                         });
+
+                        let currentDept = expRec.getCurrentSublistValue({
+                            sublistId: 'expense',
+                            fieldId: 'department'
+                        });
+
+                        // 🔹 4. Match Program → Department
+                        if (program && programMap[program]) {
+
+                            let newDept = programMap[program];
+
+                            // Avoid unnecessary update
+                            if (currentDept != newDept) {
+
+                                expRec.setCurrentSublistValue({
+                                    sublistId: 'expense',
+                                    fieldId: 'department',
+                                    value: newDept
+                                });
+
+                                expRec.commitLine({
+                                    sublistId: 'expense'
+                                });
+
+                                updatedCount++;
+                            } else {
+                                expRec.cancelLine({
+                                    sublistId: 'expense'
+                                });
+                            }
+
+                        } else {
+                            expRec.cancelLine({
+                                sublistId: 'expense'
+                            });
+                        }
                     }
-                    if (detail.tax) {
-                        newRecord.setSublistValue({
-                            sublistId: 'item',
-                            fieldId: 'taxcode',
-                            line: index,
-                            value: detail.tax
+
+                    // 🔹 5. Update Checkbox ONLY if changes happened
+                    if (updatedCount > 0) {
+
+                        expRec.setValue({
+                            fieldId: 'custbody_program_updated',
+                            value: true
                         });
+
+                        expRec.save({
+                            enableSourcing: true,
+                            ignoreMandatoryFields: true
+                        });
+
+                        log.audit('Updated Expense Report', expId + ' | Lines Updated: ' + updatedCount);
+
+                    } else {
+                        log.debug('Skipped (No Updates)', expId);
                     }
-                });
 
-                log.debug('Pre-populated VRA', {
-                    vendorId: vendorId,
-                    itmDetails: itmDetails
-                });
-            }
-        } catch (err) {
-            log.error('beforeLoad Error', err);
-        }
-    }
-
-    function afterSubmit(context) {
-        try {
-            if (context.type === context.UserEventType.CREATE) {
-                var newRecord = context.newRecord;
-                var vraId = newRecord.id;
-                log.debug("VRA Id:", vraId);
-                var ncrId = newRecord.getValue({ fieldId: 'custbody_igs_ncr_custom_record' });
-                log.debug("NCR Id:", ncrId);
-                if (ncrId && vraId) {
-                    // Load the NCR record
-                    var ncrRecord = record.load({
-                        type: 'customrecord3044',
-                        id: ncrId
-                    });
-
-                    ncrRecord.setValue({
-                        fieldId: 'custrecord_gns_stl_ncrvranumber',
-                        value: vraId
-                    });
-                    var NcId = ncrRecord.save();
-                    log.debug("NCR VRA updated:", NcId);
+                } catch (innerErr) {
+                    log.error('Error Processing Expense Report ID: ' + expId, innerErr);
                 }
-            }
-        } catch (err) {
-            log.error('afterSubmit Error', err);
-        }
-    }
 
-    return {
-        beforeLoad: beforeLoad,
-        afterSubmit: afterSubmit
+                return true;
+            });
+
+        } catch (e) {
+            log.error('Script Error', e);
+        }
     };
+
+    return { execute };
 });
