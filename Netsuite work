@@ -1,88 +1,65 @@
-/**
- *@NApiVersion 2.1
- *@NScriptType ScheduledScript
- */
+Why Standalone works, but your scripted flow does not
+✅ Standalone (UI) behavior — why it goes to Pending Return
+When you create a Vendor Return Authorization manually from the UI, you are actually doing this:
 
-define(['N/search', 'N/record', 'N/runtime', 'N/log'], 
-function (search, record, runtime, log) {
+Purchase Order → Return Authorization (Transform)
 
-    const MAX_RECORDS = 50000;
+Even though you don’t see it technically, NetSuite internally does a transaction transform.
+That transform does three critical things automatically:
 
-    function execute(context) {
-        try {
-            const script = runtime.getCurrentScript();
+Links the VRA to the exact PO line IDs (orderline)
+Confirms the item was received and is return‑eligible
+Marks the return as physical inventory movement
 
-            const mySearch = search.create({
-                type: "customrecord_nx_error",
-                filters: [
-                    ["custrecord_nx_error_recovered", "is", "F"]
-                ],
-                columns: ["internalid"]
-            });
+Because of this, when you click Authorize Return, NetSuite knows:
 
-            const resultSet = mySearch.run();
+Which inventory lot/bin/receipt to reverse
+That goods still need to be sent back
 
-            let start = 0;
-            let processedCount = 0;
+✅ Result: Pending Return
 
-            while (true) {
+❌ Scripted behavior — why it goes to Pending Credit
+In your scripted flow, this is what happens:
 
-                // 🔴 Stop if reached 50K
-                if (processedCount >= MAX_RECORDS) {
-                    log.audit("Limit Reached", "Processed 50,000 records");
-                    break;
-                }
+NCR → Suitelet
+Suitelet opens a NEW Vendor Return Authorization
+User Event sets:
 
-                // 🔴 Stop if low governance
-                if (script.getRemainingUsage() < 200) {
-                    log.audit("Stopping Early", "Low governance");
-                    break;
-                }
+vendor
+item
+quantity
+PO reference
 
-                // Fetch 1000 records at a time
-                let results = resultSet.getRange({
-                    start: start,
-                    end: start + 1000
-                });
 
-                if (!results || results.length === 0) {
-                    log.audit("No More Records", "Search completed");
-                    break;
-                }
 
-                for (let i = 0; i < results.length; i++) {
+Even if:
 
-                    if (processedCount >= MAX_RECORDS) break;
+the item is an inventory item
+the PO exists
+quantities are correct
 
-                    const recId = results[i].id;
+❌ NetSuite still sees this as a brand‑new transaction, NOT a transformed one.
+What is missing internally?
 
-                    try {
-                        record.submitFields({
-                            type: "customrecord_nx_error",
-                            id: recId,
-                            values: {
-                                custrecord_nx_error_recovered: true
-                            }
-                        });
+❌ No PO line‑level linkage
+❌ No receipt/fulfillment lineage
+❌ No inventory reversal context
 
-                        processedCount++;
+So NetSuite concludes:
 
-                    } catch (e) {
-                        log.error("Error updating ID: " + recId, e);
-                    }
-                }
+“There is nothing to physically return. This is a financial adjustment only.”
 
-                start += 1000;
-            }
+✅ Result: Pending Credit
 
-            log.audit("Execution Completed", "Total Processed: " + processedCount);
+✅ The key point (this resolves the confusion)
 
-        } catch (e) {
-            log.error("Script Error", e);
-        }
-    }
+createdfrom = PO is NOT the same as “created FROM the PO”.
 
-    return {
-        execute: execute
-    };
-});
+
+Standalone UI → real transform
+Script using record.create() → reference only
+
+That’s why:
+
+UI works ✅
+Script does not ❌
