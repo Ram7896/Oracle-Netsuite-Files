@@ -1,126 +1,103 @@
-Clear Difference: Standalone VRA vs Script‑Created VRA
-The difference is NOT about item, quantity, tax, or script quality.
-The difference is HOW NetSuite creates the Vendor Return Authorization internally.
-
-🔹 1. Standalone (UI) Vendor Return Authorization
-✅ Why it goes to Pending Return
-What you do (Visibly):
-
-Open Purchase Order
-Click Create Return Authorization
-Save
-Click Authorize Return
-
-What NetSuite does (Internally):
-✅ Transforms the Purchase Order → Vendor Return Authorization
-This transformation:
-
-Keeps PO line IDs
-Keeps receipt history
-Keeps inventory linkage
-Knows which stock must be returned
-
-Result:
-
-NetSuite knows physical inventory must come back
-Status after Authorize Return = ✅ Pending Return
-
-
-🔹 2. Script‑Created Vendor Return Authorization
-❌ Why it goes to Pending Credit
-What your script does:
-
-Uses record.create()
-Sets:
-
-Vendor
-Item
-Quantity
-createdfrom (PO reference)
-
-
-
-What NetSuite sees:
-❌ A brand‑new transaction
-❌ No PO line‑level linkage
-❌ No inventory receipt reference
-
-Even if createdfrom = PO, it is only a reference, not a transform.
-
-NetSuite conclusion:
-
-“There is no confirmed physical inventory to return.
-This is a financial correction only.”
-
-Result:
-
-Status after Authorize Return = ❌ Pending Credit
-
-
-🔍 Key Difference in One Line (Most Important)
-
-Setting createdfrom is NOT the same as creating FROM the Purchase Order.
-
-
-✅ Side‑by‑Side Comparison (Very Clear)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-AspectStandalone (UI)Script‑CreatedCreation MethodPO → Transformrecord.create()PO Line Linkage✅ Yes❌ NoReceipt History✅ Preserved❌ MissingInventory Traceability✅ Yes❌ NoPhysical Return Allowed✅ Yes❌ NoAuthorize Return ResultPending ReturnPending CreditCan Script Override?N/A❌ Impossible
-
-🔒 Why NetSuite Does NOT Allow Override
-NetSuite enforces this to:
-
-Prevent returning inventory that was never received
-Maintain audit trails
-Protect stock valuation
-Avoid financial inconsistencies
-
-Because of this:
-
-Status is system‑controlled
-Scripts, workflows, and client scripts cannot change it
-
-This is Working As Designed.
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ */
+define(['N/record', 'N/redirect', 'N/log'], function (record, redirect, log) {
+    function onRequest(context) {
+        try {
+            if (context.request.method === 'GET') {
+                var ncrId = context.request.parameters.custscript_igs_ncr_id;
+                log.debug('Suitelet Start', 'NCR Id: ' + ncrId);
+
+                try {
+                    var ncrCustomRecord = record.load({
+                        type: 'customrecord3044',
+                        id: ncrId
+                    });
+
+                    var vendorId = ncrCustomRecord.getValue({
+                        fieldId: 'custrecord_gns_stl_ncrreturnedtovendor'
+                    });
+                    var itemId = ncrCustomRecord.getValue({
+                        fieldId: 'custrecord_gns_stl_partwnc'
+                    });
+                    var poId = ncrCustomRecord.getValue({
+                        fieldId: 'custrecord_gns_stl_poncr'
+                    });
+                    log.debug("Po Id:", poId);
+                    var ncrQuantity = ncrCustomRecord.getValue({
+                        fieldId: 'custrecord_quantity'
+                    });
+                    log.debug("NCR Quantity:", ncrQuantity);
+
+                    var poRecord = record.load({
+                        type: record.Type.PURCHASE_ORDER,
+                        id: poId
+                    });
+
+                    var lineCount = poRecord.getLineCount({ sublistId: 'item' });
+                    var found = false;
+                    var lineRate, lineTaxCode;
+
+                    for (var i = 0; i < lineCount; i++) {
+                        var poItemId = poRecord.getSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'item',
+                            line: i
+                        });
+
+                        if (poItemId == itemId) {
+                            found = true;
+                            lineRate = poRecord.getSublistValue({
+                                sublistId: 'item',
+                                fieldId: 'rate',
+                                line: i
+                            });
+                            lineTaxCode = poRecord.getSublistValue({
+                                sublistId: 'item',
+                                fieldId: 'taxcode',
+                                line: i
+                            });
+                            break;
+                        }
+                    }
+
+                    if (found) {
+                        log.debug('Matched PO Line', {
+                            itemId: itemId,
+                            lineRate: lineRate,
+                            taxcode: lineTaxCode,
+                            quantity: ncrQuantity
+                        });
+
+                        redirect.toRecord({
+                            type: record.Type.VENDOR_RETURN_AUTHORIZATION,
+                            isEditMode: true,
+                            parameters: {
+                              fromSuitelet: 'T',
+                                ncid: ncrId,
+                                entity: vendorId,
+                                item: itemId,
+                                quantity: ncrQuantity,
+                                rate: lineRate,
+                                taxcode: lineTaxCode
+                            }
+                        });
+                    } else {
+                        log.error('Item Not Found', 'Item ' + itemId + ' not found on PO ' + poId);
+                        context.response.write('Item not found on Purchase Order.');
+                    }
+
+                } catch (loadErr) {
+                    log.error('Record Load Error', loadErr);
+                    context.response.write('Error loading NCR record: ' + loadErr.message);
+                }
+            }
+        } catch (outerErr) {
+            log.error('Suitelet Error', outerErr);
+            context.response.write('Unexpected error in Suitelet: ' + outerErr.message);
+        }
+    }
+
+    return { onRequest: onRequest };
+});
