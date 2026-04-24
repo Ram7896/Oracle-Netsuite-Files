@@ -1,59 +1,88 @@
 /**
  *@NApiVersion 2.1
- *@NScriptType MapReduceScript
+ *@NScriptType ScheduledScript
  */
 
-define(['N/search', 'N/record'], function (search, record) {
+define(['N/search', 'N/record', 'N/runtime', 'N/log'], 
+function (search, record, runtime, log) {
 
-    function getInputData() {
-        // Fetch only records in range 0–50000
-        return search.create({
-            type: "customrecord_nx_error",
-            filters: [
-                ["custrecord_nx_error_recovered", "is", "F"]
-            ],
-            columns: ["internalid"]
-        })
-        .run()
-        .getRange({
-            start: 0,
-            end: 50000
-        });
-    }
+    const MAX_RECORDS = 50000;
 
-    function map(context) {
-        const searchResult = JSON.parse(context.value);
-        const recId = searchResult.id;
-
+    function execute(context) {
         try {
-            // Update field without loading the record
-            record.submitFields({
+            const script = runtime.getCurrentScript();
+
+            const mySearch = search.create({
                 type: "customrecord_nx_error",
-                id: recId,
-                values: {
-                    custrecord_nx_error_recovered: true
-                }
+                filters: [
+                    ["custrecord_nx_error_recovered", "is", "F"]
+                ],
+                columns: ["internalid"]
             });
 
-            log.audit("Updated Record", "Record ID: " + recId);
+            const resultSet = mySearch.run();
+
+            let start = 0;
+            let processedCount = 0;
+
+            while (true) {
+
+                // 🔴 Stop if reached 50K
+                if (processedCount >= MAX_RECORDS) {
+                    log.audit("Limit Reached", "Processed 50,000 records");
+                    break;
+                }
+
+                // 🔴 Stop if low governance
+                if (script.getRemainingUsage() < 200) {
+                    log.audit("Stopping Early", "Low governance");
+                    break;
+                }
+
+                // Fetch 1000 records at a time
+                let results = resultSet.getRange({
+                    start: start,
+                    end: start + 1000
+                });
+
+                if (!results || results.length === 0) {
+                    log.audit("No More Records", "Search completed");
+                    break;
+                }
+
+                for (let i = 0; i < results.length; i++) {
+
+                    if (processedCount >= MAX_RECORDS) break;
+
+                    const recId = results[i].id;
+
+                    try {
+                        record.submitFields({
+                            type: "customrecord_nx_error",
+                            id: recId,
+                            values: {
+                                custrecord_nx_error_recovered: true
+                            }
+                        });
+
+                        processedCount++;
+
+                    } catch (e) {
+                        log.error("Error updating ID: " + recId, e);
+                    }
+                }
+
+                start += 1000;
+            }
+
+            log.audit("Execution Completed", "Total Processed: " + processedCount);
 
         } catch (e) {
-            log.error("FAILED Updating Record ID: " + recId, e);
+            log.error("Script Error", e);
         }
     }
 
-    function summarize(summary) {
-        log.audit("FINISHED", "All records processed.");
-
-        summary.mapSummary.errors.iterator().each(function (key, error) {
-            log.error("Map Error for key: " + key, error);
-            return true;
-        });
-    }
-
     return {
-        getInputData: getInputData,
-        map: map,
-        summarize: summarize
+        execute: execute
     };
-});	{"type":"error.SuiteScriptError","name":"SSS_SEARCH_RESULT_LIMIT_EXCEEDED","message":"No more than 1000 search results may be requested at one time from nlobjSearchResultSet.getResults(). Please narrow your range, or use nlobjSearchResultSet.forEachResult() instead.","id":null,"stack":["Error"," at Object.getInputData (/SuiteScripts/Saved Field Service Error Search Clear.js:18:10)"],"cause":{"name":"SSS_SEARCH_RESULT_LIMIT_EXCEEDED","message":"No more than 1000 search results may be requested at one time from nlobjSearchResultSet.getResults(). Please narrow your range, or use nlobjSearchResultSet.forEachResult() instead."},"notifyOff":false,"userFacing":true}
+});
