@@ -1,65 +1,126 @@
-Why Standalone works, but your scripted flow does not
-✅ Standalone (UI) behavior — why it goes to Pending Return
-When you create a Vendor Return Authorization manually from the UI, you are actually doing this:
+Clear Difference: Standalone VRA vs Script‑Created VRA
+The difference is NOT about item, quantity, tax, or script quality.
+The difference is HOW NetSuite creates the Vendor Return Authorization internally.
 
-Purchase Order → Return Authorization (Transform)
+🔹 1. Standalone (UI) Vendor Return Authorization
+✅ Why it goes to Pending Return
+What you do (Visibly):
 
-Even though you don’t see it technically, NetSuite internally does a transaction transform.
-That transform does three critical things automatically:
+Open Purchase Order
+Click Create Return Authorization
+Save
+Click Authorize Return
 
-Links the VRA to the exact PO line IDs (orderline)
-Confirms the item was received and is return‑eligible
-Marks the return as physical inventory movement
+What NetSuite does (Internally):
+✅ Transforms the Purchase Order → Vendor Return Authorization
+This transformation:
 
-Because of this, when you click Authorize Return, NetSuite knows:
+Keeps PO line IDs
+Keeps receipt history
+Keeps inventory linkage
+Knows which stock must be returned
 
-Which inventory lot/bin/receipt to reverse
-That goods still need to be sent back
+Result:
 
-✅ Result: Pending Return
-
-❌ Scripted behavior — why it goes to Pending Credit
-In your scripted flow, this is what happens:
-
-NCR → Suitelet
-Suitelet opens a NEW Vendor Return Authorization
-User Event sets:
-
-vendor
-item
-quantity
-PO reference
+NetSuite knows physical inventory must come back
+Status after Authorize Return = ✅ Pending Return
 
 
+🔹 2. Script‑Created Vendor Return Authorization
+❌ Why it goes to Pending Credit
+What your script does:
 
-Even if:
+Uses record.create()
+Sets:
 
-the item is an inventory item
-the PO exists
-quantities are correct
+Vendor
+Item
+Quantity
+createdfrom (PO reference)
 
-❌ NetSuite still sees this as a brand‑new transaction, NOT a transformed one.
-What is missing internally?
 
+
+What NetSuite sees:
+❌ A brand‑new transaction
 ❌ No PO line‑level linkage
-❌ No receipt/fulfillment lineage
-❌ No inventory reversal context
+❌ No inventory receipt reference
 
-So NetSuite concludes:
+Even if createdfrom = PO, it is only a reference, not a transform.
 
-“There is nothing to physically return. This is a financial adjustment only.”
+NetSuite conclusion:
 
-✅ Result: Pending Credit
+“There is no confirmed physical inventory to return.
+This is a financial correction only.”
 
-✅ The key point (this resolves the confusion)
+Result:
 
-createdfrom = PO is NOT the same as “created FROM the PO”.
+Status after Authorize Return = ❌ Pending Credit
 
 
-Standalone UI → real transform
-Script using record.create() → reference only
+🔍 Key Difference in One Line (Most Important)
 
-That’s why:
+Setting createdfrom is NOT the same as creating FROM the Purchase Order.
 
-UI works ✅
-Script does not ❌
+
+✅ Side‑by‑Side Comparison (Very Clear)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+AspectStandalone (UI)Script‑CreatedCreation MethodPO → Transformrecord.create()PO Line Linkage✅ Yes❌ NoReceipt History✅ Preserved❌ MissingInventory Traceability✅ Yes❌ NoPhysical Return Allowed✅ Yes❌ NoAuthorize Return ResultPending ReturnPending CreditCan Script Override?N/A❌ Impossible
+
+🔒 Why NetSuite Does NOT Allow Override
+NetSuite enforces this to:
+
+Prevent returning inventory that was never received
+Maintain audit trails
+Protect stock valuation
+Avoid financial inconsistencies
+
+Because of this:
+
+Status is system‑controlled
+Scripts, workflows, and client scripts cannot change it
+
+This is Working As Designed.
