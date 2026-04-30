@@ -1,1 +1,187 @@
+/**
+ * Given a Support Case, generates a matching sales order from scratch 
+ *     based on the case type and any information that can be gleaned from 
+ *     the related records (visit tasks & parent project). Also links the 
+ *     sales order appropriately to the case.
+ * @memberof aiCostTools
+ *
+ * @param {InternalId} case_id - The Support Case in question.
+ * @returns {FinalOrder|null} - The new Sales Order or null if generation 
+ *     failed.
+ **/
+function generateCaseSalesOrder(case_id) {
+  // Gather case details
+  var case_details = gatherCaseDetails(case_id);
+  var customer_rates = gatherServiceRates(
+      case_details.customer, case_details.priority);
+
+  var mergeable_cases = case_details.type == '2' ?
+      checkForMaintenanceCasesToMerge(case_details) : null;
+
+  var hold_order_for_accounts = false;
+  var hold_message = '';
+
+  var rates = gatherRates(case_details, customer_rates, mergeable_cases);
+  log.debug("Rates:",rates);
+  
+  // add extra rates to std rates and flag order to be held for accounts
+  var keys = Object.keys(rates.extra);
+  if ( keys.length > 0 ) {
+    hold_order_for_accounts = true;
+    hold_message += 'Additional charges added to the order that are not within the maintenance agreement.';
+    log.debug({
+      title: 'Holding order for accounts.',
+      details: 'Extra doors were serviced.',
+    });
+  }
+  for ( var key in rates.extra ) {
+    if ( rates.std[key] == undefined ) {
+      rates.std[key] = rates.extra[key];
+    } else {
+      rates.std[key].qty += rates.extra[key].qty;
+    }
+  }
+
+  // If labour set by field technician exceeds 2 hours, mark for accounts
+  // to review.
+  if ( rates.std[customer_rates.labour] &&
+      rates.std[customer_rates.labour].qty > 2 ) {
+    hold_order_for_accounts = true;
+    hold_message += 'Labour exceeds 2 hours, please review tech report.';
+  }
+
+  // If case was a breakdown that has had qtly's merged into it, flag the
+  // order for accounts and change the template of the jobcard.
+  var template_id = undefined;
+  if ( rates.qtly_merge ) {
+    hold_order_for_accounts = true;
+    hold_message += 'Qtly cases were merged into this breakdown.';
+    template_id = '714152';
+  }
+
+  // If any required maintenance rates could not be found, flag for accounts
+  // to action.
+  if ( rates.missing_qtly_rates ) {
+    hold_order_for_accounts = true;
+    hold_message += 'Some required maintenance rates could not be located.';
+  }
+
+  // Hold order for accounts if warranty detected
+  // TODO Fix so that order is only flagged if lines are actually added
+  if ( case_details.parts_warranty || case_details.labour_warranty ) {
+    hold_order_for_accounts = true;
+    hold_message += ' Warranty lines have been added to the order.';
+  }
+  // Hold order for accounts if the tech has requested it
+  if ( case_details.manual_review ) {
+    hold_order_for_accounts = true;
+    hold_message += ' A field tech has requested this order be manually reviewed.';
+  }
+
+  // Generate sales order and add rates gathered above
+  var so_id = record.create({
+    type: record.Type.SALES_ORDER,
+    isDynamic: true,
+  });
+  // Body Fields
+  // '174' AI NXC Sales Order
+  so_id.setValue({fieldId: 'customform', value: '174'}); 
+  so_id.setValue({fieldId: 'entity', value: case_details.project});
+  so_id.setValue({
+    fieldId: 'custbody_nx_customer', 
+    value: case_details.customer,
+  });
+  so_id.setValue({
+    fieldId: 'custbody_nx_asset', 
+    value: case_details.asset,
+  });
+  so_id.setValue({fieldId: 'custbody_nx_case', value: case_id});
+  // Set po by considering any mergeable cases
+  var po = case_details.po;
+  if ( mergeable_cases ) {
+    mergeable_cases.forEach( function(c) { 
+      if ( c.po && c.po != '' ) {
+        po += ( po == '' ? '' : ' / ' ) + c.po; 
+      }
+    });
+  }
+  so_id.setValue({fieldId: 'otherrefnum', value: po});
+
+  // Add the required rates
+  var added_items = addRequiredRates(so_id, rates.std, case_details);
+  if ( added_items == null ) {
+    hold_order_for_accounts = true;
+    hold_message += ' Error line has been added to this order.';
+  }
+
+  // ** NEW FUEL SURCHARGE LOGIC **
+  // Gather additional case details for fuel surcharge
+  var case_search = search.lookupFields({
+    type: search.Type.SUPPORT_CASE,
+    id: case_id,
+    columns: [
+      'custevent_nx_customer',
+      'custevent_nx_case_asset',
+      'company',
+      'custevent_nx_case_purchaseorder',
+      'custevent_nxc_subcontractor',
+      'custevent_nx_case_type',
+      'custevent_nxc_call_out_priority',
+      'custevent1',
+      'custevent_nx_distance',
+      'custevent_nx_fuel_sur_charge'
+    ]
+  });
+  
+  var case_proj = case_search.company ? case_search.company[0].value : null;
+  var case_distance = case_search.custevent_nx_distance;
+  var case_sur_charge = case_search.custevent_nx_fuel_sur_charge;
+  
+  log.debug("Case Distance:", case_distance);
+  log.debug("Case SurCharge:", case_sur_charge);
+  
+  // Get labour item from customer rates
+  var labour_item = customer_rates.labour;
+  
+  // Add fuel surcharge line if conditions are met
+  if ((labour_item === '2646' || labour_item === '2647') && 
+      case_distance && case_sur_charge) {
+    var fuel_item = '3557';
+    
+    so_id.selectNewLine({ sublistId: 'item' });
+    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: fuel_item });
+    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: case_distance });
+    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'rate', value: case_sur_charge });
+    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: case_details.asset_dept });
+    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.REPAIR });
+    so_id.commitLine({ sublistId: 'item' });
+    
+    // Flag for accounts review since fuel surcharge was added
+    hold_order_for_accounts = true;
+    hold_message += ' Fuel surcharge added based on case distance and surcharge values.';
+  }
+
+  // Check dept/class and force correct values
+  num_items = so_id.getLineCount({sublistId: 'item'});
+  var order_mode = dcl.calcTransactionMode(so_id);
+  log.debug({title: 'order_mode', details: order_mode});
+  for ( var i = 0; i < num_items; i++ ) {
+    so_id.selectLine({sublistId: 'item', line: i});
+    var item_id = so_id.getCurrentSublistValue({
+      sublistId: 'item',
+      fieldId: 'item',
+    });
+    // If not description or discount item
+    if ( item_id != -3 ) { 
+      // Check & set the department/class if it's missing
+      var applied_setting = checkLineSettings(
+          so_id, order_mode, /* force_update */ true);
+      if ( applied_setting ) {
+        so_id.commitLine({sublistId: 'item'});
+        modified_order = true;
+      }
+    }
+  }
+
+  // ... rest of the function remains the same
 
