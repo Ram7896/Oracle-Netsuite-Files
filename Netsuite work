@@ -1,187 +1,354 @@
-/**
- * Given a Support Case, generates a matching sales order from scratch 
- *     based on the case type and any information that can be gleaned from 
- *     the related records (visit tasks & parent project). Also links the 
- *     sales order appropriately to the case.
- * @memberof aiCostTools
- *
- * @param {InternalId} case_id - The Support Case in question.
- * @returns {FinalOrder|null} - The new Sales Order or null if generation 
- *     failed.
- **/
-function generateCaseSalesOrder(case_id) {
-  // Gather case details
-  var case_details = gatherCaseDetails(case_id);
-  var customer_rates = gatherServiceRates(
-      case_details.customer, case_details.priority);
-
-  var mergeable_cases = case_details.type == '2' ?
-      checkForMaintenanceCasesToMerge(case_details) : null;
-
-  var hold_order_for_accounts = false;
-  var hold_message = '';
-
-  var rates = gatherRates(case_details, customer_rates, mergeable_cases);
-  log.debug("Rates:",rates);
-  
-  // add extra rates to std rates and flag order to be held for accounts
-  var keys = Object.keys(rates.extra);
-  if ( keys.length > 0 ) {
-    hold_order_for_accounts = true;
-    hold_message += 'Additional charges added to the order that are not within the maintenance agreement.';
-    log.debug({
-      title: 'Holding order for accounts.',
-      details: 'Extra doors were serviced.',
-    });
-  }
-  for ( var key in rates.extra ) {
-    if ( rates.std[key] == undefined ) {
-      rates.std[key] = rates.extra[key];
-    } else {
-      rates.std[key].qty += rates.extra[key].qty;
-    }
-  }
-
-  // If labour set by field technician exceeds 2 hours, mark for accounts
-  // to review.
-  if ( rates.std[customer_rates.labour] &&
-      rates.std[customer_rates.labour].qty > 2 ) {
-    hold_order_for_accounts = true;
-    hold_message += 'Labour exceeds 2 hours, please review tech report.';
-  }
-
-  // If case was a breakdown that has had qtly's merged into it, flag the
-  // order for accounts and change the template of the jobcard.
-  var template_id = undefined;
-  if ( rates.qtly_merge ) {
-    hold_order_for_accounts = true;
-    hold_message += 'Qtly cases were merged into this breakdown.';
-    template_id = '714152';
-  }
-
-  // If any required maintenance rates could not be found, flag for accounts
-  // to action.
-  if ( rates.missing_qtly_rates ) {
-    hold_order_for_accounts = true;
-    hold_message += 'Some required maintenance rates could not be located.';
-  }
-
-  // Hold order for accounts if warranty detected
-  // TODO Fix so that order is only flagged if lines are actually added
-  if ( case_details.parts_warranty || case_details.labour_warranty ) {
-    hold_order_for_accounts = true;
-    hold_message += ' Warranty lines have been added to the order.';
-  }
-  // Hold order for accounts if the tech has requested it
-  if ( case_details.manual_review ) {
-    hold_order_for_accounts = true;
-    hold_message += ' A field tech has requested this order be manually reviewed.';
-  }
-
-  // Generate sales order and add rates gathered above
-  var so_id = record.create({
-    type: record.Type.SALES_ORDER,
-    isDynamic: true,
-  });
-  // Body Fields
-  // '174' AI NXC Sales Order
-  so_id.setValue({fieldId: 'customform', value: '174'}); 
-  so_id.setValue({fieldId: 'entity', value: case_details.project});
-  so_id.setValue({
-    fieldId: 'custbody_nx_customer', 
-    value: case_details.customer,
-  });
-  so_id.setValue({
-    fieldId: 'custbody_nx_asset', 
-    value: case_details.asset,
-  });
-  so_id.setValue({fieldId: 'custbody_nx_case', value: case_id});
-  // Set po by considering any mergeable cases
-  var po = case_details.po;
-  if ( mergeable_cases ) {
-    mergeable_cases.forEach( function(c) { 
-      if ( c.po && c.po != '' ) {
-        po += ( po == '' ? '' : ' / ' ) + c.po; 
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+  <head>
+    <style>
+      table {
+        table-layout: fixed;
+        font-family: Arial, Helvetica;
       }
-    });
-  }
-  so_id.setValue({fieldId: 'otherrefnum', value: po});
-
-  // Add the required rates
-  var added_items = addRequiredRates(so_id, rates.std, case_details);
-  if ( added_items == null ) {
-    hold_order_for_accounts = true;
-    hold_message += ' Error line has been added to this order.';
-  }
-
-  // ** NEW FUEL SURCHARGE LOGIC **
-  // Gather additional case details for fuel surcharge
-  var case_search = search.lookupFields({
-    type: search.Type.SUPPORT_CASE,
-    id: case_id,
-    columns: [
-      'custevent_nx_customer',
-      'custevent_nx_case_asset',
-      'company',
-      'custevent_nx_case_purchaseorder',
-      'custevent_nxc_subcontractor',
-      'custevent_nx_case_type',
-      'custevent_nxc_call_out_priority',
-      'custevent1',
-      'custevent_nx_distance',
-      'custevent_nx_fuel_sur_charge'
-    ]
-  });
-  
-  var case_proj = case_search.company ? case_search.company[0].value : null;
-  var case_distance = case_search.custevent_nx_distance;
-  var case_sur_charge = case_search.custevent_nx_fuel_sur_charge;
-  
-  log.debug("Case Distance:", case_distance);
-  log.debug("Case SurCharge:", case_sur_charge);
-  
-  // Get labour item from customer rates
-  var labour_item = customer_rates.labour;
-  
-  // Add fuel surcharge line if conditions are met
-  if ((labour_item === '2646' || labour_item === '2647') && 
-      case_distance && case_sur_charge) {
-    var fuel_item = '3557';
-    
-    so_id.selectNewLine({ sublistId: 'item' });
-    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'item', value: fuel_item });
-    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'quantity', value: case_distance });
-    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'rate', value: case_sur_charge });
-    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'department', value: case_details.asset_dept });
-    so_id.setCurrentSublistValue({ sublistId: 'item', fieldId: 'class', value: idlib.CLASS.REPAIR });
-    so_id.commitLine({ sublistId: 'item' });
-    
-    // Flag for accounts review since fuel surcharge was added
-    hold_order_for_accounts = true;
-    hold_message += ' Fuel surcharge added based on case distance and surcharge values.';
-  }
-
-  // Check dept/class and force correct values
-  num_items = so_id.getLineCount({sublistId: 'item'});
-  var order_mode = dcl.calcTransactionMode(so_id);
-  log.debug({title: 'order_mode', details: order_mode});
-  for ( var i = 0; i < num_items; i++ ) {
-    so_id.selectLine({sublistId: 'item', line: i});
-    var item_id = so_id.getCurrentSublistValue({
-      sublistId: 'item',
-      fieldId: 'item',
-    });
-    // If not description or discount item
-    if ( item_id != -3 ) { 
-      // Check & set the department/class if it's missing
-      var applied_setting = checkLineSettings(
-          so_id, order_mode, /* force_update */ true);
-      if ( applied_setting ) {
-        so_id.commitLine({sublistId: 'item'});
-        modified_order = true;
+      th {
+        font-size: 8pt;
+        vertical-align: middle;
       }
+      h1 {
+        text-transform: uppercase;
+        font-family: Arial, Helvetica;
+        font-size: 12pt;
+        text-decoration: underline;
+        padding: 0px 0px 20px 0px;
+      }
+      b {
+        font-weight: bold;
+        color: #333333;
+      }
+      p {
+        align: left;
+      }
+      hr {
+        width: 100%
+        color: #d3d3d3;
+        background-color: #d3d3d3;
+        height: 1px;
+      }
+      body {
+        font-family: Arial, Helvetica;
+        font-size: 10pt;
+      }
+      table.page_title {
+        width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+      table.page_title td {
+        align: right;
+        valign: middle;
+        font-size: 30;
+        padding: 0;
+        margin: 0;
+      }
+      table.page_title tr {
+        padding: 0;
+        margn: 0;
+      }
+      td.title {
+        width: 60%;
+      }
+      td.number {
+        font-size: 24;
+      }
+      td.date {
+        font-size: 14;
+        align: left;
+      }
+      table.header {
+        padding: 0px;
+        font-size: 6pt;
+        width: 100%;
+      }
+      table.footer td {
+        font-size: 14pt;
+        font-weight: bold;
+        valign: middle;
+        text-transform: uppercase;
+      }
+      .case_info {
+        background-color: #DDDDDD;
+        margin: 5px 0px 5px 0px;
+        width: 100%;
+      }
+      .case_info table {
+        width: 100%;
+        padding: 5px;
+      }
+      .visit_info {
+        background-color: #EEEEEE;
+        margin: 10px 0px 0px 0px;
+        width: 100%;
+        page-break-inside: auto;
+      }
+      .visit_info table {
+        width: 100%;
+        padding: 5px;
+      }
+      .break_notes {
+        margin: 0;
+        padding: 5px 7px 0px 7px;
+        page-break-inside: auto;
+        background-color: #EEEEEE;
+        width: 100%;
+      }
+      .break_notes table {
+        width: 100%;
+        padding: 5px;
+      }
+      .cust_sig {
+        border: 1px dotted black;
+        margin: 5px;
+      }
+      .cust_sig img {
+        width: 100px;
+        height: 50px;
+        margin: 5px;
+      }
+      .testings {
+        font-size: 8pt;
+        cellborder: 1px solid black;
+        cellmargin: 0px;
+        background-color: #EEEEEE;
+        padding: 5px;
+        width: 100%;
+      }
+      .testings th {
+        font-weight: bold;
+        align: center;
+      }
+      .testings td {
+        align: center;
+        valign: middle;
+      }
+      .parts {
+        font-size: 8pt;
+        cellborder: 1px solid black;
+        cellmargin: 0px;
+      }
+      .parts th {
+        font-weight: bold;
+        align: center;
+      }
+      .parts td {
+        align: center;
+        valign: middle;
+      }
+      .image_gallery {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      }
+    .image_gallery td {
+     width: 33%;
+     padding: 4px;
+    text-align: center;
+    vertical-align: middle;
     }
-  }
 
-  // ... rest of the function remains the same
+  .image_gallery img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #cccccc;
+}
+    </style>
+    <macrolist>
+      <macro id="ai_header">
+        <table class="header">
+          <tr>
+            <td colspan="2">
+                        <img src="https://5238530-sb2.app.netsuite.com/core/media/media.nl?id=519826&amp;c=5238530_SB2&amp;h=2151f31b74aa66896735"  width="250px" height="40px" style="float: left; margin: 0px; padding: 0px"/>
+                    </td>
+                    <td align="right">
+                      <p align="right">
+                      <b font-size="8pt">Auto Ingress Pty Ltd</b><br></br>
+                      ABN: 53 083 047 241 / ACN: 083 047 241<br></br>
+                      Email: accounts@autoingress.com.au<br></br>
+                      Web: autoingress.com.au<br></br>
+                    <b><i>Free Phone: 1300 138 750</i></b>
+                    </p>
+                    </td>
+                </tr>
+                <tr>
+            <td>
+                      <b>QLD:</b> 17-19 Cronulla Ct, SLACKS CREEK QLD 4127<br></br>
+                        PO Box 825, SPRINGWOOD QLD 4127<br></br>
+                      Phone (07) 3290 1500 / Fax (07) 3290 1567
+                    </td>
+                    <td>
+                      <b>NSW:</b> Unit 6, 19-26 Durian Pl, WETHERILL PARK NSW 2164<br></br>
+                        PO Box 6199, WETHERILL PARK NSW 2164<br></br>
+                      Phone (02) 9756 6590 / Fax (02) 9756 5210
+                    </td>
+                    <td>
+                      <b>VIC:</b> 37/189B South Centre Rd, TULLAMARINE VIC 3043<br></br>
+                        PO Box 300, TULLAMARINE VIC 3043<br></br>
+                      Phone (03) 9330 2220 / Fax (03) 9330 2228
+                    </td>
+                </tr>
+        </table>
+        <hr></hr>
+        <table class="page_title">
+          <tr>
+            <td></td>
+            <td class="title">${case.custevent_nxc_call_out_priority?replace("Outside of Hours","AH")} Repair Breakdown</td>
+          </tr>
+          <tr>
+            <td class="date">Created Date: ${case.startdate}</td>
+            <td class="number">#${case.casenumber}</td>
+          </tr>
+        </table>
+      </macro>
+      <macro id="ai_footer">
+        <table align="right" class="footer">
+          <tr>
+            <td>Think of Us Automatically</td>
+            <td><img class="small_logo" src="https://5238530-sb2.app.netsuite.com/core/media/media.nl?id=519828&amp;c=5238530_SB2&amp;h=6c28152e877a0af0da32" style="height: 50px; width: 50px"></img></td>
+          </tr>
+        </table>
+      </macro>
+    </macrolist>
+  </head>
+  <body header="ai_header" header-height="19%" footer="ai_footer" footer-height="3%" padding="0.5in 0.5in 0.5in 0.5in" size="A4">
 
+    <div class="case_info">
+      <table>
+        <tr>
+          <td><b>Customer:</b> ${case.custevent_nx_customer}</td>
+        </tr>
+        <tr>
+          <td><b>Site:</b> ${case.custevent_nx_case_asset}</td>
+        </tr>
+        <tr>
+          <td><b>Address:</b> ${site.custrecord_nx_asset_address_text}</td>
+        </tr>
+        <tr>
+          <td><b>Contact:</b> ${case.contact?split(":")[1]} ${case.phone} ${case.email}</td>
+        </tr>
+        <tr>
+          <td><b>Case Details:</b><br />${case.custevent_nx_case_details}</td>
+        </tr>
+      </table>
+    </div>
+
+    <#list visits as visit>
+
+      <div class="visit_info">
+        <table>
+          <tr>
+            <td><b>${visit.startdate} ${visit.assigned}</b> ${visit.custevent_nxc_arrival_time}</td>
+            <td><b>Departure Time:</b> ${visit.custevent_nxc_departure_time}</td>
+          </tr>
+          <tr>
+            <td colspan="2"><b>Additional Request Details:</b> ${visit.message}</td>
+          </tr>
+        </table>
+      </div>
+
+      <p class="break_notes"><b>Actions Taken:</b> ${visit.custevent_nx_actions_taken}</p>
+
+      <div class="break_notes">
+        <table>
+          <tr>
+            <td><b>Onsite Contact:</b> ${visit.custevent_nxc_customer_name}</td>
+            <td><b>Attending Technician:</b> ${visit.assigned}</td>
+          </tr>
+          <tr>
+            <td class="cust_sig">${visit.custevent_nxc_customer_signature}</td>
+            <td class="cust_sig">${visit.custevent_nxc_technician_signature}</td>
+          </tr>
+        </table>
+
+
+        <#assign isparts = false>
+        <#list parts as part>
+          <#if part.custcol_nx_task == visit.title>
+            <#assign isparts = true>
+          </#if>
+        </#list>
+        <#if isparts>
+          <table class="parts">
+            <tr>
+              <th>Item</th>
+              <th>Description</th>
+              <th>Quantity</th>
+            </tr>
+            <#list parts as part>
+              <#if part.custcol_nx_task == visit.title>
+                <tr>
+                  <td>${part.item}</td>
+                  <td>${part.memo}</td>
+                  <td>${part.quantity}</td>
+                </tr>
+              </#if>
+            </#list>
+          </table>
+        </#if>
+
+      </div>
+
+      <#assign istestings = false>
+      <#list testings as test>
+        <#if test.custrecord_at_nxc_task == visit.title>
+          <#assign istestings = true>
+        </#if>
+      </#list>
+      <#if istestings>
+          <table class="testings">
+            <thead>
+              <tr>
+                <th width="42%">Asset</th>
+                <th width="7%">Result</th>
+                <th width="40%">Details</th>
+                <th width="11%">Rating</th>
+              </tr>
+            </thead>
+            <#list testings as test>
+              <#if test.custrecord_at_nxc_task == visit.title>
+                <tr>
+                  <td>${(test.custrecord_at_nxc_asset?split(":"))[1]}${(test.custrecord_at_nxc_asset?split(":"))[2]}</td>
+                  <td>${test.custrecord_at_nxc_outcome}</td>
+                  <td>${test.custrecord_at_nxc_details}</td>
+                  <td>${test.custrecord_at_nxc_rating}</td>
+                </tr>
+              </#if>
+            </#list>
+          </table>
+      </#if>
+
+    </#list>  
+<#if images.imageList?has_content>
+
+<h3>Job Images</h3>
+
+<#assign NS_BASE_URL = "https://5238530-sb2.app.netsuite.com">
+<#assign col = 0>
+
+<table style="width:100%; table-layout:fixed;">
+<tr>
+
+<#list images.imageList as img>
+  <td style="width:33%; text-align:center; padding:10px;">
+    <img src="${NS_BASE_URL}${img.url}"
+         style="max-width:140px; max-height:140px;" />
+  </td>
+
+  <#assign col = col + 1>
+  <#if col == 3>
+    </tr><tr>
+    <#assign col = 0>
+  </#if>
+</#list>
+
+</tr>
+</table>
+
+</#if>
+  </body>
+</pdf>
