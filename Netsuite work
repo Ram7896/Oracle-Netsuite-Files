@@ -1,193 +1,82 @@
-/**
- * aiGenerateCaseReport.js
- * @NApiVersion 2.1
- * @NModuleScope Public
- */
-define(['N/render', 'N/record', 'N/file', 'N/search'],
-function (render, record, file, search) {
+ if (files_search.length > 0) {
+        var images = files_search.map(function (r) {
+          return {
+            values: {
+              'custevent_nx_task_number': r.getValue({ name: 'custevent_nx_task_number' }),
+              'status': r.getValue({ name: 'status' }),
+              'file.name': r.getValue({ name: 'name', join: 'file' }),
+              'file.filetype': r.getValue({ name: 'filetype', join: 'file' }),
+              'file.url': r.getValue({ name: 'url', join: 'file' }),
+              'file.description': r.getValue({ name: 'description', join: 'file' })
+            }
+          };
+        });
 
-  function generateReport(case_id, template_id) {
-
-    var renderer = render.create();
-
-    var case_rec = record.load({
-      type: record.Type.SUPPORT_CASE,
-      id: case_id
-    });
-
-    // ✅ Add Case + Site
-    renderer.addRecord({
-      templateName: 'case',
-      record: case_rec
-    });
-
-    renderer.addRecord({
-      templateName: 'site',
-      record: record.load({
-        type: 'customrecord_nx_asset',
-        id: case_rec.getValue({ fieldId: 'custevent_nx_case_asset' })
-      })
-    });
-
-    // ✅ Visits (Tasks)
-    var tasks = search.create({
-      type: search.Type.TASK,
-      filters: [
-        ['case.internalid', 'is', case_rec.id],
-        'AND',
-        ['custevent_nx_task_type', 'is', '1'],
-        'AND',
-        ['status', 'is', 'COMPLETE']
-      ],
-      columns: [
-        'internalid',
-        'title',
-        search.createColumn({ name: 'startdate', sort: search.Sort.ASC }),
-        'custevent_nxc_arrival_time',
-        'assigned',
-        'custevent_nxc_departure_time',
-        'custevent_nx_actions_taken',
-        'custevent_nxc_customer_name',
-        'custevent_nxc_customer_signature',
-        'custevent_nxc_technician_signature',
-        'message'
-      ]
-    }).run().getRange(0, 1000);
-
-    renderer.addSearchResults({
-      templateName: 'visits',
-      searchResult: tasks
-    });
-
-    // ✅ IMAGES (FIXED)
-    var images = [];
-
-    var files_search = search.create({
-      type: search.Type.TASK,
-      filters: [
-        ['case.internalid', 'anyof', case_rec.id],
-        'AND',
-        ['status', 'anyof', 'COMPLETE']
-      ],
-      columns: [
-        search.createColumn({ name: 'internalid', join: 'file' }),
-        search.createColumn({ name: 'url', join: 'file' }),
-        search.createColumn({ name: 'name', join: 'file' })
-      ]
-    }).run().getRange({ start: 0, end: 1000 });
-
-    if (files_search && files_search.length > 0) {
-
-      images = files_search.map(function (r) {
-
-        var fileId = r.getValue({ name: 'internalid', join: 'file' });
-        var fileUrl = r.getValue({ name: 'url', join: 'file' });
-
-        // 🔥 Make file public (required for PDF)
-        if (fileId) {
-          try {
-            var fileObj = file.load({ id: fileId });
+        images.forEach(function (img) {
+          log.debug("name:", img.values['file.name']);
+          var fileSearchObj = search.create({
+            type: "file",
+            filters:
+              [
+                ["name", "haskeywords", img.values['file.name']]
+              ],
+            columns:
+              [
+                search.createColumn({ name: "internalid", label: "Internal ID" })
+              ]
+          });
+          var searchResultCount = fileSearchObj.runPaged().count;
+          log.debug("fileSearchObj result count", searchResultCount);
+          fileSearchObj.run().each(function (result) {
+            var fileId = result.getValue({ name: 'internalid' });
+            log.debug("File Id:", fileId);
+            var fileObj = file.load({
+              id: fileId
+            });
+            log.debug("FileObj:", fileObj);
             fileObj.isOnline = true;
-            fileObj.save();
-          } catch (e) {
-            log.error('File Public Error', e);
-          }
-        }
+            var saved = fileObj.save();
+            log.debug("File Saved Successfully:", saved);
+          });
+        });
+        renderer.addCustomDataSource({
+          format: render.DataSource.OBJECT,
+          alias: 'images',
+          data: { imageList: images }
+        });
 
-        return {
-          file: {
-            id: fileId,
-            url: fileUrl,
-            name: r.getValue({ name: 'name', join: 'file' })
-          }
-        };
-      });
-
-      renderer.addCustomDataSource({
-        format: render.DataSource.OBJECT,
-        alias: 'images',
-        data: { imageList: images }
-      });
-    }
-
-    // ✅ TEMPLATE
-    var template_file_id = template_id || '714151';
-
-    renderer.templateContent = file.load({
-      id: template_file_id
-    }).getContents();
-
-    var report = renderer.renderAsPdf();
-
-    report.name = 'Case Report ' + case_rec.getValue('casenumber') + '.pdf';
-
-    return report;
-  }
-
-  return {
-    generateReport: generateReport
-  };
-});
-
-
-
-<?xml version="1.0"?>
-<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
-<pdf>
-<head>
-<style>
-body { font-family: Arial; font-size: 10pt; }
-
-.image_table td {
-  width: 33%;
-  text-align: center;
-  padding: 10px;
-}
-
-.image_table img {
-  width: 140px;
-  height: 140px;
-  border: 1px solid #ccc;
-}
-</style>
-</head>
-
-<body>
-
-<h2>Case Report</h2>
-
-<p><b>Case:</b> ${case.casenumber}</p>
-<p><b>Customer:</b> ${case.custevent_nx_customer}</p>
-
-<!-- ✅ IMAGES SECTION -->
 <#if images.imageList?has_content>
 
-<h3>Job Images</h3>
+<h3 style="font-size:12pt; margin-top:15px;">Job Images</h3>
 
 <#assign NS_BASE_URL = "https://5238530-sb2.app.netsuite.com">
 <#assign col = 0>
 
-<table class="image_table">
+<table style="width:100%; table-layout:fixed; border-collapse: collapse;">
 <tr>
 
-<#list images.imageList as img>
+<#list images.imageList as images_final>
+  <td style="width:33%; text-align:center; padding:8px;">
+    
+    <#-- Ensure URL is not empty -->
+    <#if images_final.values.file.url?has_content>
+      <img src="${NS_BASE_URL}${images_final.values.file.url}"
+           width="140"
+           height="140"
+           style="border:1px solid #cccccc;" />
+    <#else>
+      <p>No Image</p>
+    </#if>
 
-<td>
+  </td>
 
-<#if img.file.url?has_content>
-  <img src="${NS_BASE_URL}${img.file.url}" />
-<#else>
-  No Image
-</#if>
+  <#assign col = col + 1>
 
-</td>
-
-<#assign col = col + 1>
-
-<#if col == 3>
-</tr><tr>
-<#assign col = 0>
-</#if>
+  <#-- Break row after 3 images -->
+  <#if col == 3>
+    </tr><tr>
+    <#assign col = 0>
+  </#if>
 
 </#list>
 
@@ -195,6 +84,3 @@ body { font-family: Arial; font-size: 10pt; }
 </table>
 
 </#if>
-
-</body>
-</pdf>
