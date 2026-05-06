@@ -1,1 +1,8 @@
+var checkMemo = checkDetails.memo;
+log.debug("memo:", checkMemo);
 
+var recType = '';
+if (checkDetails.type && checkDetails.type.length > 0) {
+    recType = checkDetails.type[0].value;
+}
+log.debug("Rec Type:", recType);
