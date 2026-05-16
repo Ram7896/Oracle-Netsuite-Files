@@ -1,1 +1,21 @@
+<tr>
+    <td>Fascia Clean &amp; All Service Stickers Affixed</td>
+    <td align="center">y / n</td>
 
+    <td>
+        <#assign assetType = asset.custrecord_nx_asset_type!"" />
+        <#if assetType?has_content && assetType?lower_case?contains("automatic")>
+            Door Operator Condition Rating (1 to 5)
+        <#else>
+            Door Condition Rating
+        </#if>
+    </td>
+
+    <td align="center">
+        <#if asset.custrecord_door_condition_rating?has_content>
+            ${asset.custrecord_door_condition_rating}
+        <#else>
+            &nbsp;
+        </#if>
+    </td>
+</tr>
