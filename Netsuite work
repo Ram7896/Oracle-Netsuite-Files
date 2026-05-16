@@ -1,21 +1,193 @@
-<tr>
-    <td>Fascia Clean &amp; All Service Stickers Affixed</td>
-    <td align="center">y / n</td>
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
 
-    <td>
-        <#assign assetType = asset.custrecord_nx_asset_type!"" />
-        <#if assetType?has_content && assetType?lower_case?contains("automatic")>
-            Door Operator Condition Rating (1 to 5)
-        <#else>
-            Door Condition Rating
-        </#if>
-    </td>
+<pdf>
 
-    <td align="center">
-        <#if asset.custrecord_door_condition_rating?has_content>
-            ${asset.custrecord_door_condition_rating}
-        <#else>
-            &nbsp;
-        </#if>
-    </td>
-</tr>
+<head>
+
+<style>
+
+table.checklist {
+    font-size: 8pt;
+    font-family: Arial, Helvetica;
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+table.checklist td {
+    border: 0.5px solid gray;
+    padding: 4px;
+    vertical-align: middle;
+    word-wrap: break-word;
+}
+
+</style>
+
+<#macro checklist>
+
+<table class="checklist">
+
+    <tr>
+        <td><b>Test Performed</b></td>
+        <td width="6%" align="center"><b>Result</b></td>
+        <td><b>Test Performed</b></td>
+        <td width="6%" align="center"><b>Result</b></td>
+    </tr>
+
+    <tr>
+        <td>
+            Doors are Intact &amp; Fitted with BCA Conforming Hardware
+        </td>
+        <td align="center">y / n</td>
+
+        <td>
+            All Locks are Failsafe &amp; No Key is Required for Egress
+        </td>
+        <td align="center">y / n</td>
+    </tr>
+
+    <tr>
+        <td>
+            Inspected for Finger, Head &amp; Body Traps as per AS5007
+        </td>
+        <td align="center">y / n</td>
+
+        <td>
+            Inspected for Conforming Safety Sensors &amp; Reversing
+        </td>
+        <td align="center">y / n</td>
+    </tr>
+
+    <tr>
+        <td>
+            Doors Can be Opened with a Force No Greater than 11kg
+        </td>
+        <td align="center">y / n</td>
+
+        <td>
+            Door Leaves Aligned &amp; Floor Guides Checked
+        </td>
+        <td align="center">y / n</td>
+    </tr>
+
+    <tr>
+        <td>
+            Motor Gear-Box &amp; Drive Assembly Checked
+        </td>
+        <td align="center">y / n</td>
+
+        <td>
+            All Brackets &amp; Fixings Secure
+        </td>
+        <td align="center">y / n</td>
+    </tr>
+
+    <tr>
+        <td>
+            Electrical Components &amp; Wiring Clean &amp; Secure
+        </td>
+        <td align="center">y / n</td>
+
+        <td>
+            Failsafe &amp; Safety Egress Modes Operate &amp; Reset OK
+        </td>
+        <td align="center">Y/N</td>
+    </tr>
+
+    <tr>
+        <td>
+            Doors Are Secure when the Locking System is Engaged
+        </td>
+        <td align="center">y / n</td>
+
+        <td>
+            Battery &amp; Charging System Functioning &amp; Holds Lock Securely
+        </td>
+        <td align="center">y / n</td>
+    </tr>
+
+    <tr>
+        <td>
+            All Ingress &amp; Egress Devices Function OK
+        </td>
+        <td align="center">y / n</td>
+
+        <td>
+            All Settings Programmed to Suit Customer Requirements
+        </td>
+        <td align="center">y / n</td>
+    </tr>
+
+    <tr>
+
+        <td>
+            Fascia Clean &amp; All Service Stickers Affixed
+        </td>
+
+        <td align="center">
+            y / n
+        </td>
+
+        <td>
+
+            <#assign assetType = asset.custrecord_nx_asset_type!"" />
+
+            <#if assetType?has_content 
+                && assetType?lower_case?contains("automatic")>
+
+                Door Operator Condition Rating (1 to 5)
+
+            <#else>
+
+                Door Condition Rating
+
+            </#if>
+
+        </td>
+
+        <td align="center">
+
+            <#if asset.custrecord_door_condition_rating?has_content>
+
+                ${asset.custrecord_door_condition_rating}
+
+            <#else>
+
+                &nbsp;
+
+            </#if>
+
+        </td>
+
+    </tr>
+
+    <tr>
+
+        <td colspan="4"
+            style="border-style:none;
+                   font-size:10pt;">
+
+            <b>Overall Status:</b> Pass / Fail
+
+        </td>
+
+    </tr>
+
+</table>
+
+</#macro>
+
+</head>
+
+<body>
+
+<#list sub_assets.data as asset>
+
+    <@checklist></@checklist>
+
+</#list>
+
+</body>
+
+</pdf>
