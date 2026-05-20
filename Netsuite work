@@ -1,193 +1,60 @@
-<?xml version="1.0"?>
-<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+--Journal Line Sublists Standardized to Keyed for Reliable Line-Level Updates: Each line has a unique line key and integrations (REST, CSV, and SOAP) can reference
+these keys to update only the intended lines.
+--Improved Custom GL Lines Plug-in Functionality for Secondary Accounting Books:custom GL Lines Plug-in functionality has been improved to support transactions in 
+secondary accounting books for all subsidiaries that have GL impact.
+Custom GL Line Plug-in didn't support inter-company transactions, consequently, the plug-in only run for the primary subsidiary, and the secondary subsidiaries were 
+excluded even if the transaction had GL impact on their accounting books. This created inconsistencies between the primary and secondary accounting books.
+--Ability to Change Posting Period on Journal Entries with Pending Approval Status: Now we can change the posting period field in pending approval status this change 
+applies to Journal Entry, Intercompany Journal Entry,Advanced Intercompany Journal Entry, and Statistical Journal Entry types.
+Adavantage: which creates journal entries for vendor bills that must post to the same accounting period.Previously, users could only update the posting period after a 
+journal entry was approved. Any attempt to change the posting period on a journal entry pending approval wasn't saved, often requiring additional edits and increasing 
+the risk of posting to the wrong period.
+--Automatic Approval for Reclassification Journal Entries:NetSuite now automatically approves all reclassification journal entries, eliminating the need for manual 
+approval. This update prevents multiple reclassification journal entries from being approved, avoiding duplicate GL impacts.The Approvral box no longer displays 
+the reclassification JE and Schedule Reclassification JE Pages and the following fields disabled in netsuite for all creating and existing.(Approvalstatus,Nextapprover,
+Approved box).
+--Primary Record Filtering for Address Subrecords:Address-related subrecords (such as address and addressbook) are now filtered automatically for only those addresses 
+linked to the specific primary record you're viewing (for example, a particular customer,vendor, or employee).
+NetSuite shows only the relevant addresses that are associated with the main record, improving data accuracy and privacy while preventing over-fetching of unrelated 
+addresses. This change also helps standardize how address data appears in your searches, reports, and integrations.
+--Login Notification:Administarator role can setup the login notification in their accounts(Use NIST standards).(It means whenever user login its shows the notification 
+they need to acknowledge to login) in backend they maintaining the log audit trails(Date,time and user acknowledge and compilance message)
+--Limited Number of Certificates per Integration Record: 1.maximum of five active certificates for each integration record 2.The number of revoked certificates remains 
+unlimited.3.You can check the list of certificates on the OAuth 2.0 Client Credentials (M2M) Setup page.
+--Support for Multiple Redirect URIs:supports multiple Redirect URIs for integration records that use the OAuth 2.0 authorization code grant flow
+Manage OAuth 2.0 Client Credentials Certificates Using the Client Credentials Certificate Rotation Endpoint:you can use the certificate rotation endpoint to manage 
+certificates programmatically. This enables you to list, create, or revoke certificates used for the OAuth 2.0 client credentials flow.
+--PKCE(Proof Key Code exchange(its prevents authorization code interception by requiring a dynamic code_challenge (using S256 method) and code_verifier during token exchange.))
+Required for OAuth 2.0 Authorization Code Grant Flow in NetSuite 2027.1:Currently, PKCE is an optional security extension for the OAuth 2.0 authorization code 
+grant flow that uses the confidential client. PKCE is only required with the use of public client.As Netsuite 2027.1 upgrade heppen newly created integration must 
+include the PKCE parameters in their requests to the authorization and token endpoints.(Both public and private clients).
+--End of Support for New Integrations Using the Tokenbased Authentication (TBA) feature in 2027.1:Support ends for oauth 1.0 instead of this we need to use oauth 2.0 
+before 2027.1.
+--SaaS Fields Available for Items Import:supports the following software-as-a-service (SaaS) fields for accounts with the SaaS Metric Reporting feature enabled.
+(SaaS Metric Tracking - It is a Boolean field, and if the value is set to true, the next two fields become available.SaaS Metric Start Date - Required field.SaaS Metric 
+End Date - Optional field.)
+--New Time-Off Permission:to provide better control over employee access to the Time-Off Request records and the Time-Off portlet in the Employee Center.
+None: Restricts users so they can't create, view, cancel, or access Time-Off Request records or the
+Time-Off portlet. This level can be assigned only to Employee Center roles.
+View: Allows users to view Time-Off Request records and the Time-Off portlet. Users, however, can't
+create or cancel requests. Users with the Chief People Officer (CPO) or Human Resources Generalist
+(HRG) role and supervisors with this level can view requests but can't approve or reject them.
+Edit: Allows users to view and create their own time-off requests from both the record and the TimeOff portlet. Users can cancel future-dated requests. CPO or HRG roles and supervisors with this level
+can approve and reject time-off requests.
+Advanced Pricing: Transactions and Reports(SO,Inv,estimate,cs,cr,return Autori):When you try to add item in transaction based on customer its auto checking the price 
+rules in case found accordingly its updating otherwise its whosing default value.To use this feature(Setup > Company > Enable Features Sales tab enable Adavance pricing.
+You can manage rules Lists > Accounting > Price Rules. Manage price levels Setup > Lists > Accounting.
 
-<pdf>
 
-<head>
 
-<style>
 
-table.checklist {
-    font-size: 8pt;
-    font-family: Arial, Helvetica;
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
 
-table.checklist td {
-    border: 0.5px solid gray;
-    padding: 4px;
-    vertical-align: middle;
-    word-wrap: break-word;
-}
 
-</style>
 
-<#macro checklist>
 
-<table class="checklist">
 
-    <tr>
-        <td><b>Test Performed</b></td>
-        <td width="6%" align="center"><b>Result</b></td>
-        <td><b>Test Performed</b></td>
-        <td width="6%" align="center"><b>Result</b></td>
-    </tr>
 
-    <tr>
-        <td>
-            Doors are Intact &amp; Fitted with BCA Conforming Hardware
-        </td>
-        <td align="center">y / n</td>
 
-        <td>
-            All Locks are Failsafe &amp; No Key is Required for Egress
-        </td>
-        <td align="center">y / n</td>
-    </tr>
 
-    <tr>
-        <td>
-            Inspected for Finger, Head &amp; Body Traps as per AS5007
-        </td>
-        <td align="center">y / n</td>
 
-        <td>
-            Inspected for Conforming Safety Sensors &amp; Reversing
-        </td>
-        <td align="center">y / n</td>
-    </tr>
 
-    <tr>
-        <td>
-            Doors Can be Opened with a Force No Greater than 11kg
-        </td>
-        <td align="center">y / n</td>
-
-        <td>
-            Door Leaves Aligned &amp; Floor Guides Checked
-        </td>
-        <td align="center">y / n</td>
-    </tr>
-
-    <tr>
-        <td>
-            Motor Gear-Box &amp; Drive Assembly Checked
-        </td>
-        <td align="center">y / n</td>
-
-        <td>
-            All Brackets &amp; Fixings Secure
-        </td>
-        <td align="center">y / n</td>
-    </tr>
-
-    <tr>
-        <td>
-            Electrical Components &amp; Wiring Clean &amp; Secure
-        </td>
-        <td align="center">y / n</td>
-
-        <td>
-            Failsafe &amp; Safety Egress Modes Operate &amp; Reset OK
-        </td>
-        <td align="center">Y/N</td>
-    </tr>
-
-    <tr>
-        <td>
-            Doors Are Secure when the Locking System is Engaged
-        </td>
-        <td align="center">y / n</td>
-
-        <td>
-            Battery &amp; Charging System Functioning &amp; Holds Lock Securely
-        </td>
-        <td align="center">y / n</td>
-    </tr>
-
-    <tr>
-        <td>
-            All Ingress &amp; Egress Devices Function OK
-        </td>
-        <td align="center">y / n</td>
-
-        <td>
-            All Settings Programmed to Suit Customer Requirements
-        </td>
-        <td align="center">y / n</td>
-    </tr>
-
-    <tr>
-
-        <td>
-            Fascia Clean &amp; All Service Stickers Affixed
-        </td>
-
-        <td align="center">
-            y / n
-        </td>
-
-        <td>
-
-            <#assign assetType = asset.custrecord_nx_asset_type!"" />
-
-            <#if assetType?has_content 
-                && assetType?lower_case?contains("automatic")>
-
-                Door Operator Condition Rating (1 to 5)
-
-            <#else>
-
-                Door Condition Rating
-
-            </#if>
-
-        </td>
-
-        <td align="center">
-
-            <#if asset.custrecord_door_condition_rating?has_content>
-
-                ${asset.custrecord_door_condition_rating}
-
-            <#else>
-
-                &nbsp;
-
-            </#if>
-
-        </td>
-
-    </tr>
-
-    <tr>
-
-        <td colspan="4"
-            style="border-style:none;
-                   font-size:10pt;">
-
-            <b>Overall Status:</b> Pass / Fail
-
-        </td>
-
-    </tr>
-
-</table>
-
-</#macro>
-
-</head>
-
-<body>
-
-<#list sub_assets.data as asset>
-
-    <@checklist></@checklist>
-
-</#list>
-
-</body>
-
-</pdf>
