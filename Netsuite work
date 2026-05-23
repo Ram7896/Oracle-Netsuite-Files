@@ -7,15 +7,22 @@ define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
     function setDisplay(form, fieldIds, displayType) {
         fieldIds.forEach(function (id) {
             var field = form.getField({ id: id });
+
             if (field) {
-                field.updateDisplayType({ displayType: displayType });
+                field.updateDisplayType({
+                    displayType: displayType
+                });
             }
         });
     }
 
     function beforeLoad(context) {
+
         try {
-            if (context.type !== context.UserEventType.EDIT) return;
+
+            if (context.type !== context.UserEventType.EDIT) {
+                return;
+            }
 
             var record = context.newRecord;
             var form = context.form;
@@ -33,6 +40,7 @@ define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
                 : serverWidget.FieldDisplayType.DISABLED;
 
             const FIELD_MAP = {
+
                 '5': [
                     'custpage_2663_entity_file_format',
                     'custrecord_2663_entity_bank_type',
@@ -40,12 +48,14 @@ define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
                     'custpage_eft_custrecord_2663_entity_branch_no',
                     'custpage_eft_custrecord_2663_entity_acct_name'
                 ],
+
                 '375': [
                     'custpage_2663_entity_file_format',
                     'custrecord_2663_entity_bank_type',
                     'custpage_eft_custrecord_2663_entity_iban',
                     'custpage_eft_custrecord_2663_entity_bic'
                 ],
+
                 '376': [
                     'custpage_2663_entity_file_format',
                     'custrecord_2663_entity_bank_type',
@@ -55,6 +65,7 @@ define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
                     'custpage_eft_custrecord_2663_entity_bic',
                     'custpage_eft_custrecord1537'
                 ],
+
                 '373': [
                     'custpage_2663_entity_file_format',
                     'custrecord_2663_entity_bank_type',
@@ -65,7 +76,12 @@ define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
             };
 
             if (FIELD_MAP[bankFileFormat]) {
-                setDisplay(form, FIELD_MAP[bankFileFormat], displayType);
+
+                setDisplay(
+                    form,
+                    FIELD_MAP[bankFileFormat],
+                    displayType
+                );
             }
 
             log.debug('Display Type Applied', {
@@ -74,6 +90,7 @@ define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
             });
 
         } catch (error) {
+
             log.error({
                 title: 'Error in beforeLoad',
                 details: error
@@ -81,7 +98,53 @@ define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
         }
     }
 
+    function beforeSubmit(context) {
+
+        try {
+
+            // Execute only on EDIT
+            if (context.type !== context.UserEventType.EDIT) {
+                return;
+            }
+
+            var newRecord = context.newRecord;
+            var oldRecord = context.oldRecord;
+
+            // Approval checkbox field
+            var APPROVED_FIELD = 'custrecord_bank_details_checkbox';
+
+            // Old approved value
+            var oldApproved = oldRecord.getValue({
+                fieldId: APPROVED_FIELD
+            });
+
+            // If already approved
+            if (oldApproved === true) {
+
+                // Reset approval checkbox
+                newRecord.setValue({
+                    fieldId: APPROVED_FIELD,
+                    value: false
+                });
+
+                log.debug({
+                    title: 'Approval Reset',
+                    details: 'Approval checkbox reset to false after edit'
+                });
+            }
+
+        } catch (error) {
+
+            log.error({
+                title: 'Error in beforeSubmit',
+                details: error
+            });
+        }
+    }
+
     return {
-        beforeLoad: beforeLoad
+        beforeLoad: beforeLoad,
+        beforeSubmit: beforeSubmit
     };
+
 });
