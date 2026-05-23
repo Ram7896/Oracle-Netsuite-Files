@@ -2,52 +2,86 @@
  * @NApiVersion 2.1
  * @NScriptType UserEventScript
  */
+define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
 
-define([], () => {
+    function setDisplay(form, fieldIds, displayType) {
+        fieldIds.forEach(function (id) {
+            var field = form.getField({ id: id });
+            if (field) {
+                field.updateDisplayType({ displayType: displayType });
+            }
+        });
+    }
 
-    const beforeSubmit = (context) => {
-
+    function beforeLoad(context) {
         try {
+            if (context.type !== context.UserEventType.EDIT) return;
 
-            // Execute only on EDIT
-            if (context.type !== context.UserEventType.EDIT) {
-                return;
-            }
+            var record = context.newRecord;
+            var form = context.form;
 
-            const newRecord = context.newRecord;
-            const oldRecord = context.oldRecord;
-
-            // Approval checkbox field
-            const APPROVED_FIELD = 'custrecord_bank_approved';
-
-            // Old approved value
-            const oldApproved = oldRecord.getValue({
-                fieldId: APPROVED_FIELD
+            var bankId = record.getValue({
+                fieldId: 'custrecord_bank_details_checkbox'
             });
 
-            // If record was already approved
-            if (oldApproved === true) {
+            var bankFileFormat = record.getValue({
+                fieldId: 'custpage_2663_entity_file_format'
+            });
 
-                // Reset approval checkbox
-                newRecord.setValue({
-                    fieldId: APPROVED_FIELD,
-                    value: false
-                });
+            var displayType = bankId
+                ? serverWidget.FieldDisplayType.NORMAL
+                : serverWidget.FieldDisplayType.DISABLED;
 
+            const FIELD_MAP = {
+                '5': [
+                    'custpage_2663_entity_file_format',
+                    'custrecord_2663_entity_bank_type',
+                    'custpage_eft_custrecord_2663_entity_acct_no',
+                    'custpage_eft_custrecord_2663_entity_branch_no',
+                    'custpage_eft_custrecord_2663_entity_acct_name'
+                ],
+                '375': [
+                    'custpage_2663_entity_file_format',
+                    'custrecord_2663_entity_bank_type',
+                    'custpage_eft_custrecord_2663_entity_iban',
+                    'custpage_eft_custrecord_2663_entity_bic'
+                ],
+                '376': [
+                    'custpage_2663_entity_file_format',
+                    'custrecord_2663_entity_bank_type',
+                    'custpage_eft_custrecord_2663_entity_acct_no',
+                    'custpage_eft_custrecord_2663_entity_iban',
+                    'custpage_eft_custrecord_2663_entity_bban',
+                    'custpage_eft_custrecord_2663_entity_bic',
+                    'custpage_eft_custrecord1537'
+                ],
+                '373': [
+                    'custpage_2663_entity_file_format',
+                    'custrecord_2663_entity_bank_type',
+                    'custpage_eft_custrecord_2663_entity_acct_no',
+                    'custpage_eft_custrecord_2663_entity_branch_no',
+                    'custpage_eft_custrecord_2663_entity_country'
+                ]
+            };
+
+            if (FIELD_MAP[bankFileFormat]) {
+                setDisplay(form, FIELD_MAP[bankFileFormat], displayType);
             }
 
-        } catch (e) {
+            log.debug('Display Type Applied', {
+                format: bankFileFormat,
+                enabled: bankId
+            });
 
+        } catch (error) {
             log.error({
-                title: 'Error resetting approval checkbox',
-                details: e
+                title: 'Error in beforeLoad',
+                details: error
             });
-
         }
-    };
+    }
 
     return {
-        beforeSubmit
+        beforeLoad: beforeLoad
     };
-
 });
