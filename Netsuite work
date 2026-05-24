@@ -2,29 +2,46 @@
 
 <h3 style="font-size:12pt; margin-top:15px;">Job Images</h3>
 
-<table style="width: 100%; table-layout:fixed; border-collapse:separate; border-spacing:10px;">
-  <#assign col = 0>
-  <tr>
+<table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:8px;">
 
-  <#list images.imageList as img>
-    <td align="center" style="width:33%;">
-      <img src="${img.url?replace('&','&amp;')}" width="200" height="150" style="border:1px solid #cccccc;"/><br/>
-      <p style="font-size:9pt; margin-top:5px;">
-        ${img.description?html}
-      </p>
-    </td>
+    <#assign col = 0>
 
-    <#assign col = col + 1>
+    <#list images.imageList as img>
 
-    <#if col == 3>
-      </tr>
-      <tr>
-      <#assign col = 0>
+        <#if col == 0>
+            <tr>
+        </#if>
+
+        <td align="center" valign="top" style="width:33%; padding:5px;">
+
+            <img 
+                src="${img.url?replace('&','&amp;')}" 
+                style="width:200px; height:150px; border:1px solid #cccccc;"
+            />
+
+            <div style="font-size:9pt; margin-top:5px; text-align:left; word-wrap:break-word;">
+                ${img.description?html}
+            </div>
+
+        </td>
+
+        <#assign col = col + 1>
+
+        <#if col == 3>
+            </tr>
+            <#assign col = 0>
+        </#if>
+
+    </#list>
+
+    <#-- Fill empty columns in last row -->
+    <#if col != 0>
+        <#list col..2 as i>
+            <td style="width:33%;"></td>
+        </#list>
+        </tr>
     </#if>
 
-  </#list>
-
-  </tr>
 </table>
 
 </#if>
