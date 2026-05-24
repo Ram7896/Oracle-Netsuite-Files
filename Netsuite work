@@ -1,150 +1,41 @@
-/**
- * @NApiVersion 2.1
- * @NScriptType UserEventScript
- */
-define(['N/ui/serverWidget', 'N/log'], function (serverWidget, log) {
+ var files_search = search.create({
+        type: search.Type.TASK,
+        filters: [
+          ['case.internalid', 'anyof', parseInt(case_rec.id)],
+          'AND',
+          ['status', 'anyof', 'COMPLETE']
+        ],
+        columns: [
+          search.createColumn({ name: 'url', join: 'file' }),
+          search.createColumn({ name: 'description', join: 'file' }),
+        ]
+      }).run().getRange({ start: 0, end: 1000 });
 
-    function setDisplay(form, fieldIds, displayType) {
-        fieldIds.forEach(function (id) {
-            var field = form.getField({ id: id });
+      if (files_search.length > 0) {
 
-            if (field) {
-                field.updateDisplayType({
-                    displayType: displayType
-                });
-            }
-        });
-    }
+        var images = files_search
+          .map(function (r) {
+            var url = r.getValue({ name: 'url', join: 'file' });
+            var description = r.getValue({ name: 'description', join: 'file' });
 
-    function beforeLoad(context) {
-
-        try {
-
-            if (context.type !== context.UserEventType.EDIT) {
-                return;
-            }
-
-            var record = context.newRecord;
-            var form = context.form;
-
-            var bankId = record.getValue({
-                fieldId: 'custrecord_bank_details_checkbox'
-            });
-
-            var bankFileFormat = record.getValue({
-                fieldId: 'custpage_2663_entity_file_format'
-            });
-
-            var displayType = bankId
-                ? serverWidget.FieldDisplayType.NORMAL
-                : serverWidget.FieldDisplayType.DISABLED;
-
-            const FIELD_MAP = {
-
-                '5': [
-                    'custpage_2663_entity_file_format',
-                    'custrecord_2663_entity_bank_type',
-                    'custpage_eft_custrecord_2663_entity_acct_no',
-                    'custpage_eft_custrecord_2663_entity_branch_no',
-                    'custpage_eft_custrecord_2663_entity_acct_name'
-                ],
-
-                '375': [
-                    'custpage_2663_entity_file_format',
-                    'custrecord_2663_entity_bank_type',
-                    'custpage_eft_custrecord_2663_entity_iban',
-                    'custpage_eft_custrecord_2663_entity_bic'
-                ],
-
-                '376': [
-                    'custpage_2663_entity_file_format',
-                    'custrecord_2663_entity_bank_type',
-                    'custpage_eft_custrecord_2663_entity_acct_no',
-                    'custpage_eft_custrecord_2663_entity_iban',
-                    'custpage_eft_custrecord_2663_entity_bban',
-                    'custpage_eft_custrecord_2663_entity_bic',
-                    'custpage_eft_custrecord1537'
-                ],
-
-                '373': [
-                    'custpage_2663_entity_file_format',
-                    'custrecord_2663_entity_bank_type',
-                    'custpage_eft_custrecord_2663_entity_acct_no',
-                    'custpage_eft_custrecord_2663_entity_branch_no',
-                    'custpage_eft_custrecord_2663_entity_country'
-                ]
+            return {
+              url: url,
+              description: description
             };
+          })
+          .filter(function (img) {
+            return img.url;
+            return img.description;
+          });
+          log.debug("Images:",images);
+        renderer.addCustomDataSource({
+          format: render.DataSource.OBJECT,
+          alias: 'images',
+          data: {
+            imageList: images
+          }
+        });
 
-            if (FIELD_MAP[bankFileFormat]) {
-
-                setDisplay(
-                    form,
-                    FIELD_MAP[bankFileFormat],
-                    displayType
-                );
-            }
-
-            log.debug('Display Type Applied', {
-                format: bankFileFormat,
-                enabled: bankId
-            });
-
-        } catch (error) {
-
-            log.error({
-                title: 'Error in beforeLoad',
-                details: error
-            });
-        }
-    }
-
-    function beforeSubmit(context) {
-
-        try {
-
-            // Execute only on EDIT
-            if (context.type !== context.UserEventType.EDIT) {
-                return;
-            }
-
-            var newRecord = context.newRecord;
-            var oldRecord = context.oldRecord;
-
-            // Approval checkbox field
-            var APPROVED_FIELD = 'custrecord_bank_details_checkbox';
-
-            // Old approved value
-            var oldApproved = oldRecord.getValue({
-                fieldId: APPROVED_FIELD
-            });
-
-            // If already approved
-            if (oldApproved === true) {
-
-                // Reset approval checkbox
-                newRecord.setValue({
-                    fieldId: APPROVED_FIELD,
-                    value: false
-                });
-
-                log.debug({
-                    title: 'Approval Reset',
-                    details: 'Approval checkbox reset to false after edit'
-                });
-            }
-
-        } catch (error) {
-
-            log.error({
-                title: 'Error in beforeSubmit',
-                details: error
-            });
-        }
-    }
-
-    return {
-        beforeLoad: beforeLoad,
-        beforeSubmit: beforeSubmit
-    };
-
-});
+      } else {
+        log.debug("Task is not started");
+      } [{"url":"/core/media/media.nl?id=14822004&c=5238530_SB2&h=wt8WdHwMC-d-IFefEl0LTQV-Ohb2Bj2M8PahDF8Byz6wUhHZ","description":"S/n 24921 Basement entry, end pulley wheel cracked. \n\n{\"date\":1760404214033}"},{"url":"/core/media/media.nl?id=14821142&c=5238530_SB2&h=hMIEuxk6glmTBxoG4hv-M3SIAfA4HugHC80YXpZjiCjvDM2P","description":"S/N 25060 entry L2 push button not working \n\n{\"date\":1760396721713}"},{"url":"/core/media/media.nl?id=14821160&c=5238530_SB2&h=b1xGcqDXuS_3jbpiTg2qLu_u82G1yYPnIGWuG1dCs7FAwFOs","description":"After S/N 25060 L2 entry to library \n\n{\"date\":1760397404877}"},{"url":"/core/media/media.nl?id=14822238&c=5238530_SB2&h=zbKetj5T4IFcbukTnRO7hzm4Ex_80OXj5iPVKFvVDdQQZrXM","description":"S/N 24921 after replaced end pulley wheel \n\n{\"date\":1760405720092}"}]
