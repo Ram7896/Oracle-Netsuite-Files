@@ -1,8 +1,10 @@
 <#if images.imageList?has_content>
 
-<h3 style="font-size:12pt; margin-top:15px;">Job Images</h3>
+<h3 style="font-size:14pt; font-weight:bold; margin-bottom:10px;">
+    Job Images
+</h3>
 
-<table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:10px;">
+<table width="100%" style="table-layout:fixed; border-collapse:separate; border-spacing:10px;">
 
     <#assign col = 0>
 
@@ -12,27 +14,36 @@
             <tr>
         </#if>
 
-        <td align="center" valign="top" style="width:33%; padding:5px;">
+        <td width="33%" valign="top" align="center">
 
-            <!-- IMAGE -->
-            <img 
-                src="${img.url?replace('&','&amp;')}" 
-                width="200" 
-                height="150"
-                style="border:1px solid #cccccc;"
-            />
+            <table width="100%" style="border-collapse:collapse;">
 
-            <!-- DESCRIPTION -->
-            <div style="
-                font-size:9pt;
-                margin-top:6px;
-                width:200px;
-                text-align:left;
-                word-wrap:break-word;
-                line-height:12px;
-            ">
-                ${img.description?html}
-            </div>
+                <!-- IMAGE -->
+                <tr>
+                    <td align="center">
+                        <img
+                            src="${img.url?replace('&','&amp;')}"
+                            width="220"
+                            height="160"
+                            style="border:1px solid #cccccc;"
+                        />
+                    </td>
+                </tr>
+
+                <!-- DESCRIPTION -->
+                <tr>
+                    <td style="
+                        font-size:9pt;
+                        padding-top:5px;
+                        text-align:left;
+                        word-wrap:break-word;
+                        line-height:12px;
+                    ">
+                        ${img.description!''?html}
+                    </td>
+                </tr>
+
+            </table>
 
         </td>
 
@@ -45,10 +56,10 @@
 
     </#list>
 
-    <!-- EMPTY CELLS -->
+    <!-- Empty cells for last row -->
     <#if col != 0>
         <#list col..2 as i>
-            <td style="width:33%;"></td>
+            <td width="33%"></td>
         </#list>
         </tr>
     </#if>
