@@ -1,41 +1,93 @@
- var files_search = search.create({
-        type: search.Type.TASK,
-        filters: [
-          ['case.internalid', 'anyof', parseInt(case_rec.id)],
-          'AND',
-          ['status', 'anyof', 'COMPLETE']
-        ],
-        columns: [
-          search.createColumn({ name: 'url', join: 'file' }),
-          search.createColumn({ name: 'description', join: 'file' }),
-        ]
-      }).run().getRange({ start: 0, end: 1000 });
+var files_search = search.create({
+    type: search.Type.TASK,
+    filters: [
+        ['case.internalid', 'anyof', parseInt(case_rec.id)],
+        'AND',
+        ['status', 'anyof', 'COMPLETE']
+    ],
+    columns: [
+        search.createColumn({
+            name: 'url',
+            join: 'file'
+        }),
+        search.createColumn({
+            name: 'description',
+            join: 'file'
+        })
+    ]
+}).run().getRange({
+    start: 0,
+    end: 1000
+});
 
-      if (files_search.length > 0) {
+if (files_search && files_search.length > 0) {
 
-        var images = files_search
-          .map(function (r) {
-            var url = r.getValue({ name: 'url', join: 'file' });
-            var description = r.getValue({ name: 'description', join: 'file' });
+    var images = files_search.map(function (r) {
 
-            return {
-              url: url,
-              description: description
-            };
-          })
-          .filter(function (img) {
-            return img.url;
-            return img.description;
-          });
-          log.debug("Images:",images);
-        renderer.addCustomDataSource({
-          format: render.DataSource.OBJECT,
-          alias: 'images',
-          data: {
-            imageList: images
-          }
+        var url = r.getValue({
+            name: 'url',
+            join: 'file'
         });
 
-      } else {
-        log.debug("Task is not started");
-      } [{"url":"/core/media/media.nl?id=14822004&c=5238530_SB2&h=wt8WdHwMC-d-IFefEl0LTQV-Ohb2Bj2M8PahDF8Byz6wUhHZ","description":"S/n 24921 Basement entry, end pulley wheel cracked. \n\n{\"date\":1760404214033}"},{"url":"/core/media/media.nl?id=14821142&c=5238530_SB2&h=hMIEuxk6glmTBxoG4hv-M3SIAfA4HugHC80YXpZjiCjvDM2P","description":"S/N 25060 entry L2 push button not working \n\n{\"date\":1760396721713}"},{"url":"/core/media/media.nl?id=14821160&c=5238530_SB2&h=b1xGcqDXuS_3jbpiTg2qLu_u82G1yYPnIGWuG1dCs7FAwFOs","description":"After S/N 25060 L2 entry to library \n\n{\"date\":1760397404877}"},{"url":"/core/media/media.nl?id=14822238&c=5238530_SB2&h=zbKetj5T4IFcbukTnRO7hzm4Ex_80OXj5iPVKFvVDdQQZrXM","description":"S/N 24921 after replaced end pulley wheel \n\n{\"date\":1760405720092}"}]
+        var description = r.getValue({
+            name: 'description',
+            join: 'file'
+        }) || '';
+
+        // Remove JSON date part
+        description = description.replace(/\{.*?\}/g, '').trim();
+
+        // Add domain if needed
+        if (url && url.indexOf('http') === -1) {
+            url = 'https://5238530-sb2.app.netsuite.com' + url;
+        }
+
+        return {
+            url: url,
+            description: description
+        };
+
+    }).filter(function (img) {
+
+        return img.url && img.description;
+
+    });
+
+    log.debug({
+        title: 'Images',
+        details: images
+    });
+
+    renderer.addCustomDataSource({
+        format: render.DataSource.OBJECT,
+        alias: 'images',
+        data: {
+            imageList: images
+        }
+    });
+
+} else {
+
+    log.debug({
+        title: 'INFO',
+        details: 'Task is not started'
+    });
+
+}
+
+
+<#list images.imageList as img>
+    <table style="width: 100%;">
+        <tr>
+            <td align="center">
+                <img src="${img.url}" width="220px" height="180px"/>
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                ${img.description}
+            </td>
+        </tr>
+    </table>
+</#list>
+
