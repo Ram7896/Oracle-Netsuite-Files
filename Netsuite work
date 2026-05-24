@@ -2,7 +2,7 @@
 
 <h3 style="font-size:12pt; margin-top:15px;">Job Images</h3>
 
-<table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:8px;">
+<table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:10px;">
 
     <#assign col = 0>
 
@@ -14,12 +14,23 @@
 
         <td align="center" valign="top" style="width:33%; padding:5px;">
 
+            <!-- IMAGE -->
             <img 
                 src="${img.url?replace('&','&amp;')}" 
-                style="width:200px; height:150px; border:1px solid #cccccc;"
+                width="200" 
+                height="150"
+                style="border:1px solid #cccccc;"
             />
 
-            <div style="font-size:9pt; margin-top:5px; text-align:left; word-wrap:break-word;">
+            <!-- DESCRIPTION -->
+            <div style="
+                font-size:9pt;
+                margin-top:6px;
+                width:200px;
+                text-align:left;
+                word-wrap:break-word;
+                line-height:12px;
+            ">
                 ${img.description?html}
             </div>
 
@@ -34,7 +45,7 @@
 
     </#list>
 
-    <#-- Fill empty columns in last row -->
+    <!-- EMPTY CELLS -->
     <#if col != 0>
         <#list col..2 as i>
             <td style="width:33%;"></td>
