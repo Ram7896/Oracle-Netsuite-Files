@@ -1,69 +1,69 @@
-<#if images.imageList?has_content>
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ScheduledScript
+ */
 
-<h3 style="font-size:14pt; font-weight:bold; margin-bottom:10px;">
-    Job Images
-</h3>
+define(['N/query', 'N/log', 'N/file'], (query, log, file) => {
 
-<table width="100%" style="table-layout:fixed; border-collapse:separate; border-spacing:10px;">
+    const execute = () => {
 
-    <#assign col = 0>
+        const suiteQL = `
+            SELECT
+                ptll.nexttype        AS dcf_doc_type,
+                ptll.nextdoc         AS dcf_doc_id,
+                ptll.previousdoc     AS applied_to_doc_id,
+                ptll.previoustype    AS previous_doc_type,
+                ptll.foreignamount   AS applied_amount,
+                t.id                 AS transaction_id,
+                t.tranid             AS transaction_number,
+                t.type               AS transaction_type,
+                t.trandate           AS transaction_date,
+                BUILTIN.DF(t.status) AS transaction_status,
+                t.currency           AS currency_id,
+                t.exchangerate
+            FROM previoustransactionlinelink ptll
+            LEFT JOIN transaction t
+                ON t.id = ptll.previousdoc
+            WHERE ptll.nexttype IN ('CustRfnd','Deposit','CustPymt','VendPymt','Journal')
+            AND t.type = 'CustInvc'
+        `;
 
-    <#list images.imageList as img>
+        const results = query.runSuiteQL({ query: suiteQL }).asMappedResults();
 
-        <#if col == 0>
-            <tr>
-        </#if>
+        log.audit('TOTAL ROWS', results.length);
 
-        <td width="33%" valign="top" align="center">
+        if (!results.length) return;
 
-            <table width="100%" style="border-collapse:collapse;">
+        let csv = '';
 
-                <!-- IMAGE -->
-                <tr>
-                    <td align="center">
-                        <img
-                            src="${img.url?replace('&','&amp;')}"
-                            width="220"
-                            height="160"
-                            style="border:1px solid #cccccc;"
-                        />
-                    </td>
-                </tr>
+        const headers = Object.keys(results[0]).map(h =>
+            h.replace(/_/g, ' ').toUpperCase()
+        );
 
-                <!-- DESCRIPTION -->
-                <tr>
-                    <td style="
-                        font-size:9pt;
-                        padding-top:5px;
-                        text-align:left;
-                        word-wrap:break-word;
-                        line-height:12px;
-                    ">
-                        ${img.description!''?html}
-                    </td>
-                </tr>
+        csv += headers.join(',') + '\n';
 
-            </table>
+        results.forEach(row => {
+            const line = Object.keys(row).map(k => {
+                let v = row[k];
+                if (!v) v = '';
+                return `"${String(v).replace(/"/g, '""')}"`;
+            }).join(',');
 
-        </td>
+            csv += line + '\n';
+        });
 
-        <#assign col = col + 1>
+        const fileObj = file.create({
+            name: 'FAST_EXPORT_' + Date.now() + '.csv',
+            fileType: file.Type.CSV,
+            contents: csv,
+            folder: 58032
+        });
 
-        <#if col == 3>
-            </tr>
-            <#assign col = 0>
-        </#if>
+        const fileId = fileObj.save();
 
-    </#list>
+        log.audit('CSV CREATED', fileId);
+    };
 
-    <!-- Empty cells for last row -->
-    <#if col != 0>
-        <#list col..2 as i>
-            <td width="33%"></td>
-        </#list>
-        </tr>
-    </#if>
+    return { execute };
 
-</table>
-
-</#if>
+});
