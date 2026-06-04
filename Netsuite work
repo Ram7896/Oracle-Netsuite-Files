@@ -1,69 +1,49 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType ScheduledScript
+ * @NScriptType UserEventScript
  */
+define(['N/error', 'N/runtime'], (error, runtime) => {
 
-define(['N/query', 'N/log', 'N/file'], (query, log, file) => {
+    const ALLOWED_METHODS = ['26920', '26921'];
+    const TARGET_VENDOR = '87625';
 
-    const execute = () => {
+    const beforeSubmit = (context) => {
 
-        const suiteQL = `
-            SELECT
-                ptll.nexttype        AS dcf_doc_type,
-                ptll.nextdoc         AS dcf_doc_id,
-                ptll.previousdoc     AS applied_to_doc_id,
-                ptll.previoustype    AS previous_doc_type,
-                ptll.foreignamount   AS applied_amount,
-                t.id                 AS transaction_id,
-                t.tranid             AS transaction_number,
-                t.type               AS transaction_type,
-                t.trandate           AS transaction_date,
-                BUILTIN.DF(t.status) AS transaction_status,
-                t.currency           AS currency_id,
-                t.exchangerate
-            FROM previoustransactionlinelink ptll
-            LEFT JOIN transaction t
-                ON t.id = ptll.previousdoc
-            WHERE ptll.nexttype IN ('CustRfnd','Deposit','CustPymt','VendPymt','Journal')
-            AND t.type = 'CustInvc'
-        `;
+        const execContext = runtime.executionContext;
 
-        const results = query.runSuiteQL({ query: suiteQL }).asMappedResults();
+        if (
+            execContext !== runtime.ContextType.USER_INTERFACE &&
+            execContext !== runtime.ContextType.CSV_IMPORT
+        ) return;
 
-        log.audit('TOTAL ROWS', results.length);
+        if (
+            context.type !== context.UserEventType.CREATE &&
+            context.type !== context.UserEventType.EDIT
+        ) return;
 
-        if (!results.length) return;
+        const rec = context.newRecord;
 
-        let csv = '';
+        const vendorId = rec.getValue({ fieldId: 'entity' });
+        const shipMethod = rec.getValue({ fieldId: 'shipmethod' });
 
-        const headers = Object.keys(results[0]).map(h =>
-            h.replace(/_/g, ' ').toUpperCase()
-        );
+       log.debug({
+                    title: 'PO Validation Details',
+                    details: {
+                        executionContext: execContext,
+                        vendorId: vendorId,
+                        shippingMethod: shipMethod
+                    }
+                });
+        if (String(vendorId) !== TARGET_VENDOR) return;
 
-        csv += headers.join(',') + '\n';
+        if (!ALLOWED_METHODS.includes(String(shipMethod))) {
 
-        results.forEach(row => {
-            const line = Object.keys(row).map(k => {
-                let v = row[k];
-                if (!v) v = '';
-                return `"${String(v).replace(/"/g, '""')}"`;
-            }).join(',');
-
-            csv += line + '\n';
-        });
-
-        const fileObj = file.create({
-            name: 'FAST_EXPORT_' + Date.now() + '.csv',
-            fileType: file.Type.CSV,
-            contents: csv,
-            folder: 58032
-        });
-
-        const fileId = fileObj.save();
-
-        log.audit('CSV CREATED', fileId);
+            throw error.create({
+                name: 'INVALID_SHIP_METHOD_ERR',
+                message: 'Shipping Method must be either 11 Corp Order or 18 EARLY Corp Order.',
+                notifyOff: false
+            });
+        }
     };
-
-    return { execute };
-
+    return { beforeSubmit };
 });
