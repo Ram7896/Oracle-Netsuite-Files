@@ -1,49 +1,101 @@
 /**
  * @NApiVersion 2.1
- * @NScriptType UserEventScript
+ * @NScriptType ClientScript
  */
-define(['N/error', 'N/runtime'], (error, runtime) => {
+define(['N/currentRecord', 'N/ui/dialog'], function (currentRecord, dialog) {
 
-    const ALLOWED_METHODS = ['26920', '26921'];
-    const TARGET_VENDOR = '87625';
+    var VENDOR_ID = 87625; // JohnStone
+    var FORM_NAME = 'RWD Purchase Order – JohnStone';
 
-    const beforeSubmit = (context) => {
+    // Location IDs
+    var VALID_LOCATIONS = [2, 7];
 
-        const execContext = runtime.executionContext;
+    // Shipping Method IDs
+    var VALID_SHIPMETHODS = [26920, 26921];
 
-        if (
-            execContext !== runtime.ContextType.USER_INTERFACE &&
-            execContext !== runtime.ContextType.CSV_IMPORT
-        ) return;
 
-        if (
-            context.type !== context.UserEventType.CREATE &&
-            context.type !== context.UserEventType.EDIT
-        ) return;
+    /**
+    * Req 1: Change form when Vendor = JohnStone
+    */
+    function pageInit(context) {
+        var rec = currentRecord.get();
 
-        const rec = context.newRecord;
+        var vendor = rec.getValue('entity');
 
-        const vendorId = rec.getValue({ fieldId: 'entity' });
-        const shipMethod = rec.getValue({ fieldId: 'shipmethod' });
-
-       log.debug({
-                    title: 'PO Validation Details',
-                    details: {
-                        executionContext: execContext,
-                        vendorId: vendorId,
-                        shippingMethod: shipMethod
-                    }
-                });
-        if (String(vendorId) !== TARGET_VENDOR) return;
-
-        if (!ALLOWED_METHODS.includes(String(shipMethod))) {
-
-            throw error.create({
-                name: 'INVALID_SHIP_METHOD_ERR',
-                message: 'Shipping Method must be either 11 Corp Order or 18 EARLY Corp Order.',
-                notifyOff: false
-            });
+        if (parseInt(vendor) === VENDOR_ID) {
+            disableCustomForm();
         }
+    }
+
+    function fieldChanged(context) {
+        var rec = currentRecord.get();
+
+        if (context.fieldId === 'entity') {
+            var vendor = rec.getValue('entity');
+
+            if (parseInt(vendor) === VENDOR_ID) {
+
+                var johnStoneFormId = 166;
+
+                rec.setValue({
+                    fieldId: 'customform',
+                    value: johnStoneFormId
+                });
+
+                disableCustomForm();
+            }
+        }
+    }
+
+    // Function to disable custom form field
+    function disableCustomForm() {
+        var fieldElement = document.getElementById('inpt_customform');
+
+        if (fieldElement) {
+            fieldElement.disabled = true;
+        }
+    }
+
+    /**
+     * Req 1 & Req 2: Validate before save
+     */
+    function saveRecord(context) {
+        try {
+            var rec = currentRecord.get();
+
+            var vendor = rec.getValue('entity');
+            var location = rec.getValue('location');
+            var shipmethod = rec.getValue('shipmethod');
+
+            if (parseInt(vendor) === VENDOR_ID) {
+
+                // Validate Location
+                if (VALID_LOCATIONS.indexOf(parseInt(location)) === -1) {
+                    dialog.alert({
+                        title: 'Invalid Location',
+                        message: 'Location for JohnStone should be either 111 - RWD Mississauga or 107 - Ottawa Warehouse'
+                    });
+                    return false;
+                }
+
+                // Validate Shipping Method
+                if (VALID_SHIPMETHODS.indexOf(parseInt(shipmethod)) === -1) {
+                    dialog.alert({
+                        title: 'Invalid Shipping Method',
+                        message: 'Shipping Method for JohnStone should be either 11 Corp Order or 18 EARLY Corp Order'
+                    });
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (error) {
+            alert("Error in SaveRecord function:" + error.message);
+        }
+    }
+
+    return {
+        fieldChanged: fieldChanged,
+        saveRecord: saveRecord
     };
-    return { beforeSubmit };
 });
