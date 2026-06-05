@@ -4,22 +4,14 @@
  */
 define(['N/currentRecord', 'N/ui/dialog'], function (currentRecord, dialog) {
 
-    var VENDOR_ID = 87625; // JohnStone
-    var FORM_NAME = 'RWD Purchase Order – JohnStone';
+    const VENDOR_ID = 87625;
+    const JOHNSTONE_FORM_ID = 166;
 
-    // Location IDs
-    var VALID_LOCATIONS = [2, 7];
+    const VALID_LOCATIONS = [2, 7];
+    const VALID_SHIPMETHODS = [26920, 26921];
 
-    // Shipping Method IDs
-    var VALID_SHIPMETHODS = [26920, 26921];
-
-
-    /**
-    * Req 1: Change form when Vendor = JohnStone
-    */
     function pageInit(context) {
         var rec = currentRecord.get();
-
         var vendor = rec.getValue('entity');
 
         if (parseInt(vendor) === VENDOR_ID) {
@@ -31,70 +23,74 @@ define(['N/currentRecord', 'N/ui/dialog'], function (currentRecord, dialog) {
         var rec = currentRecord.get();
 
         if (context.fieldId === 'entity') {
+
             var vendor = rec.getValue('entity');
 
             if (parseInt(vendor) === VENDOR_ID) {
-
-                var johnStoneFormId = 166;
 
                 rec.setValue({
                     fieldId: 'customform',
-                    value: johnStoneFormId
+                    value: JOHNSTONE_FORM_ID,
+                    ignoreFieldChange: true
                 });
 
-                disableCustomForm();
+                setTimeout(function () {
+                    disableCustomForm();
+                }, 1000);
             }
         }
     }
 
-    // Function to disable custom form field
     function disableCustomForm() {
-        var fieldElement = document.getElementById('inpt_customform');
 
-        if (fieldElement) {
-            fieldElement.disabled = true;
-        }
-    }
+        setTimeout(function () {
 
-    /**
-     * Req 1 & Req 2: Validate before save
-     */
-    function saveRecord(context) {
-        try {
-            var rec = currentRecord.get();
+            var field =
+                document.getElementById('inpt_customform') ||
+                document.getElementById('customform_fs_inp');
 
-            var vendor = rec.getValue('entity');
-            var location = rec.getValue('location');
-            var shipmethod = rec.getValue('shipmethod');
-
-            if (parseInt(vendor) === VENDOR_ID) {
-
-                // Validate Location
-                if (VALID_LOCATIONS.indexOf(parseInt(location)) === -1) {
-                    dialog.alert({
-                        title: 'Invalid Location',
-                        message: 'Location for JohnStone should be either 111 - RWD Mississauga or 107 - Ottawa Warehouse'
-                    });
-                    return false;
-                }
-
-                // Validate Shipping Method
-                if (VALID_SHIPMETHODS.indexOf(parseInt(shipmethod)) === -1) {
-                    dialog.alert({
-                        title: 'Invalid Shipping Method',
-                        message: 'Shipping Method for JohnStone should be either 11 Corp Order or 18 EARLY Corp Order'
-                    });
-                    return false;
-                }
+            if (field) {
+                field.disabled = true;
+                field.readOnly = true;
+                field.style.pointerEvents = 'none';
+                field.style.backgroundColor = '#f0f0f0';
             }
 
-            return true;
-        } catch (error) {
-            alert("Error in SaveRecord function:" + error.message);
+        }, 500);
+    }
+
+    function saveRecord(context) {
+
+        var rec = currentRecord.get();
+
+        var vendor = rec.getValue('entity');
+        var location = rec.getValue('location');
+        var shipmethod = rec.getValue('shipmethod');
+
+        if (parseInt(vendor) === VENDOR_ID) {
+
+            if (VALID_LOCATIONS.indexOf(parseInt(location)) === -1) {
+                dialog.alert({
+                    title: 'Invalid Location',
+                    message: 'Location for JohnStone should be either 111 - RWD Mississauga or 107 - Ottawa Warehouse'
+                });
+                return false;
+            }
+
+            if (VALID_SHIPMETHODS.indexOf(parseInt(shipmethod)) === -1) {
+                dialog.alert({
+                    title: 'Invalid Shipping Method',
+                    message: 'Shipping Method for JohnStone should be either 11 Corp Order or 18 EARLY Corp Order'
+                });
+                return false;
+            }
         }
+
+        return true;
     }
 
     return {
+        pageInit: pageInit,
         fieldChanged: fieldChanged,
         saveRecord: saveRecord
     };
