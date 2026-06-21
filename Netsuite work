@@ -1,1 +1,186 @@
 
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ */
+
+define([
+    'N/ui/serverWidget',
+    'N/search'
+],
+
+function (
+    serverWidget,
+    search
+) {
+
+function onRequest(context){
+
+var request=context.request;
+
+var vendorId=
+request.parameters.custpage_vendor||'';
+
+var form=
+serverWidget.createForm({
+title:'Vendor Portal'
+});
+
+// Client Script
+form.clientScriptModulePath=
+'./CS_VendorPortal.js';
+
+
+// Vendor
+var vendorField=
+form.addField({
+id:'custpage_vendor',
+type:serverWidget.FieldType.SELECT,
+label:'Vendor Name',
+source:'vendor'
+});
+
+vendorField.defaultValue=
+vendorId;
+
+
+// Vendor Cases
+var caseField=
+form.addField({
+id:'custpage_cases',
+type:serverWidget.FieldType.SELECT,
+label:'Vendor Cases'
+});
+
+caseField.addSelectOption({
+value:'',
+text:''
+});
+
+
+// Populate cases
+if(vendorId){
+
+var caseSearch=
+search.create({
+
+type:search.Type.SUPPORT_CASE,
+
+filters:[
+[
+'company',
+'anyof',
+vendorId
+]
+],
+
+columns:[
+'casenumber',
+'title'
+]
+
+});
+
+caseSearch.run().each(function(r){
+
+var caseNumber=
+r.getValue({
+name:'casenumber'
+})||'';
+
+var title=
+r.getValue({
+name:'title'
+})||'';
+
+caseField.addSelectOption({
+
+value:r.id,
+
+text:
+caseNumber+
+' - '+
+title
+
+});
+
+return true;
+
+});
+
+}
+
+context.response.writePage(form);
+
+}
+
+return{
+onRequest:onRequest
+};
+
+});
+
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
+
+define([
+'N/currentRecord',
+'N/url'
+],
+
+function(
+currentRecord,
+url
+){
+
+function fieldChanged(context){
+
+if(
+context.fieldId!==
+'custpage_vendor'
+){
+return;
+}
+
+var rec=
+currentRecord.get();
+
+var vendor=
+rec.getValue({
+fieldId:
+'custpage_vendor'
+});
+
+
+var suiteletUrl=
+url.resolveScript({
+
+scriptId:
+'customscript_vendor_portal',
+
+deploymentId:
+'customdeploy_vendor_portal',
+
+params:{
+
+custpage_vendor:
+vendor
+
+}
+
+});
+
+window.location.href=
+suiteletUrl;
+
+}
+
+return{
+fieldChanged:
+fieldChanged
+};
+
+});
