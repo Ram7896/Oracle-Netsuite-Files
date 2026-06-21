@@ -2,8 +2,8 @@
  * @NApiVersion 2.1
  * @NScriptType Suitelet
  */
-
-define(['N/ui/serverWidget'], function (serverWidget) {
+define(['N/ui/serverWidget', 'N/format', 'N/search'],
+function (serverWidget, format, search) {
 
     function onRequest(context) {
 
@@ -13,24 +13,23 @@ define(['N/ui/serverWidget'], function (serverWidget) {
                 title: 'Vendor Portal'
             });
 
-            // Header Buttons
-            form.addSubmitButton({
-                label: 'Save'
-            });
+            form.clientScriptModulePath = './CS_Vendor_portal.js';
+
+            // ================= BUTTONS =================
+            form.addSubmitButton({ label: 'Save' });
 
             form.addButton({
                 id: 'custpage_cancel',
                 label: 'Cancel',
-                functionName: 'history.back()'
+                functionName: 'history.back'
             });
 
-            // Main Fields
-
+            // ================= MAIN FIELDS =================
             form.addField({
                 id: 'custpage_name',
                 type: serverWidget.FieldType.TEXT,
                 label: 'Name'
-            });
+            }).isMandatory = true;
 
             form.addField({
                 id: 'custpage_inactive',
@@ -38,40 +37,131 @@ define(['N/ui/serverWidget'], function (serverWidget) {
                 label: 'Inactive'
             });
 
-            form.addField({
+            var parentField = form.addField({
                 id: 'custpage_parent',
                 type: serverWidget.FieldType.SELECT,
                 label: 'Parent'
             });
+            parentField.addSelectOption({ value: '', text: '' });
+            parentField.addSelectOption({ value: 'eway', text: 'Eway Test' });
 
-            form.addField({
+            var vendorField = form.addField({
                 id: 'custpage_vendor',
                 type: serverWidget.FieldType.SELECT,
                 label: 'Vendor Name',
                 source: 'vendor'
             });
 
-            form.addField({
+            vendorField.updateBreakType({
+                breakType: serverWidget.FieldBreakType.STARTCOL
+            });
+
+            // ✅ SAFE PARAMETER READ
+            var selectedVendor = null;
+            if (context.request && context.request.parameters) {
+                selectedVendor = context.request.parameters.custpage_vendor || null;
+            }
+
+            var dateField = form.addField({
                 id: 'custpage_date',
                 type: serverWidget.FieldType.DATE,
                 label: 'Date'
             });
 
-            form.addTab({
-                id: 'custpage_notes',
-                label: 'Notes'
+            dateField.defaultValue = format.format({
+                value: new Date(),
+                type: format.Type.DATE
             });
 
-            form.addTab({
-                id: 'custpage_files',
-                label: 'Files'
-            });
-
-            form.addTab({
+            // ✅ Vendor Cases Dropdown
+            var casesField = form.addField({
                 id: 'custpage_cases',
-                label: 'Cases'
+                type: serverWidget.FieldType.SELECT,
+                label: 'Vendor Cases'
             });
 
+            casesField.addSelectOption({ value: '', text: '' });
+
+            // ✅ Populate cases dynamically
+            if (selectedVendor) {
+
+                try {
+                    var caseSearch = search.create({
+                        type: search.Type.SUPPORT_CASE,
+                        filters: [
+                            ['company', 'anyof', selectedVendor]
+                        ],
+                        columns: ['title']
+                    });
+
+                    caseSearch.run().each(function (result) {
+                        casesField.addSelectOption({
+                            value: result.id,
+                            text: result.getValue('title') || 'No Title'
+                        });
+                        return true;
+                    });
+
+                } catch (e) {
+                    log.error('Case Search Error', e);
+                }
+            }
+
+            // ================= TABS =================
+            form.addTab({ id: 'custpage_notes', label: 'Notes' });
+            form.addTab({ id: 'custpage_files', label: 'Files' });
+            form.addTab({ id: 'custpage_cases_tab', label: 'Cases' });
+
+            // ================= FILES TAB =================
+            var filesSublist = form.addSublist({
+                id: 'custpage_files_sublist',
+                type: serverWidget.SublistType.INLINEEDITOR,
+                label: 'Files',
+                tab: 'custpage_files'
+            });
+
+            var attachField = filesSublist.addField({
+                id: 'custpage_attach',
+                type: serverWidget.FieldType.SELECT,
+                label: 'Attach File'
+            });
+
+            attachField.addSelectOption({ value: '', text: '' });
+
+            var fileSearch = search.create({
+                type: 'file',
+                columns: ['name']
+            });
+
+            var count = 0;
+
+            fileSearch.run().each(function (result) {
+
+                if (count > 100) return false;
+
+                attachField.addSelectOption({
+                    value: result.id,
+                    text: result.getValue('name')
+                });
+
+                count++;
+                return true;
+            });
+
+            // ================= CASES TAB =================
+            var caseTypeField = form.addField({
+                id: 'custpage_case_type',
+                type: serverWidget.FieldType.SELECT,
+                label: 'Case Type',
+                tab: 'custpage_cases_tab'
+            });
+
+            caseTypeField.addSelectOption({ value: '', text: '' });
+            caseTypeField.addSelectOption({ value: 'concern', text: 'Concern' });
+            caseTypeField.addSelectOption({ value: 'problem', text: 'Problem' });
+            caseTypeField.addSelectOption({ value: 'question', text: 'Question' });
+
+            // ================= RENDER =================
             context.response.writePage(form);
         }
     }
@@ -79,5 +169,44 @@ define(['N/ui/serverWidget'], function (serverWidget) {
     return {
         onRequest: onRequest
     };
+});
 
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
+define(['N/currentRecord', 'N/url'], function (currentRecord, url) {
+
+    function fieldChanged(context) {
+
+        // ✅ Trigger only when Vendor changes
+        if (context.fieldId === 'custpage_vendor') {
+
+            var rec = currentRecord.get();
+
+            // ✅ Get selected vendor
+            var vendorId = rec.getValue({
+                fieldId: 'custpage_vendor'
+            });
+
+            // ✅ If no vendor selected → do nothing
+            if (!vendorId) return;
+
+            // ✅ Redirect to Suitelet with parameter
+            var suiteletUrl = url.resolveScript({
+                scriptId: 'customscript_vendor_portal_suitlet',
+                deploymentId: 'customdeploy_vendor_portal_suitelet',           
+                params: {
+                    custpage_vendor: vendorId
+                }
+            });
+
+            // ✅ Reload page
+            window.location.href = suiteletUrl;
+        }
+    }
+
+    return {
+        fieldChanged: fieldChanged
+    };
 });
