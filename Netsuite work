@@ -1,2 +1,60 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
 
-{"type":"error.SuiteScriptError","name":"UNEXPECTED_ERROR","message":"An unexpected SuiteScript error has occurred","id":"e6f1463a-8b69-437f-bb23-2a388faf6170-2d323032362e30362e3231","stack":["Error\n at Object.onRequest (/SuiteScripts/Vendor_portal_Suitelet.js:83:18)"],"cause":{"type":"internal error","code":"UNEXPECTED_ERROR","details":"An unexpected SuiteScript error has occurred","userEvent":null,"stackTrace":["Error\n at Object.onRequest (/SuiteScripts/Vendor_portal_Suitelet.js:83:18)"],"notifyOff":false},"notifyOff":false,"userFacing":true}
+define([
+'N/currentRecord',
+'N/url'
+],
+
+function(
+currentRecord,
+url
+){
+
+function fieldChanged(context){
+
+if(
+context.fieldId===
+'custpage_vendor'
+){
+
+var rec=
+currentRecord.get();
+
+var vendor=
+rec.getValue({
+fieldId:
+'custpage_vendor'
+});
+
+
+window.location=
+url.resolveScript({
+
+scriptId:
+'customscript_vendor_portal_suitelet',
+
+deploymentId:
+'customdeploy_vendor_portal_suitelet',
+
+params:{
+
+custpage_vendor:
+vendor
+
+}
+
+});
+
+}
+
+}
+
+return{
+fieldChanged:
+fieldChanged
+};
+
+});
