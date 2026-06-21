@@ -1,6 +1,83 @@
-The Shipping Method for JohnStone must be one of the following:
+/**
+ * @NApiVersion 2.1
+ * @NScriptType Suitelet
+ */
 
-01 UPS Ground (Hazardous Material Allowed)
-11 Corp Order
-18 EARLY Corp Order
-20 UPS Next Day Standard Overnight (Delivery by 3:00 pm)
+define(['N/ui/serverWidget'], function (serverWidget) {
+
+    function onRequest(context) {
+
+        if (context.request.method === 'GET') {
+
+            var form = serverWidget.createForm({
+                title: 'Vendor Portal'
+            });
+
+            // Header Buttons
+            form.addSubmitButton({
+                label: 'Save'
+            });
+
+            form.addButton({
+                id: 'custpage_cancel',
+                label: 'Cancel',
+                functionName: 'history.back()'
+            });
+
+            // Main Fields
+
+            form.addField({
+                id: 'custpage_name',
+                type: serverWidget.FieldType.TEXT,
+                label: 'Name'
+            });
+
+            form.addField({
+                id: 'custpage_inactive',
+                type: serverWidget.FieldType.CHECKBOX,
+                label: 'Inactive'
+            });
+
+            form.addField({
+                id: 'custpage_parent',
+                type: serverWidget.FieldType.SELECT,
+                label: 'Parent'
+            });
+
+            form.addField({
+                id: 'custpage_vendor',
+                type: serverWidget.FieldType.SELECT,
+                label: 'Vendor Name',
+                source: 'vendor'
+            });
+
+            form.addField({
+                id: 'custpage_date',
+                type: serverWidget.FieldType.DATE,
+                label: 'Date'
+            });
+
+            form.addTab({
+                id: 'custpage_notes',
+                label: 'Notes'
+            });
+
+            form.addTab({
+                id: 'custpage_files',
+                label: 'Files'
+            });
+
+            form.addTab({
+                id: 'custpage_cases',
+                label: 'Cases'
+            });
+
+            context.response.writePage(form);
+        }
+    }
+
+    return {
+        onRequest: onRequest
+    };
+
+});
