@@ -1,98 +1,67 @@
 /**
-
-* @NApiVersion 2.1
-* @NScriptType ClientScript
-  */
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
 
 define([], () => {
 
-```
-const INSURANCE = 'custentity5';
-const EMAIL = 'custentity6';
-const PUBLIC = 'custentity7';
+    function fieldChanged(context) {
 
-const WC_FIELDS = [
-    'custentity8',
-    'custentity9',
-    'custentity10',
-    'custentity11',
-    'custentity12'
-];
+        var rec = context.currentRecord;
+        var fieldId = context.fieldId;
 
-function fieldChanged(context) {
+        var workersFields = [
+            'custentity8',
+            'custentity9',
+            'custentity10',
+            'custentity11',
+            'custentity12'
+        ];
 
-    const rec = context.currentRecord;
-    const fieldId = context.fieldId;
+        // Run only when worker compensation fields change
+        if (workersFields.indexOf(fieldId) === -1) {
+            return;
+        }
 
-    // Only trigger for WC fields
-    if (WC_FIELDS.includes(fieldId)) {
+        var isChecked = false;
 
-        let isChecked = rec.getValue({
-            fieldId: fieldId
-        });
+        for (var i = 0; i < workersFields.length; i++) {
 
+            if (rec.getValue({
+                fieldId: workersFields[i]
+            })) {
+                isChecked = true;
+                break;
+            }
+        }
+
+        // Replace with actual field IDs
         if (isChecked) {
 
-            // Auto check Insurance
             rec.setValue({
-                fieldId: INSURANCE,
+                fieldId: 'custentity_insurance',
                 value: true,
                 ignoreFieldChange: true
             });
 
-            // Auto check Public Liability
             rec.setValue({
-                fieldId: PUBLIC,
+                fieldId: 'custentity_public_liability',
                 value: true,
                 ignoreFieldChange: true
             });
 
-            // Make Email mandatory
-            let emailField =
-                rec.getField({
-                    fieldId: EMAIL
-                });
+            var emailField = rec.getField({
+                fieldId: 'custentity_email_insurance_to'
+            });
 
             if (emailField) {
                 emailField.isMandatory = true;
             }
         }
     }
-}
 
-function saveRecord(context) {
-
-    const rec =
-        context.currentRecord;
-
-    let anyChecked =
-        WC_FIELDS.some(f =>
-            rec.getValue({
-                fieldId: f
-            })
-        );
-
-    if (
-        anyChecked &&
-        !rec.getValue({
-            fieldId: EMAIL
-        })
-    ) {
-
-        alert(
-            'Email Insurance To is mandatory'
-        );
-
-        return false;
-    }
-
-    return true;
-}
-
-return {
-    fieldChanged,
-    saveRecord
-};
-```
+    return {
+        fieldChanged: fieldChanged
+    };
 
 });
