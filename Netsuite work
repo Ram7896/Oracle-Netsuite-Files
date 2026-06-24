@@ -5,131 +5,77 @@
 
 define([], () => {
 
-    const FIELDS = {
-        INSURANCE: 'custentity5',
-        EMAIL: 'custentity6',
-        PUBLIC: 'custentity7',
-        WC: [
-            'custentity8', // QLD
-            'custentity9', // NSW
-            'custentity10', // VIC
-            'custentity11', // SA
-            'custentity12'  // WA
-        ]
-    };
+    const INSURANCE = 'custentity5';
+    const EMAIL = 'custentity6';
+    const PUBLIC = 'custentity7';
+
+    const WC = [
+        'custentity8',
+        'custentity9',
+        'custentity10',
+        'custentity11',
+        'custentity12'
+    ];
+
+    function pageInit(context) {
+        applyRules(context.currentRecord);
+    }
 
     function fieldChanged(context) {
 
-        try {
+        let rec = context.currentRecord;
+        let field = context.fieldId;
 
-            let rec = context.currentRecord;
-            let fieldId = context.fieldId;
-
-            // RULE 1
-            if (fieldId === FIELDS.INSURANCE) {
-
-                let insurance =
-                    rec.getValue({
-                        fieldId: FIELDS.INSURANCE
-                    });
-
-                applyInsuranceRules(
-                    rec,
-                    insurance
-                );
-            }
-
-            // RULE 2
-            if (FIELDS.WC.includes(fieldId)) {
-
-                if (isAnyWCSelected(rec)) {
-
-                    rec.setValue({
-                        fieldId: FIELDS.INSURANCE,
-                        value: true
-                    });
-
-                    applyInsuranceRules(
-                        rec,
-                        true
-                    );
-
-                } else {
-
-                    let insurance =
-                        rec.getValue({
-                            fieldId: FIELDS.INSURANCE
-                        });
-
-                    applyInsuranceRules(
-                        rec,
-                        insurance
-                    );
-                }
-            }
-
-        } catch (e) {
-
-            console.log(
-                'ERROR',
-                e
-            );
+        if (
+            field === INSURANCE ||
+            WC.includes(field)
+        ) {
+            applyRules(rec);
         }
     }
 
-    function applyInsuranceRules(rec, enabled) {
+    function applyRules(rec) {
 
-        if (enabled) {
+        let insurance =
+            rec.getValue({
+                fieldId: INSURANCE
+            });
+
+        let wcSelected =
+            WC.some(f =>
+                rec.getValue({
+                    fieldId: f
+                })
+            );
+
+        // RULE 2
+        if (wcSelected) {
+
+            insurance = true;
 
             rec.setValue({
-                fieldId: FIELDS.PUBLIC,
+                fieldId: INSURANCE,
+                value: true,
+                ignoreFieldChange: true
+            });
+        }
+
+        // RULE 1
+        if (insurance) {
+
+            rec.setValue({
+                fieldId: PUBLIC,
                 value: true,
                 ignoreFieldChange: true
             });
 
-            setMandatory(true);
-
         } else {
 
             rec.setValue({
-                fieldId: FIELDS.PUBLIC,
+                fieldId: PUBLIC,
                 value: false,
                 ignoreFieldChange: true
             });
-
-            setMandatory(false);
-        }
-    }
-
-    function isAnyWCSelected(rec) {
-
-        return FIELDS.WC.some(f =>
-            rec.getValue({
-                fieldId: f
-            }) === true
-        );
-    }
-
-    function setMandatory(required) {
-
-        let field =
-            document.getElementById(
-                'custentity6_fs_lbl'
-            );
-
-        if (!field) return;
-
-        if (required) {
-
-            field.classList.add(
-                'uir-required-icon'
-            );
-
-        } else {
-
-            field.classList.remove(
-                'uir-required-icon'
-            );
         }
     }
 
@@ -140,15 +86,25 @@ define([], () => {
 
         let insurance =
             rec.getValue({
-                fieldId: FIELDS.INSURANCE
+                fieldId: INSURANCE
             });
+
+        let wcSelected =
+            WC.some(f =>
+                rec.getValue({
+                    fieldId: f
+                })
+            );
 
         let email =
             rec.getValue({
-                fieldId: FIELDS.EMAIL
+                fieldId: EMAIL
             });
 
-        if (insurance && !email) {
+        if (
+            (insurance || wcSelected)
+            && !email
+        ) {
 
             alert(
                 'Email Insurance To is mandatory'
@@ -161,6 +117,7 @@ define([], () => {
     }
 
     return {
+        pageInit,
         fieldChanged,
         saveRecord
     };
