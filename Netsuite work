@@ -1,125 +1,98 @@
 /**
- * @NApiVersion 2.1
- * @NScriptType ClientScript
- */
+
+* @NApiVersion 2.1
+* @NScriptType ClientScript
+  */
 
 define([], () => {
 
-    const INSURANCE = 'custentity5';
-    const EMAIL = 'custentity6';
-    const PUBLIC = 'custentity7';
+```
+const INSURANCE = 'custentity5';
+const EMAIL = 'custentity6';
+const PUBLIC = 'custentity7';
 
-    const WC = [
-        'custentity8',
-        'custentity9',
-        'custentity10',
-        'custentity11',
-        'custentity12'
-    ];
+const WC_FIELDS = [
+    'custentity8',
+    'custentity9',
+    'custentity10',
+    'custentity11',
+    'custentity12'
+];
 
-    function pageInit(context) {
-        applyRules(context.currentRecord);
-    }
+function fieldChanged(context) {
 
-    function fieldChanged(context) {
+    const rec = context.currentRecord;
+    const fieldId = context.fieldId;
 
-        let rec = context.currentRecord;
-        let field = context.fieldId;
+    // Only trigger for WC fields
+    if (WC_FIELDS.includes(fieldId)) {
 
-        if (
-            field === INSURANCE ||
-            WC.includes(field)
-        ) {
-            applyRules(rec);
-        }
-    }
+        let isChecked = rec.getValue({
+            fieldId: fieldId
+        });
 
-    function applyRules(rec) {
+        if (isChecked) {
 
-        let insurance =
-            rec.getValue({
-                fieldId: INSURANCE
-            });
-
-        let wcSelected =
-            WC.some(f =>
-                rec.getValue({
-                    fieldId: f
-                })
-            );
-
-        // RULE 2
-        if (wcSelected) {
-
-            insurance = true;
-
+            // Auto check Insurance
             rec.setValue({
                 fieldId: INSURANCE,
                 value: true,
                 ignoreFieldChange: true
             });
-        }
 
-        // RULE 1
-        if (insurance) {
-
+            // Auto check Public Liability
             rec.setValue({
                 fieldId: PUBLIC,
                 value: true,
                 ignoreFieldChange: true
             });
 
-        } else {
+            // Make Email mandatory
+            let emailField =
+                rec.getField({
+                    fieldId: EMAIL
+                });
 
-            rec.setValue({
-                fieldId: PUBLIC,
-                value: false,
-                ignoreFieldChange: true
-            });
+            if (emailField) {
+                emailField.isMandatory = true;
+            }
         }
     }
+}
 
-    function saveRecord(context) {
+function saveRecord(context) {
 
-        let rec =
-            context.currentRecord;
+    const rec =
+        context.currentRecord;
 
-        let insurance =
+    let anyChecked =
+        WC_FIELDS.some(f =>
             rec.getValue({
-                fieldId: INSURANCE
-            });
+                fieldId: f
+            })
+        );
 
-        let wcSelected =
-            WC.some(f =>
-                rec.getValue({
-                    fieldId: f
-                })
-            );
+    if (
+        anyChecked &&
+        !rec.getValue({
+            fieldId: EMAIL
+        })
+    ) {
 
-        let email =
-            rec.getValue({
-                fieldId: EMAIL
-            });
+        alert(
+            'Email Insurance To is mandatory'
+        );
 
-        if (
-            (insurance || wcSelected)
-            && !email
-        ) {
-
-            alert(
-                'Email Insurance To is mandatory'
-            );
-
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
-    return {
-        pageInit,
-        fieldChanged,
-        saveRecord
-    };
+    return true;
+}
+
+return {
+    fieldChanged,
+    saveRecord
+};
+```
 
 });
