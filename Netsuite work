@@ -3,58 +3,140 @@
  * @NScriptType ClientScript
  */
 
-define([
-'N/currentRecord',
-'N/url'
-],
+define([], () => {
 
-function(
-currentRecord,
-url
-){
+    const INSURANCE = 'custentity5';
+    const EMAIL_INSURANCE = 'custentity6';
+    const PUBLIC_LIABILITY = 'custentity7';
 
-function fieldChanged(context){
+    const WC_FIELDS = [
+        'custentity8', // QLD
+        'custentity9', // NSW
+        'custentity10', // VIC
+        'custentity11', // SA
+        'custentity12'  // WA
+    ];
 
-if(
-context.fieldId===
-'custpage_vendor'
-){
+    function fieldChanged(context) {
 
-var rec=
-currentRecord.get();
+        try {
 
-var vendor=
-rec.getValue({
-fieldId:
-'custpage_vendor'
-});
+            let rec = context.currentRecord;
+            let fieldId = context.fieldId;
 
+            // Rule 1
+            if (fieldId === INSURANCE) {
 
-window.location=
-url.resolveScript({
+                let insurance = rec.getValue({
+                    fieldId: INSURANCE
+                });
 
-scriptId:
-'customscript_vendor_portal_suitelet',
+                if (insurance) {
 
-deploymentId:
-'customdeploy_vendor_portal_suitelet',
+                    rec.setValue({
+                        fieldId: PUBLIC_LIABILITY,
+                        value: true,
+                        ignoreFieldChange: true
+                    });
 
-params:{
+                    makeMandatory(true);
 
-custpage_vendor:
-vendor
+                } else {
 
-}
+                    if (!isAnyWCChecked(rec)) {
+                        makeMandatory(false);
+                    }
+                }
+            }
 
-});
+            // Rule 2
+            if (WC_FIELDS.includes(fieldId)) {
 
-}
+                if (isAnyWCChecked(rec)) {
 
-}
+                    rec.setValue({
+                        fieldId: INSURANCE,
+                        value: true,
+                        ignoreFieldChange: true
+                    });
 
-return{
-fieldChanged:
-fieldChanged
-};
+                    rec.setValue({
+                        fieldId: PUBLIC_LIABILITY,
+                        value: true,
+                        ignoreFieldChange: true
+                    });
+
+                    makeMandatory(true);
+
+                } else {
+
+                    if (!rec.getValue({
+                        fieldId: INSURANCE
+                    })) {
+                        makeMandatory(false);
+                    }
+                }
+            }
+
+        } catch (e) {
+            console.log('ERROR', e);
+        }
+    }
+
+    function isAnyWCChecked(rec) {
+
+        return WC_FIELDS.some(field =>
+            rec.getValue({ fieldId: field }) === true
+        );
+    }
+
+    function makeMandatory(isMandatory) {
+
+        let fld =
+            document.getElementById('custentity6_fs_lbl');
+
+        if (fld) {
+
+            if (isMandatory) {
+
+                fld.classList.add('uir-required-icon');
+
+            } else {
+
+                fld.classList.remove('uir-required-icon');
+            }
+        }
+    }
+
+    function saveRecord(context) {
+
+        let rec = context.currentRecord;
+
+        let insurance =
+            rec.getValue({
+                fieldId: INSURANCE
+            });
+
+        let email =
+            rec.getValue({
+                fieldId: EMAIL_INSURANCE
+            });
+
+        if (insurance && !email) {
+
+            alert(
+                'Email Insurance To is mandatory.'
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
+    return {
+        fieldChanged,
+        saveRecord
+    };
 
 });
