@@ -5,17 +5,18 @@
 
 define([], () => {
 
-    const INSURANCE = 'custentity5';
-    const EMAIL_INSURANCE = 'custentity6';
-    const PUBLIC_LIABILITY = 'custentity7';
-
-    const WC_FIELDS = [
-        'custentity8', // QLD
-        'custentity9', // NSW
-        'custentity10', // VIC
-        'custentity11', // SA
-        'custentity12'  // WA
-    ];
+    const FIELDS = {
+        INSURANCE: 'custentity5',
+        EMAIL: 'custentity6',
+        PUBLIC: 'custentity7',
+        WC: [
+            'custentity8', // QLD
+            'custentity9', // NSW
+            'custentity10', // VIC
+            'custentity11', // SA
+            'custentity12'  // WA
+        ]
+    };
 
     function fieldChanged(context) {
 
@@ -24,108 +25,133 @@ define([], () => {
             let rec = context.currentRecord;
             let fieldId = context.fieldId;
 
-            // Rule 1
-            if (fieldId === INSURANCE) {
+            // RULE 1
+            if (fieldId === FIELDS.INSURANCE) {
 
-                let insurance = rec.getValue({
-                    fieldId: INSURANCE
-                });
-
-                if (insurance) {
-
-                    rec.setValue({
-                        fieldId: PUBLIC_LIABILITY,
-                        value: true,
-                        ignoreFieldChange: true
+                let insurance =
+                    rec.getValue({
+                        fieldId: FIELDS.INSURANCE
                     });
 
-                    makeMandatory(true);
-
-                } else {
-
-                    if (!isAnyWCChecked(rec)) {
-                        makeMandatory(false);
-                    }
-                }
+                applyInsuranceRules(
+                    rec,
+                    insurance
+                );
             }
 
-            // Rule 2
-            if (WC_FIELDS.includes(fieldId)) {
+            // RULE 2
+            if (FIELDS.WC.includes(fieldId)) {
 
-                if (isAnyWCChecked(rec)) {
-
-                    rec.setValue({
-                        fieldId: INSURANCE,
-                        value: true,
-                        ignoreFieldChange: true
-                    });
+                if (isAnyWCSelected(rec)) {
 
                     rec.setValue({
-                        fieldId: PUBLIC_LIABILITY,
-                        value: true,
-                        ignoreFieldChange: true
+                        fieldId: FIELDS.INSURANCE,
+                        value: true
                     });
 
-                    makeMandatory(true);
+                    applyInsuranceRules(
+                        rec,
+                        true
+                    );
 
                 } else {
 
-                    if (!rec.getValue({
-                        fieldId: INSURANCE
-                    })) {
-                        makeMandatory(false);
-                    }
+                    let insurance =
+                        rec.getValue({
+                            fieldId: FIELDS.INSURANCE
+                        });
+
+                    applyInsuranceRules(
+                        rec,
+                        insurance
+                    );
                 }
             }
 
         } catch (e) {
-            console.log('ERROR', e);
+
+            console.log(
+                'ERROR',
+                e
+            );
         }
     }
 
-    function isAnyWCChecked(rec) {
+    function applyInsuranceRules(rec, enabled) {
 
-        return WC_FIELDS.some(field =>
-            rec.getValue({ fieldId: field }) === true
+        if (enabled) {
+
+            rec.setValue({
+                fieldId: FIELDS.PUBLIC,
+                value: true,
+                ignoreFieldChange: true
+            });
+
+            setMandatory(true);
+
+        } else {
+
+            rec.setValue({
+                fieldId: FIELDS.PUBLIC,
+                value: false,
+                ignoreFieldChange: true
+            });
+
+            setMandatory(false);
+        }
+    }
+
+    function isAnyWCSelected(rec) {
+
+        return FIELDS.WC.some(f =>
+            rec.getValue({
+                fieldId: f
+            }) === true
         );
     }
 
-    function makeMandatory(isMandatory) {
+    function setMandatory(required) {
 
-        let fld =
-            document.getElementById('custentity6_fs_lbl');
+        let field =
+            document.getElementById(
+                'custentity6_fs_lbl'
+            );
 
-        if (fld) {
+        if (!field) return;
 
-            if (isMandatory) {
+        if (required) {
 
-                fld.classList.add('uir-required-icon');
+            field.classList.add(
+                'uir-required-icon'
+            );
 
-            } else {
+        } else {
 
-                fld.classList.remove('uir-required-icon');
-            }
+            field.classList.remove(
+                'uir-required-icon'
+            );
         }
     }
 
     function saveRecord(context) {
 
-        let rec = context.currentRecord;
+        let rec =
+            context.currentRecord;
 
         let insurance =
             rec.getValue({
-                fieldId: INSURANCE
+                fieldId: FIELDS.INSURANCE
             });
 
         let email =
             rec.getValue({
-                fieldId: EMAIL_INSURANCE
+                fieldId: FIELDS.EMAIL
             });
 
         if (insurance && !email) {
 
             alert(
-                'Email Insurance To is mandatory.'
+                'Email Insurance To is mandatory'
             );
 
             return false;
