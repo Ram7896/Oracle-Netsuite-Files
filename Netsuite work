@@ -2,60 +2,54 @@
  * @NApiVersion 2.1
  * @NScriptType ClientScript
  */
-
 define([], () => {
 
+    /**
+     * Function to handle field change events.
+     * Evaluates rules outlined in image_d02f35.jpg
+     */
     function fieldChanged(context) {
+        const currentRecord = context.currentRecord;
+        const fieldId = context.fieldId;
 
-        var rec = context.currentRecord;
-        var fieldId = context.fieldId;
-
-        var workersFields = [
-            'custentity8',
-            'custentity9',
-            'custentity10',
-            'custentity11',
-            'custentity12'
+        // Grouping the worker compensation checkboxes for Rule 2
+        const wcFields = [
+            'custentity8',  // QLD
+            'custentity9',  // NSW
+            'custentity10', // VIC
+            'custentity11', // SA
+            'custentity12'  // WA
         ];
 
-        // Run only when worker compensation fields change
-        if (workersFields.indexOf(fieldId) === -1) {
-            return;
-        }
+        // --- RULE 2: If user checks ANY Workers Compensation checkbox ---
+        if (wcFields.includes(fieldId)) {
+            const isAnyWcChecked = wcFields.some(id => currentRecord.getValue({ fieldId: id }) === true);
 
-        var isChecked = false;
-
-        for (var i = 0; i < workersFields.length; i++) {
-
-            if (rec.getValue({
-                fieldId: workersFields[i]
-            })) {
-                isChecked = true;
-                break;
+            if (isAnyWcChecked) {
+                // Insurance = Checked
+                currentRecord.setValue({ fieldId: 'custentity5', value: true, ignoreFieldChange: true });
+                // Public Liability = Checked
+                currentRecord.setValue({ fieldId: 'custentity7', value: true, ignoreFieldChange: true });
+                // Email Insurance To = Mandatory
+                const emailField = currentRecord.getField({ fieldId: 'custentity6' });
+                if (emailField) emailField.isMandatory = true;
             }
         }
 
-        // Replace with actual field IDs
-        if (isChecked) {
+        // --- RULE 1: If Insurance (custentity5) is checked manually ---
+        if (fieldId === 'custentity5') {
+            const isInsuranceChecked = currentRecord.getValue({ fieldId: 'custentity5' });
 
-            rec.setValue({
-                fieldId: 'custentity_insurance',
-                value: true,
-                ignoreFieldChange: true
-            });
-
-            rec.setValue({
-                fieldId: 'custentity_public_liability',
-                value: true,
-                ignoreFieldChange: true
-            });
-
-            var emailField = rec.getField({
-                fieldId: 'custentity_email_insurance_to'
-            });
-
-            if (emailField) {
-                emailField.isMandatory = true;
+            if (isInsuranceChecked) {
+                // Public Liability = Checked automatically
+                currentRecord.setValue({ fieldId: 'custentity7', value: true, ignoreFieldChange: true });
+                // Email Insurance To = Mandatory
+                const emailField = currentRecord.getField({ fieldId: 'custentity6' });
+                if (emailField) emailField.isMandatory = true;
+            } else {
+                // Optional: Revert mandatory status if Insurance is unchecked
+                const emailField = currentRecord.getField({ fieldId: 'custentity6' });
+                if (emailField) emailField.isMandatory = false;
             }
         }
     }
@@ -63,5 +57,4 @@ define([], () => {
     return {
         fieldChanged: fieldChanged
     };
-
 });
