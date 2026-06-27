@@ -1,60 +1,188 @@
-/**
- * @NApiVersion 2.1
- * @NScriptType ClientScript
- */
-define([], () => {
-
-    /**
-     * Function to handle field change events.
-     * Evaluates rules outlined in image_d02f35.jpg
-     */
-    function fieldChanged(context) {
-        const currentRecord = context.currentRecord;
-        const fieldId = context.fieldId;
-
-        // Grouping the worker compensation checkboxes for Rule 2
-        const wcFields = [
-            'custentity8',  // QLD
-            'custentity9',  // NSW
-            'custentity10', // VIC
-            'custentity11', // SA
-            'custentity12'  // WA
-        ];
-
-        // --- RULE 2: If user checks ANY Workers Compensation checkbox ---
-        if (wcFields.includes(fieldId)) {
-            const isAnyWcChecked = wcFields.some(id => currentRecord.getValue({ fieldId: id }) === true);
-
-            if (isAnyWcChecked) {
-                // Insurance = Checked
-                currentRecord.setValue({ fieldId: 'custentity5', value: true, ignoreFieldChange: true });
-                // Public Liability = Checked
-                currentRecord.setValue({ fieldId: 'custentity7', value: true, ignoreFieldChange: true });
-                // Email Insurance To = Mandatory
-                const emailField = currentRecord.getField({ fieldId: 'custentity6' });
-                if (emailField) emailField.isMandatory = true;
-            }
-        }
-
-        // --- RULE 1: If Insurance (custentity5) is checked manually ---
-        if (fieldId === 'custentity5') {
-            const isInsuranceChecked = currentRecord.getValue({ fieldId: 'custentity5' });
-
-            if (isInsuranceChecked) {
-                // Public Liability = Checked automatically
-                currentRecord.setValue({ fieldId: 'custentity7', value: true, ignoreFieldChange: true });
-                // Email Insurance To = Mandatory
-                const emailField = currentRecord.getField({ fieldId: 'custentity6' });
-                if (emailField) emailField.isMandatory = true;
-            } else {
-                // Optional: Revert mandatory status if Insurance is unchecked
-                const emailField = currentRecord.getField({ fieldId: 'custentity6' });
-                if (emailField) emailField.isMandatory = false;
-            }
-        }
-    }
-
-    return {
-        fieldChanged: fieldChanged
-    };
-});
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+	<head>
+		<style>
+body {
+				padding: 0;
+				margin: 0;
+			}
+			div.container {
+				height: 990px;
+				width: 100%;
+				margin: 0;
+				padding: 0;
+			}
+			p.answer {
+				color: black;
+				font-size: 12pt;
+				line-height: 20px;
+				font-family: Arial, Helvetica;
+				position: absolute;
+			}
+			p.tick {
+				color: black;
+				font-size: 24pt;
+				font-weight: bold;
+				font-family: Arial, Helvetica;
+				position: absolute;
+			}
+			#s1b1 {
+				top: 15.5%;
+				left: 33.6%;
+			}	
+			#s1b3 {
+				top: 26.5%;
+				left: 33.1%;
+			}	
+			#s1b4 {
+				top: 33.4%;
+				left: 33.6%;
+			}	
+			#s1q3p1 {
+				top: 49%;
+				left: 19%;
+				width: 60%;
+			}
+			#s1q3p2 {
+				top: 52%;
+				left: 60%;
+				width: 60%;
+			}
+			#s1q3p3 {
+				top: 55%;
+				left: 19%;
+				width: 60%;
+			}
+			#s1q3p4 {
+				top: 55%;
+				left: 60%;
+				width: 60%;
+			}
+			#s2q1 {
+				top: 59%;
+				left: 32%;
+				width: 60%;
+			}
+			#s2q3 {
+				top: 66%;
+				left: 10%;
+				width: 60%;
+			}
+			#s3q1 {
+				top: 73%;
+				left: 75%;
+				width: 60%;
+			}
+			#s4q1 {
+				top: 2%;
+				left: 76.5%;
+				width: 60%;
+			}
+			#s5q1 {
+				top: 21%;
+				left: 31%;
+				width: 60%;
+			}
+			#s6q1 {
+				top: 47%;
+				left: 55%;
+				width: 60%;
+			}
+			#s8q1 {
+				top: 48.5%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q2 {
+				top: 52%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q3 {
+				top: 52%;
+				left: 66%;
+				width: 60%;
+			}
+			#s8q4 {
+				top: 55.5%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q5 {
+				top: 55.5%;
+				left: 52.5%;
+				width: 60%;
+			}
+			#s8q6 {
+				top: 55.5%;
+				left: 74%;
+				width: 60%;
+			}
+			#s8q7 {
+				top: 59%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q8 {
+				top: 62.5%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q9 {
+				top: 64.5%;
+				left: 83%;
+				width: 60%;
+			}
+			#s8q10 {
+				top: 68%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q11 {
+				top: 68%;
+				left: 67%;
+				width: 60%;
+			}
+			#s9q1 {
+				top: 80.5%;
+				left: 72%;
+				width: 40%;
+			} 
+			img.signature {
+				width: 113px;
+				height: 50px;
+		 	}
+			#sig_box_cover {
+				top: 84%;
+				left: 30%;
+				height: 25px;
+				width: 39%;
+				position: absolute;
+				background-color: white;
+			}
+			#s9q2 {
+				top: 41%;
+				left: 74%;
+				width: 10%;
+			}
+		</style>
+	</head>
+	<body background-pdf="https://5238530.app.netsuite.com/core/media/media.nl?id=15567856&amp;c=5238530&amp;h=Uzb4OP6nsh6MeX63ditY_kHkF4-nbjyYBVw_aqfK8cdqGird&amp;_xt=.pdf">
+		<div class="container">
+			<p class="answer" id="s1q3p1">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[0]}</p>
+			<p class="answer" id="s1q3p2">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[1]}</p>
+			<p class="answer" id="s1q3p3">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[1]}</p>
+			<p class="answer" id="s1q3p4">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[2]}</p>
+			<p class="answer" id="s2q3">${local_council.name}</p>
+		</div>
+		<pbr />
+		<div class="container">
+			<p class="answer" id="s6q1">${asset.custrecord_nx_asset_serial}.</p>
+		</div>
+		<pbr />
+		<div class="container">
+			<p class="answer" id="s9q1">${asset.custrecord_nxc_commissioning_date?date}</p>
+		</div>
+	</body>
+</pdf>
