@@ -1,1 +1,116 @@
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
 
+<pdf>
+<head>
+<style>
+body{
+    margin:0;
+    padding:0;
+}
+
+.container{
+    position:relative;
+    width:100%;
+    height:100%;
+}
+
+.answer{
+    position:absolute;
+    font-family:Helvetica;
+    font-size:10pt;
+    color:#000;
+}
+
+/* PAGE 1 */
+#street{
+    top:49%;
+    left:18%;
+}
+
+#suburb{
+    top:49%;
+    left:58%;
+}
+
+#state{
+    top:54%;
+    left:18%;
+}
+
+#postcode{
+    top:54%;
+    left:34%;
+}
+
+#council{
+    top:65.5%;
+    left:11%;
+}
+
+/* PAGE 2 */
+#serial{
+    top:47%;
+    left:55%;
+}
+
+/* PAGE 3 */
+#date{
+    top:41%;
+    left:73%;
+}
+
+</style>
+</head>
+
+<body background-pdf="https://5238530.app.netsuite.com/core/media/media.nl?id=15567856&amp;c=5238530&amp;h=Uzb4OP6nsh6MeX63ditY_kHkF4-nbjyYBVw_aqfK8cdqGird&amp;_xt=.pdf">
+
+<!-- PAGE 1 -->
+<div class="container">
+
+<p class="answer" id="street">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[0]}
+</p>
+
+<p class="answer" id="suburb">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[1]}
+</p>
+
+<p class="answer" id="state">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[0]}
+</p>
+
+<p class="answer" id="postcode">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[1]}
+</p>
+
+<p class="answer" id="council">
+${local_council.name}
+</p>
+
+</div>
+
+<pbr/>
+
+<!-- PAGE 2 -->
+<div class="container">
+
+<p class="answer" id="serial">
+${asset.custrecord_nx_asset_serial}
+</p>
+
+</div>
+
+<pbr/>
+
+<!-- PAGE 3 -->
+<div class="container">
+
+<p class="answer" id="date">
+${asset.custrecord_nxc_commissioning_date?string("dd/MM/yyyy")}
+</p>
+
+</div>
+
+</body>
+</pdf>
