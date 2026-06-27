@@ -1,1 +1,280 @@
+<?xml version="1.0"?><!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+<head>
+    <link name="Arial" type="font" subtype="sans-serif" src="Arial" />
+    <style type="text/css">
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 8pt;
+            color: #000000;
+            margin: 0.25in 0.3in 0.4in 0.3in;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 6px;
+            table-layout: fixed;
+        }
+        tr {
+            page-break-inside: avoid;
+        }
+        th, td {
+            border: 1px solid #000000;
+            padding: 3px 5px;
+            vertical-align: top;
+            font-size: 8pt;
+        }
+        .main-title {
+            font-size: 14pt;
+            font-weight: bold;
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+        .section-header {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            font-size: 8.5pt;
+        }
+        .instruction-text {
+            font-size: 7pt;
+            color: #333333;
+            border: 1px solid #000000;
+            background-color: #ffffff;
+            padding: 4px 5px;
+        }
+        .no-border td {
+            border: none;
+            padding: 0;
+        }
+        .footer-table {
+            border: none;
+            font-size: 7pt;
+        }
+        .footer-table td {
+            border: none;
+            padding: 0;
+        }
+        .field-label {
+            font-size: 7.5pt;
+            font-weight: bold;
+            color: #000000;
+        }
+    </style>
+</head>
+<body footer="formFooter">
 
+    <!-- Top Branding Header -->
+    <table style="border: none; margin-bottom: 10px;">
+        <tr class="no-border">
+            <td class="main-title" width="75%">Form 12<br /><span style="font-size: 11pt; font-weight: bold;">Aspect Inspection Certificate (Appointed Competent Person)</span></td>
+            <td width="25%" style="text-align: right; border: none; font-size: 8.5pt; font-weight: bold;">
+                Queensland<br />Government
+            </td>
+        </tr>
+        <tr class="no-border">
+            <td colspan="2" style="font-size: 7pt; padding-top: 5px; line-height: 1.1;">
+                This form is the approved form that must be used in accordance with sections 74 and 77 of the Building Regulation 2021 (appointed competent person statement that an aspect of work has been completed and complies with the building development approval). Information about how to complete this form is in the Appendix at the end of the form.[cite: 1]
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 1 -->
+    <table>
+        <tr class="section-header">
+            <td>1. Indicate the aspect of the building work</td>
+        </tr>
+        <tr>
+            <td class="instruction-text">Examples of aspects of the stage of building work (and not limited to the examples provided below):<br />waterproofing, tiling, glazing, energy efficiency, emergency lights, exit signs, smoke detection, air-conditioning.[cite: 1]</td>
+        </tr>
+        <tr>
+            <td>
+                <span class="field-label">Aspect of building work (indicate the aspect)</span><br />
+                Supply and Installation Automatic Operator to Sliding/Swing Door for compliance to Australian Standards and or National Construction Code[cite: 1]
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 2 -->
+    <table>
+        <tr class="section-header">
+            <td colspan="4">2. Property description</td>
+        </tr>
+        <tr>
+            <td colspan="4" class="instruction-text">The description must identify all land the subject of the application. The lot and plan details (e.g. SP/RP) are shown on title documents or a rates notice. If the plan is not registered by title, provide previous lot and plan details.[cite: 1]</td>
+        </tr>
+        <tr>
+            <td colspan="4" style="height: 18px;"><span class="field-label">Street address</span><br /></td>
+        </tr>
+        <tr>
+            <td width="50%" colspan="2"><span class="field-label">Suburb/locality</span><br /></td>
+            <td width="25%"><span class="field-label">State</span><br /></td>
+            <td width="25%"><span class="field-label">Postcode</span><br /></td>
+        </tr>
+        <tr>
+            <td colspan="2"><span class="field-label">Lot and plan details</span> (attach list if necessary)<br /></td>
+            <td colspan="2"><span class="field-label">Local government area the land is situated in</span><br /></td>
+        </tr>
+    </table>
+
+    <!-- Section 3 -->
+    <table>
+        <tr class="section-header">
+            <td colspan="2">3. Building/structure description</td>
+        </tr>
+        <tr>
+            <td width="65%" style="height: 18px;"><span class="field-label">Building/structure description</span><br /></td>
+            <td width="35%"><span class="field-label">Class of building/structure</span><br /></td>
+        </tr>
+    </table>
+
+    <!-- Section 4 -->
+    <table>
+        <tr class="section-header">
+            <td>4. Description of the extent of aspect/s certified</td>
+        </tr>
+        <tr>
+            <td class="instruction-text">Clearly describe the extent of work covered by this certificate, i.e. all structural aspects of the steel roof beams and location i.e. what floors the work was on, the parts of a room.[cite: 1]</td>
+        </tr>
+        <tr>
+            <td style="height: 18px;">
+                Supply and Commission of Automatic Door Operator: S/N[cite: 1]
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 5 -->
+    <table>
+        <tr class="section-header">
+            <td>5. Basis of certification</td>
+        </tr>
+        <tr>
+            <td class="instruction-text">Detail the basis for giving the certificate and the extent to which tests, specifications, rules, standards, codes of practice and other publications were relied upon.[cite: 1]</td>
+        </tr>
+        <tr>
+            <td>
+                Automatic Operator are tested to meet the BCA Requirements D3D26 1(b) &amp; 3(d) and/or D3D24 2(d)(i &amp; ii), Australian Standards 5007 &ndash; 2007 and/or National Construction Code 2022 BCA 2022 B1.4 &amp; AS1288-2021 &amp; AS2047-2014[cite: 1]
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 6 -->
+    <table>
+        <tr class="section-header">
+            <td>6. Reference documentation</td>
+        </tr>
+        <tr>
+            <td class="instruction-text">Clearly identify any relevant documentation, e.g. numbered structural engineering plans.[cite: 1]</td>
+        </tr>
+        <tr>
+            <td style="height: 18px;"><br /></td>
+        </tr>
+    </table>
+
+    <!-- Section 7 -->
+    <table>
+        <tr class="section-header">
+            <td colspan="5">7. Building certifier reference number and building development approval number</td>
+        </tr>
+        <tr>
+            <td width="40%"><span class="field-label">Building certifier's name</span> (in full)<br /></td>
+            <td width="4%" style="border-left: none; border-right: none; text-align: center;">|</td>
+            <td width="26%"><span class="field-label">Building certifier reference number</span><br /></td>
+            <td width="4%" style="border-left: none; border-right: none; text-align: center;">|</td>
+            <td width="26%"><span class="field-label">Building development approval number</span><br /></td>
+        </tr>
+    </table>
+
+    <!-- Section 8 -->
+    <table>
+        <tr class="section-header">
+            <td colspan="5">8. Details of appointed competent person</td>
+        </tr>
+        <tr>
+            <td width="30%"><span class="field-label">Name (in full)</span>[cite: 1]</td>
+            <td width="4%" style="border: none; text-align: center;">|</td>
+            <td colspan="3">Raj Krishna[cite: 1]</td>
+        </tr>
+        <tr>
+            <td><span class="field-label">Company name</span> (if applicable)[cite: 1]</td>
+            <td style="border: none; text-align: center;">|</td>
+            <td colspan="3">Auto Ingress Pty Itd[cite: 1]</td>
+        </tr>
+        <tr>
+            <td><span class="field-label">Contact person</span>[cite: 1]</td>
+            <td style="border: none; text-align: center;">|</td>
+            <td colspan="3">Raj Krishna[cite: 1]</td>
+        </tr>
+        <tr>
+            <td><span class="field-label">Business phone number</span>[cite: 1]</td>
+            <td style="border: none; text-align: center;">|</td>
+            <td width="26%">07 3290 1500[cite: 1]</td>
+            <td width="14%"><span class="field-label">Mobile</span>[cite: 1]</td>
+            <td width="26%"></td>
+        </tr>
+        <tr>
+            <td><span class="field-label">Email address</span>[cite: 1]</td>
+            <td style="border: none; text-align: center;">|</td>
+            <td colspan="3">contact@autoingress.com.au[cite: 1]</td>
+        </tr>
+        <tr>
+            <td><span class="field-label">Postal address</span>[cite: 1]</td>
+            <td style="border: none; text-align: center;">|</td>
+            <td>PO Box 825[cite: 1]</td>
+            <td><span class="field-label">Suburb/locality</span>[cite: 1]</td>
+            <td>Springwood QLD[cite: 1]</td>
+        </tr>
+        <tr>
+            <td><span class="field-label">State</span>[cite: 1]</td>
+            <td style="border: none; text-align: center;">|</td>
+            <td>QLD[cite: 1]</td>
+            <td><span class="field-label">Postcode</span>[cite: 1]</td>
+            <td>4127[cite: 1]</td>
+        </tr>
+        <tr>
+            <td><span class="field-label">Licence class or registration type</span> (if applicable)[cite: 1]</td>
+            <td style="border: none; text-align: center;">|</td>
+            <td>Electrical Restricted[cite: 1]</td>
+            <td><span class="field-label">Licence class or registration number</span> (if applicable)[cite: 1]</td>
+            <td>56617[cite: 1]</td>
+        </tr>
+        <tr>
+            <td colspan="3"><span class="field-label">Date request to inspect received from building certifier</span>[cite: 1]</td>
+            <td colspan="2">Click or tap to enter a date.[cite: 1]</td>
+        </tr>
+    </table>
+
+    <!-- Section 9 -->
+    <table>
+        <tr class="section-header">
+            <td colspan="2">9. Signature of appointed competent person</td>
+        </tr>
+        <tr>
+            <td width="75%" style="height: 30px;"><span class="field-label">Signature</span>[cite: 1]</td>
+            <td width="25%"><span class="field-label">Date</span>[cite: 1]</td>
+        </tr>
+    </table>
+
+    <!-- Local Gov Use Block -->
+    <table style="margin-bottom: 0px;">
+        <tr class="section-header">
+            <td colspan="2">LOCAL GOVERNMENT USE ONLY</td>
+        </tr>
+        <tr>
+            <td width="50%"><span class="field-label">Date received</span><br />Click or tap to enter a date.[cite: 1]</td>
+            <td width="50%"><span class="field-label">Reference number/s</span><br /></td>
+        </tr>
+    </table>
+
+    <!-- Page Footer Definition -->
+    <pfoot id="formFooter">
+        <table class="footer-table">
+            <tr>
+                <td width="60%" style="font-size: 7pt; color: #000000;">Building Regulation 2021 Sections 74 and 77 Form 12 Version 2 March 2023[cite: 1]</td>
+                <td width="40%" style="text-align: right; font-size: 7pt; color: #000000;">Page <pagenumber/> of <totalpages/></td>
+            </tr>
+        </table>
+    </pfoot>
+
+</body>
+</pdf>
