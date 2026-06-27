@@ -1,281 +1,716 @@
+/**
+ * aiGenerateDocs.js
+ * @NApiVersion 2.x
+ * @NModuleScope Public
+ */
+define(['N/search', 'N/render', 'N/record', 'N/file', 'N/https', 'N/runtime', 'N/format'
+    , './aiIDLibrary.js'],
+    function (search, render, record, file, https, runtime, format
+        , idlib) {
+
+        function commChecklistComplies(checklist_id) {
+            var checklist = record.load({ type: 'customrecord_nxc_commissioning_form', id: checklist_id });
+            var compliance_checks = [
+                // Checklist Checks 1 == Yes, 2 == No
+                checklist.getValue({ fieldId: 'custrecord_cf_hung_correct' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_floor_clearance' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_floorguide_clearance' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_door_slide' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_anti_rise' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_adjustments' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_mains_power_correct' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_secure_no_obstructions' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_sensors_suit' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_danger_protection_sensors' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_any_hazards' }) == 2,
+                checklist.getValue({ fieldId: 'custrecord_cf_switch_fitting' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_failsafe_op_charging' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_self_reprogram_aft_pf' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_door_secure' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_slow_speed_boost_adjusted' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_open_close_speed_adjusted' }) == 1,
+                checklist.getValue({ fieldId: 'custrecord_cf_safety_reversing_adjusted' }) == 1,
+                //checklist.getValue({fieldId:'custrecord_cf_reset_training'}) == 1,
+                //checklist.getValue({fieldId:'custrecord_cf_alarm_voltage_free'}) == 1,
+                //checklist.getValue({fieldId:'custrecord_cf_pelmet_secure_clean_fitted'}) == 1,
+                //checklist.getValue({fieldId:'custrecord_cf_service_alarm_access'}) == 1,
+                //checklist.getValue({fieldId:'custrecord_cf_usage_service_awareness'}) == 1,
+                //checklist.getValue({fieldId:'custrecord_cf_warranty_card'}) == 1,
+                // Related Records Exist
+                checklist.getValue({ fieldId: 'custrecord_cf_asset' }) != '',
+                checklist.getValue({ fieldId: 'custrecord_cf_case' }) != '',
+                checklist.getValue({ fieldId: 'custrecord_cf_task' }) != '',
+                // Additional Fields Required
+                checklist.getValue({ fieldId: 'created' }) != ''
+            ];
+            return compliance_checks.reduce(function (acu, el) { return !acu ? acu : el }, true)
+        }; // End commChecklistComplies(checklist_id)
+
+        /* Gathers geoJSON data from QLD government website. Data outlines boundaries of local government areas.
+         * This data is used to check which lga a particular set of coordinates belongs to.
+         **/
+        function calculateLocalCouncil(long, lat) {
+            // Get geoJSON
+            var lgaGeoJsonUrl = 'https://data.gov.au/geoserver/qld-local-government-areas-psma-administrative-boundaries/wfs?request=GetFeature&typeName=ckan_16803f0b_6934_41ae_bf82_d16265784c7f&outputFormat=json';
+            var geoJSON = https.get({ url: lgaGeoJsonUrl }).body;
+            geoJSON = JSON.parse(geoJSON);
+            // Test each polygon until council located
+            for (var feat_ind = 0; feat_ind < geoJSON.features.length; feat_ind++) {
+                if (geoJSON.features[feat_ind].type == "Feature") {
+                    var feature = geoJSON.features[feat_ind];
+                    for (var poly_ind = 0; poly_ind < feature.geometry.coordinates.length; poly_ind++) {
+                        if (inside([long, lat], feature.geometry.coordinates[poly_ind][0])) {
+                            return feature.properties.qld_lga__2;
+                        }
+                    }
+                }
+            }
+            return '';
+        }; // End calculateLocalCouncil(long,lat)
+
+        /* Task a polygon of the form [ [1,1], [1,2], [2,2], [2,1] ] and a point of the form [1.5,1.5]
+         * and returns true when the point lies within the polygon.
+         **/
+        function inside(point, vs) {
+            var x = point[0], y = point[1];
+
+            var inside = false;
+            for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                var xi = vs[i][0], yi = vs[i][1];
+                var xj = vs[j][0], yj = vs[j][1];
+
+                var intersect = ((yi > y) != (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+
+            return inside;
+        }; // End inside(point, vs)
+
+        function loadHeaderFooterData(renderer) {
+            var raj_sig_file = file.load({ id: '519825' });
+            var logo_a_file = file.load({ id: '519828' });
+            var url_start = 'https://5238530.app.netsuite.com';
+            addRecords(renderer, [
+                { name: 'subsidiary', type: record.Type.SUBSIDIARY, id: runtime.getCurrentUser().subsidiary }
+            ]);
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'img_urls',
+                data: { 'raj_sig': url_start + raj_sig_file.url, 'logo_a': logo_a_file.url }
+            });
+        } // End loadHeaderFooterData(renderer)
+
+        function loadCommChecklistData(params, renderer) {
+            var checklist_joins = search.lookupFields({
+                type: 'customrecord_nxc_commissioning_form',
+                id: params.checklist_id,
+                columns: ['custrecord_cf_asset', 'custrecord_cf_case', 'custrecord_cf_task']
+            });
+            var asset_so_id = search.lookupFields({
+                type: 'customrecord_nx_asset',
+                id: checklist_joins.custrecord_cf_asset[0].value,
+                columns: ['custrecord_nxc_sales_order']
+            }).custrecord_nxc_sales_order[0].value;
+            var records = [
+                { name: 'asset', type: 'customrecord_nx_asset', id: checklist_joins.custrecord_cf_asset[0].value },
+                { name: 'case', type: record.Type.SUPPORT_CASE, id: checklist_joins.custrecord_cf_case[0].value },
+                { name: 'task', type: record.Type.TASK, id: checklist_joins.custrecord_cf_task[0].value },
+                { name: 'checklist', type: 'customrecord_nxc_commissioning_form', id: params.checklist_id },
+                { name: 'subsidiary', type: record.Type.SUBSIDIARY, id: runtime.getCurrentUser().subsidiary }
+            ];
+            if (asset_so_id) {
+                records.push({ name: 'sales_order', type: record.Type.SALES_ORDER, id: asset_so_id });
+            }
+            addRecords(renderer, records);
+            loadHeaderFooterData(renderer);
+        }; // End loadCommChecklistData(params,renderer)
+        function loadCommChecklistDataAndCouncil(params, renderer) {
+            var asset_loc = search.lookupFields({
+                type: 'customrecord_nx_asset',
+                id: params.asset_id,
+                columns: ['custrecord_nx_asset_longitude', 'custrecord_nx_asset_latitude']
+            });
+            loadCommChecklistData(params, renderer);
+            var local_council = calculateLocalCouncil(
+                parseFloat(asset_loc.custrecord_nx_asset_longitude),
+                parseFloat(asset_loc.custrecord_nx_asset_latitude)
+            );
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'local_council',
+                data: { 'name': local_council }
+            });
+        }; // End loadCommChecklistDataAndCouncil(params,renderer)
+
+        function loadContractorWOData(params, renderer) {
+            var case_joins = search.lookupFields({
+                type: record.Type.SUPPORT_CASE,
+                id: params.case_id,
+                columns: ['custevent_nx_case_asset',
+                    'startdate',
+                    'custevent_nxc_sub_assets',
+                    'custevent_nx_case_details',
+                    'custevent1',
+                    'custevent3',
+                    'contact',
+                    'company'
+                ]
+            });
+            // Load sub-asset fields
+            var asset_results = [];
+            var Notes = case_joins.custevent_nx_case_details;
+            log.debug("Details:", Notes);
+            var case_assets = case_joins.custevent_nxc_sub_assets;
+            var proj_assets = case_joins.custevent1;
+            var dateStr = [];
+            var startDateStr = case_joins.startdate;
+            log.debug("Start Date:", startDateStr);
+
+            var dateStr = []; // initialize array
+            var monthYear = ""; // declare variable
+
+            if (startDateStr) {
+                // Convert NetSuite date string to Date object
+                var dateObj = format.parse({
+                    value: startDateStr,
+                    type: format.Type.DATE
+                });
+
+                // Month names
+                var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+                monthYear = months[dateObj.getMonth()] + '-' + dateObj.getFullYear();
+            }
+
+            log.debug("Month-Year", monthYear);
+            dateStr.push(monthYear);
+
+            if (Array.isArray(case_assets)) case_assets = case_assets.map(function (el) { return el.value });
+            else if (case_assets.value) case_assets = case_assets.value.split(',');
+            if (Array.isArray(proj_assets)) proj_assets = proj_assets.map(function (el) { return el.value });
+            else if (proj_assets.value) proj_assets = proj_assets.value.split(',');
+            asset_results = asset_results.concat(case_assets);
+            log.debug("Case assets:", asset_results);
+            asset_results = asset_results.concat(proj_assets);
+            log.debug("Project assets:", asset_results);
+            var assets = [];
+            var flaggedNames = [];
+            asset_results.forEach(function (res) {
+                log.debug("asset results:", res);
+                var results = search.lookupFields({
+                    type: 'customrecord_nx_asset',
+                    id: res,
+                    columns: [
+                        'custrecord_ai_asd',
+                        'name',
+                        'custrecord_nx_asset_serial',
+                        'custrecord_nxc_customer_asset_id',
+                        'custrecord_nxc_master_code',
+                        'custrecord_nxc_manufacture_date',
+                        'custrecord_nxc_commissioning_date',
+                        'custrecord_na_nxc_location_on_site',
+                        'custrecord_nxc_make',
+                        'custrecord_nxc_model',
+                        'custrecord_nxc_locking',
+                        'custrecord_purchase_type',
+                        'custrecord_nxc_batt_type',
+                        'custrecord_nxc_transmission',
+                        'custrecord_product_type',
+                        'custrecord_nxc_sec_opt_operator_type',
+                        'custrecord_nxc_cowl',
+                        'custrecord_nxc_cowl_length',
+                        'custrecord_nxc_pelmet',
+                        'custrecord_nxc_pelmet_length',
+                        'custrecord_nxc_asset_type',
+                        'custrecord_nxc_door_height_m',
+                        'custrecord_nxc_door_width_m',
+                        'custrecord_nxc_door_weight_kg',
+                        'custrecord_nxc_glass_thickness',
+                        'custrecord_nxc_entry_sensor',
+                        'custrecord_nxc_exit_sensor',
+                        'custrecord_nxc_open_safety',
+                        'custrecord_nxc_close_safety',
+                        'custrecord_nxc_entry_switch',
+                        'custrecord_nxc_exit_switch',
+                        'custrecord_nxc_mode_switch',
+                        'custrecord_nxc_add_comm_parts',
+                        'custrecord_nx_asset_type',
+                        'custrecord_nxc_customer_asset_id',
+                        'custrecord_nxc_asset_notes',
+                        'custrecord_ai_nonai_model',
+                        'custrecord_ai_adnl_model_info'
+
+                    ]
+                });
+                var names = Object.keys(results);
+                names.forEach(function (name) {
+                    if (Array.isArray(results[name])) {
+                        if (results[name].length == 0) results[name] = '';
+                        else if (name != 'custrecord_nxc_add_comm_parts')
+                            results[name] = results[name][0].text;
+                    }
+                    else results[name] = results[name];
+                });
+
+                // Modification: transform results.name after colon
+                if (results.name) {
+                    results.name = getAfterFirstColonBlock(results.name);
+                }
+                // Get Tag Id number from search field value: results.custrecord_nxc_customer_asset_id
+                var tagIdNum = getTagIdNumber(results.custrecord_nxc_customer_asset_id);
+
+                // If Customer Asset Id contains a number -> append ":Tag Id:<number>"
+                if (tagIdNum) {
+                    results.name = results.name + ":Tag Id:" + tagIdNum;
+                }
+                // If checkbox is true, store the modified name in separate array
+                if (results.custrecord_ai_asd === true || results.custrecord_ai_asd === 'T') {
+                    flaggedNames.push(results.name);
+                }
+                else {
+                    assets.push(results);
+                }
+
+                log.debug("Asset Details:", results.name);
+                log.debug("Automatic Sliding Door(Back Of House) Checkbox names:", flaggedNames);
+
+            });
+            var logoFile = file.load({ id: 15265735 });
+            log.debug("Log File Url:", logoFile.url);
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'img',
+                data: {
+                    logo: logoFile.url
+                }
+            });
+            var logoFile = file.load({ id: 15265734 });
+            log.debug("Sliding Door Log File Url:", logoFile.url);
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'sliding',
+                data: {
+                    logo: logoFile.url
+                }
+            });
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'sub_assets',
+                data: { data: assets }
+            });
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'date_str',
+                data: { data: dateStr }
+            });
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'details',
+                data: { data: Notes }
+            });
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'flagged_names',
+                data: { data: flaggedNames }
+            });
+            // Load related transaction fields
+            var order_data = [];
+            case_joins.custevent3.forEach(function (res) {
+                var results = search.lookupFields({
+                    type: search.Type.TRANSACTION,
+                    id: res.value,
+                    columns: [
+                        'tranid',
+                        'shipdate',
+                        'status',
+                        'trackingnumbers',
+                        'shipmethod'
+                    ]
+                });
+                var names = Object.keys(results);
+                names.forEach(function (name) {
+                    if (Array.isArray(results[name])) {
+                        if (results[name].length == 0) results[name] = '';
+                        else results[name] = results[name][0].text;
+                    }
+                    else results[name] = results[name];
+                });
+                order_data.push(results);
+            });
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'orders',
+                data: { data: order_data }
+            });
+            // Load primary contact fields
+            if (case_joins.contact[0] == null) throw new Error('Error: Please enter a primary contact for your case.');
+            var contact_search = lookupContactFields(case_joins.contact[0].value);
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'case_contact',
+                data: contact_search
+            });
+            // Load site contacts fields
+            var site_contact_data = search.create({
+                type: 'customrecord_nxc_acl',
+                filters: [
+                    {
+                        name: 'custrecord_acl_asset',
+                        operator: search.Operator.IS,
+                        values: case_joins.custevent_nx_case_asset[0].value
+                    },
+                    {
+                        name: 'isinactive',
+                        operator: search.Operator.IS,
+                        values: false
+                    }
+                ],
+                columns: [{ name: 'custrecord_acl_contact' }]
+            }).run()
+                .getRange(0, 1000)
+                .map(function (res) { return res.getValue({ name: 'custrecord_acl_contact' }); })
+                .map(function (id) { return lookupContactFields(id); });
+            renderer.addCustomDataSource({
+                format: render.DataSource.OBJECT,
+                alias: 'site_contacts',
+                data: { data: site_contact_data }
+            });
+            addRecords(renderer, [
+                { name: 'site', type: 'customrecord_nx_asset', id: case_joins.custevent_nx_case_asset[0].value },
+                { name: 'case', type: record.Type.SUPPORT_CASE, id: params.case_id },
+                { name: 'project', type: record.Type.JOB, id: case_joins.company[0].value }
+            ]);
+            loadHeaderFooterData(renderer);
+        }; // End loadContractorWOData(params,renderer)
+
+
+        // Helper: returns everything after the first " : " (with spaces), or the original if not found
+        function getAfterFirstColonBlock(str) {
+            if (!str || typeof str !== 'string') return str;
+            var idx = str.indexOf(' : ');
+            return idx >= 0 ? str.substring(idx + 3).trim() : str;
+        }
+        // Helper: extract first number found
+        function getTagIdNumber(str) {
+            if (!str || typeof str !== 'string') return '';
+            var m = str.match(/\d+/);
+            return m ? m[0] : '';
+        }
+        function lookupContactFields(contact_id) {
+            return search.lookupFields({
+                type: search.Type.CONTACT,
+                id: contact_id,
+                columns: [
+                    'entityid',
+                    'email',
+                    'phone',
+                    'mobilephone'
+                ]
+            });
+        } // End contactSearch(contact_id)
+
+        // params is an array of objects, each of which follow the format
+        // { name: [name within template], type: [record type], id: [record internalId] }
+        function addRecords(renderer, params) {
+            params.forEach(function (param) {
+                renderer.addRecord({
+                    templateName: param.name,
+                    record: record.load({ type: param.type, id: param.id })
+                })
+            });
+        }; // End addRecord(renderer,params)
+
+        function generateAssetDocs(checklist_id) {
+            var asset_id = search.lookupFields({
+                type: 'customrecord_nxc_commissioning_form',
+                id: checklist_id,
+                columns: ['custrecord_cf_asset']
+            }).custrecord_cf_asset[0].value;
+            var asset_address = search.lookupFields({
+                type: 'customrecord_nx_asset',
+                id: asset_id,
+                columns: ['custrecord_nx_asset_address_text']
+            }).custrecord_nx_asset_address_text;
+
+            var renderer = render.create();
+            //     if ( asset_address.indexOf('QLD') != -1 )
+            //       loadCommChecklistDataAndCouncil({ checklist_id: checklist_id, asset_id: asset_id }, renderer);
+            //     else loadCommChecklistData({ checklist_id: checklist_id }, renderer);
+            loadCommChecklistData({ checklist_id: checklist_id }, renderer);
+
+            var docs = [];
+
+            renderer.templateContent = file.load({ id: '519834' }).getContents();
+            docs.push({ file: renderer.renderAsPdf(), doc_type: 'warranty' });
+
+            renderer.templateContent = file.load({ id: '519832' }).getContents();
+            docs.push({ file: renderer.renderAsPdf(), doc_type: 'compliance' });
+
+            if (asset_address.indexOf('QLD') != -1) {
+
+                // ✅ 1. Load background PDF (IMPORTANT: use correct PDF file ID)
+                var bgFile = file.load({ id: 15567856 }); // <-- YOUR BACKGROUND PDF ID
+
+                // ✅ 2. Add BEFORE rendering
+                renderer.addCustomDataSource({
+                    format: render.DataSource.OBJECT,
+                    alias: "data",
+                    data: {
+                        bgPdfUrl: bgFile.url
+                    }
+                });
+
+                // ✅ 3. Load template (XML file)
+                renderer.templateContent = file.load({ id: '15567856' }).getContents();
+
+                // ✅ 4. Render
+                docs.push({ file: renderer.renderAsPdf(), doc_type: 'form12' });
+            }
+
+            return docs;
+        }; // End generateAssetDocs(checklist_id)
+
+        function generateChecklistDoc(checklist_id) {
+            var renderer = render.create();
+            loadCommChecklistData({ checklist_id: checklist_id }, renderer);
+
+            renderer.templateContent = file.load({ id: '519831' }).getContents();
+            return { file: renderer.renderAsPdf(), doc_type: 'checklist' };
+        }; // End generateChecklistDoc(checklist_id)
+
+        function generateContractorWorkOrder(case_id) {
+            var case_type = search.lookupFields({
+                type: record.Type.SUPPORT_CASE,
+                id: case_id,
+                columns: ['custevent_nx_case_type', 'custevent_nx_customer']
+            });
+            var case_type_id = case_type.custevent_nx_case_type[0].value;
+            var customer_id = case_type.custevent_nx_customer[0].value;
+            log.debug("Customer Id:", customer_id);
+
+            const allowedCustomerIds = [
+                2410, 2415, 2414, 70743, 2408, 2416, 2413, 3069409, 2407
+            ];
+            var renderer = render.create();
+
+            if (case_type_id == idlib.CASE.TYPE.REPAIR) {
+                loadContractorWOData({ case_id: case_id }, renderer);
+                renderer.templateContent = file.load({ id: '529376' }).getContents();
+            }
+            else if (allowedCustomerIds.indexOf(parseInt(customer_id)) !== -1 && (case_type_id == idlib.CASE.TYPE.MAJOR_MAINT || case_type_id == idlib.CASE.TYPE.MINOR_MAINT)) {
+                loadContractorWOData({ case_id: case_id }, renderer);
+                renderer.templateContent = file.load({ id: '15265733' }).getContents();
+            }
+            else if (case_type_id == idlib.CASE.TYPE.MAJOR_MAINT || case_type_id == idlib.CASE.TYPE.MINOR_MAINT) {
+                loadContractorWOData({ case_id: case_id }, renderer);
+                renderer.templateContent = file.load({ id: '534477' }).getContents();
+            }
+            else if (case_type_id == idlib.CASE.TYPE.COMM || case_type_id == idlib.CASE.TYPE.INST_COMM) {
+                loadContractorWOData({ case_id: case_id }, renderer);
+                renderer.templateContent = file.load({ id: '529375' }).getContents();
+            }
+
+            try {
+                var pdf = renderer.renderAsPdf();
+            } catch (e) {
+                throw new Error('Issue rendering the provided template');
+            }
+            return { file: renderer.renderAsPdf(), doc_type: 'contractor_wo' };
+        } // End generateContractorWorkOrder(case_id)
+
+        return {
+            generateAssetDocs: generateAssetDocs,
+            generateChecklistDoc: generateChecklistDoc,
+            commChecklistComplies: commChecklistComplies,
+            generateContractorWO: generateContractorWorkOrder
+        };
+    })
 <?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
 <pdf>
-<head>
-    <link name="Arial" type="font" subtype="sans-serif" src="Arial" />
-    <style type="text/css">
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 8pt;
-            color: #000000;
-            margin: 0.25in 0.3in 0.4in 0.3in;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 6px;
-            table-layout: fixed;
-        }
-        tr {
-            page-break-inside: avoid;
-        }
-        th, td {
-            border: 1px solid #000000;
-            padding: 3px 5px;
-            vertical-align: top;
-            font-size: 8pt;
-        }
-        .main-title {
-            font-size: 14pt;
-            font-weight: bold;
-            border: none;
-            padding: 0;
-            margin: 0;
-        }
-        .section-header {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            font-size: 8.5pt;
-        }
-        .instruction-text {
-            font-size: 7pt;
-            color: #333333;
-            border: 1px solid #000000;
-            background-color: #ffffff;
-            padding: 4px 5px;
-        }
-        .no-border td {
-            border: none;
-            padding: 0;
-        }
-        .footer-table {
-            border: none;
-            font-size: 7pt;
-        }
-        .footer-table td {
-            border: none;
-            padding: 0;
-        }
-        .field-label {
-            font-size: 7.5pt;
-            font-weight: bold;
-            color: #000000;
-        }
-    </style>
-</head>
-<body footer="formFooter">
-
-    <!-- Top Branding Header -->
-    <table style="border: none; margin-bottom: 10px;">
-        <tr class="no-border">
-            <td class="main-title" width="75%">Form 12<br /><span style="font-size: 11pt; font-weight: bold;">Aspect Inspection Certificate (Appointed Competent Person)</span></td>
-            <td width="25%" style="text-align: right; border: none; font-size: 8.5pt; font-weight: bold;">
-                Queensland<br />Government
-            </td>
-        </tr>
-        <tr class="no-border">
-            <td colspan="2" style="font-size: 7pt; padding-top: 5px; line-height: 1.1;">
-                This form is the approved form that must be used in accordance with sections 74 and 77 of the Building Regulation 2021 (appointed competent person statement that an aspect of work has been completed and complies with the building development approval). Information about how to complete this form is in the Appendix at the end of the form.[cite: 1]
-            </td>
-        </tr>
-    </table>
-
-    <!-- Section 1 -->
-    <table>
-        <tr class="section-header">
-            <td>1. Indicate the aspect of the building work</td>
-        </tr>
-        <tr>
-            <td class="instruction-text">Examples of aspects of the stage of building work (and not limited to the examples provided below):<br />waterproofing, tiling, glazing, energy efficiency, emergency lights, exit signs, smoke detection, air-conditioning.[cite: 1]</td>
-        </tr>
-        <tr>
-            <td>
-                <span class="field-label">Aspect of building work (indicate the aspect)</span><br />
-                Supply and Installation Automatic Operator to Sliding/Swing Door for compliance to Australian Standards and or National Construction Code[cite: 1]
-            </td>
-        </tr>
-    </table>
-
-    <!-- Section 2 -->
-    <table>
-        <tr class="section-header">
-            <td colspan="4">2. Property description</td>
-        </tr>
-        <tr>
-            <td colspan="4" class="instruction-text">The description must identify all land the subject of the application. The lot and plan details (e.g. SP/RP) are shown on title documents or a rates notice. If the plan is not registered by title, provide previous lot and plan details.[cite: 1]</td>
-        </tr>
-        <tr>
-            <td colspan="4" style="height: 18px;"><span class="field-label">Street address</span><br /></td>
-        </tr>
-        <tr>
-            <td width="50%" colspan="2"><span class="field-label">Suburb/locality</span><br /></td>
-            <td width="25%"><span class="field-label">State</span><br /></td>
-            <td width="25%"><span class="field-label">Postcode</span><br /></td>
-        </tr>
-        <tr>
-            <td colspan="2"><span class="field-label">Lot and plan details</span> (attach list if necessary)<br /></td>
-            <td colspan="2"><span class="field-label">Local government area the land is situated in</span><br /></td>
-        </tr>
-    </table>
-
-    <!-- Section 3 -->
-    <table>
-        <tr class="section-header">
-            <td colspan="2">3. Building/structure description</td>
-        </tr>
-        <tr>
-            <td width="65%" style="height: 18px;"><span class="field-label">Building/structure description</span><br /></td>
-            <td width="35%"><span class="field-label">Class of building/structure</span><br /></td>
-        </tr>
-    </table>
-
-    <!-- Section 4 -->
-    <table>
-        <tr class="section-header">
-            <td>4. Description of the extent of aspect/s certified</td>
-        </tr>
-        <tr>
-            <td class="instruction-text">Clearly describe the extent of work covered by this certificate, i.e. all structural aspects of the steel roof beams and location i.e. what floors the work was on, the parts of a room.[cite: 1]</td>
-        </tr>
-        <tr>
-            <td style="height: 18px;">
-                Supply and Commission of Automatic Door Operator: S/N[cite: 1]
-            </td>
-        </tr>
-    </table>
-
-    <!-- Section 5 -->
-    <table>
-        <tr class="section-header">
-            <td>5. Basis of certification</td>
-        </tr>
-        <tr>
-            <td class="instruction-text">Detail the basis for giving the certificate and the extent to which tests, specifications, rules, standards, codes of practice and other publications were relied upon.[cite: 1]</td>
-        </tr>
-        <tr>
-            <td>
-                <!-- Replaced &ndash; with a standard space-hyphen layout to clear the XML entity error -->
-                Automatic Operator are tested to meet the BCA Requirements D3D26 1(b) &amp; 3(d) and/or D3D24 2(d)(i &amp; ii), Australian Standards 5007 - 2007 and/or National Construction Code 2022 BCA 2022 B1.4 &amp; AS1288-2021 &amp; AS2047-2014[cite: 1]
-            </td>
-        </tr>
-    </table>
-
-    <!-- Section 6 -->
-    <table>
-        <tr class="section-header">
-            <td>6. Reference documentation</td>
-        </tr>
-        <tr>
-            <td class="instruction-text">Clearly identify any relevant documentation, e.g. numbered structural engineering plans.[cite: 1]</td>
-        </tr>
-        <tr>
-            <td style="height: 18px;"><br /></td>
-        </tr>
-    </table>
-
-    <!-- Section 7 -->
-    <table>
-        <tr class="section-header">
-            <td colspan="5">7. Building certifier reference number and building development approval number</td>
-        </tr>
-        <tr>
-            <td width="40%"><span class="field-label">Building certifier's name</span> (in full)<br /></td>
-            <td width="4%" style="border-left: none; border-right: none; text-align: center;">|</td>
-            <td width="26%"><span class="field-label">Building certifier reference number</span><br /></td>
-            <td width="4%" style="border-left: none; border-right: none; text-align: center;">|</td>
-            <td width="26%"><span class="field-label">Building development approval number</span><br /></td>
-        </tr>
-    </table>
-
-    <!-- Section 8 -->
-    <table>
-        <tr class="section-header">
-            <td colspan="5">8. Details of appointed competent person</td>
-        </tr>
-        <tr>
-            <td width="30%"><span class="field-label">Name (in full)</span>[cite: 1]</td>
-            <td width="4%" style="border: none; text-align: center;">|</td>
-            <td colspan="3">Raj Krishna[cite: 1]</td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Company name</span> (if applicable)[cite: 1]</td>
-            <td style="border: none; text-align: center;">|</td>
-            <td colspan="3">Auto Ingress Pty Itd[cite: 1]</td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Contact person</span>[cite: 1]</td>
-            <td style="border: none; text-align: center;">|</td>
-            <td colspan="3">Raj Krishna[cite: 1]</td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Business phone number</span>[cite: 1]</td>
-            <td style="border: none; text-align: center;">|</td>
-            <td width="26%">07 3290 1500[cite: 1]</td>
-            <td width="14%"><span class="field-label">Mobile</span>[cite: 1]</td>
-            <td width="26%"></td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Email address</span>[cite: 1]</td>
-            <td style="border: none; text-align: center;">|</td>
-            <td colspan="3">contact@autoingress.com.au[cite: 1]</td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Postal address</span>[cite: 1]</td>
-            <td style="border: none; text-align: center;">|</td>
-            <td>PO Box 825[cite: 1]</td>
-            <td><span class="field-label">Suburb/locality</span>[cite: 1]</td>
-            <td>Springwood QLD[cite: 1]</td>
-        </tr>
-        <tr>
-            <td><span class="field-label">State</span>[cite: 1]</td>
-            <td style="border: none; text-align: center;">|</td>
-            <td>QLD[cite: 1]</td>
-            <td><span class="field-label">Postcode</span>[cite: 1]</td>
-            <td>4127[cite: 1]</td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Licence class or registration type</span> (if applicable)[cite: 1]</td>
-            <td style="border: none; text-align: center;">|</td>
-            <td>Electrical Restricted[cite: 1]</td>
-            <td><span class="field-label">Licence class or registration number</span> (if applicable)[cite: 1]</td>
-            <td>56617[cite: 1]</td>
-        </tr>
-        <tr>
-            <td colspan="3"><span class="field-label">Date request to inspect received from building certifier</span>[cite: 1]</td>
-            <td colspan="2">Click or tap to enter a date.[cite: 1]</td>
-        </tr>
-    </table>
-
-    <!-- Section 9 -->
-    <table>
-        <tr class="section-header">
-            <td colspan="2">9. Signature of appointed competent person</td>
-        </tr>
-        <tr>
-            <td width="75%" style="height: 30px;"><span class="field-label">Signature</span>[cite: 1]</td>
-            <td width="25%"><span class="field-label">Date</span>[cite: 1]</td>
-        </tr>
-    </table>
-
-    <!-- Local Gov Use Block -->
-    <table style="margin-bottom: 0px;">
-        <tr class="section-header">
-            <td colspan="2">LOCAL GOVERNMENT USE ONLY</td>
-        </tr>
-        <tr>
-            <td width="50%"><span class="field-label">Date received</span><br />Click or tap to enter a date.[cite: 1]</td>
-            <td width="50%"><span class="field-label">Reference number/s</span><br /></td>
-        </tr>
-    </table>
-
-    <!-- Page Footer Definition -->
-    <pfoot id="formFooter">
-        <table class="footer-table">
-            <tr>
-                <td width="60%" style="font-size: 7pt; color: #000000;">Building Regulation 2021 Sections 74 and 77 Form 12 Version 2 March 2023[cite: 1]</td>
-                <td width="40%" style="text-align: right; font-size: 7pt; color: #000000;">Page <pagenumber/> of <totalpages/></td>
-            </tr>
-        </table>
-    </pfoot>
-
-</body>
+	<head>
+		<style>
+body {
+				padding: 0;
+				margin: 0;
+			}
+			div.container {
+				height: 990px;
+				width: 100%;
+				margin: 0;
+				padding: 0;
+			}
+			p.answer {
+				color: black;
+				font-size: 12pt;
+				line-height: 20px;
+				font-family: Arial, Helvetica;
+				position: absolute;
+			}
+			p.tick {
+				color: black;
+				font-size: 24pt;
+				font-weight: bold;
+				font-family: Arial, Helvetica;
+				position: absolute;
+			}
+			#s1b1 {
+				top: 15.5%;
+				left: 33.6%;
+			}	
+			#s1b3 {
+				top: 26.5%;
+				left: 33.1%;
+			}	
+			#s1b4 {
+				top: 33.4%;
+				left: 33.6%;
+			}	
+			#s1q3p1 {
+				top: 49%;
+				left: 19%;
+				width: 60%;
+			}
+			#s1q3p2 {
+				top: 52%;
+				left: 60%;
+				width: 60%;
+			}
+			#s1q3p3 {
+				top: 55%;
+				left: 19%;
+				width: 60%;
+			}
+			#s1q3p4 {
+				top: 55%;
+				left: 60%;
+				width: 60%;
+			}
+			#s2q1 {
+				top: 59%;
+				left: 32%;
+				width: 60%;
+			}
+			#s2q3 {
+				top: 66%;
+				left: 10%;
+				width: 60%;
+			}
+			#s3q1 {
+				top: 73%;
+				left: 75%;
+				width: 60%;
+			}
+			#s4q1 {
+				top: 2%;
+				left: 76.5%;
+				width: 60%;
+			}
+			#s5q1 {
+				top: 21%;
+				left: 31%;
+				width: 60%;
+			}
+			#s6q1 {
+				top: 47%;
+				left: 55%;
+				width: 60%;
+			}
+			#s8q1 {
+				top: 48.5%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q2 {
+				top: 52%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q3 {
+				top: 52%;
+				left: 66%;
+				width: 60%;
+			}
+			#s8q4 {
+				top: 55.5%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q5 {
+				top: 55.5%;
+				left: 52.5%;
+				width: 60%;
+			}
+			#s8q6 {
+				top: 55.5%;
+				left: 74%;
+				width: 60%;
+			}
+			#s8q7 {
+				top: 59%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q8 {
+				top: 62.5%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q9 {
+				top: 64.5%;
+				left: 83%;
+				width: 60%;
+			}
+			#s8q10 {
+				top: 68%;
+				left: 31%;
+				width: 60%;
+			}
+			#s8q11 {
+				top: 68%;
+				left: 67%;
+				width: 60%;
+			}
+			#s9q1 {
+				top: 80.5%;
+				left: 72%;
+				width: 40%;
+			} 
+			img.signature {
+				width: 113px;
+				height: 50px;
+		 	}
+			#sig_box_cover {
+				top: 84%;
+				left: 30%;
+				height: 25px;
+				width: 39%;
+				position: absolute;
+				background-color: white;
+			}
+			#s9q2 {
+				top: 41%;
+				left: 74%;
+				width: 10%;
+			}
+		</style>
+	</head>
+	<body background-pdf="${data.bgPdfUrl}">
+		<div class="container">
+			<p class="answer" id="s1q3p1">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[0]}</p>
+			<p class="answer" id="s1q3p2">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[1]}</p>
+			<p class="answer" id="s1q3p3">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[1]}</p>
+			<p class="answer" id="s1q3p4">${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[2]}</p>
+			<p class="answer" id="s2q3">${local_council.name}</p>
+		</div>
+		<pbr />
+		<div class="container">
+			<p class="answer" id="s6q1">${asset.custrecord_nx_asset_serial}.</p>
+		</div>
+		<pbr />
+		<div class="container">
+			<p class="answer" id="s9q1">${asset.custrecord_nxc_commissioning_date?date}</p>
+		</div>
+	</body>
 </pdf>
