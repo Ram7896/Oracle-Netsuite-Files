@@ -1,1 +1,65 @@
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
 
+<pdf>
+<head>
+<style type="text/css">
+
+.answer{
+    position:absolute;
+    font-family:Helvetica;
+    font-size:10pt;
+}
+
+</style>
+</head>
+
+<body background-pdf="https://5238530.app.netsuite.com/core/media/media.nl?id=15567856&amp;c=5238530&amp;h=Uzb4OP6nsh6MeX63ditY_kHkF4-nbjyYBVw_aqfK8cdqGird&amp;_xt=.pdf">
+
+<!-- PAGE 1 -->
+
+<p class="answer"
+style="top:490px;left:130px;">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[0]!""}
+</p>
+
+<p class="answer"
+style="top:490px;left:420px;">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[1]!""}
+</p>
+
+<p class="answer"
+style="top:550px;left:130px;">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[0]!""}
+</p>
+
+<p class="answer"
+style="top:550px;left:260px;">
+${asset.custrecord_nx_asset_address_text?replace("<br />",", ","r")?split(",")[2]?split(" ")[1]!""}
+</p>
+
+<p class="answer"
+style="top:650px;left:80px;">
+${local_council.name!""}
+</p>
+
+<pbr/>
+
+<!-- PAGE 2 -->
+
+<p class="answer"
+style="top:430px;left:520px;">
+${asset.custrecord_nx_asset_serial!""}
+</p>
+
+<pbr/>
+
+<!-- PAGE 3 -->
+
+<p class="answer"
+style="top:380px;left:700px;">
+${asset.custrecord_nxc_commissioning_date?string("dd/MM/yyyy")}
+</p>
+
+</body>
+</pdf>
