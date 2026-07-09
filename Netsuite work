@@ -1,20 +1,86 @@
-[29/06, 4:00 pm] ~: . Auto Close Sales Orders
-Requirement
 
-Create a Scheduled Script that:
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ */
+define(["N/record",
+    "N/runtime",
+    "./lib/Integration Connection Library.js",
+    "N/search"],
+    function (record, runtime, connect, search) {
+        function afterSubmit(context) {
+            try {
+                log.debug("context.type", context.type);
+                if (context.type == context.UserEventType.CREATE) {
+                    var newRecord = context.newRecord;
+                    log.debug("id is", newRecord.id);
+                    var salesorderId = newRecord.id;
+                    log.debug("order Id is",salesorderId);
+                    const ifIntegRecId = runtime.getCurrentScript().getParameter("custscript_fonteva_so_ack_integ_rec");
+                    const transactionSource = runtime.getCurrentScript().getParameter("custscript_transaction_fnt_source_field");
+                    log.debug("ifIntegRecId", ifIntegRecId);
+                    log.debug("transactionSource", transactionSource);
 
-Runs daily at 11 PM.
-Searches Sales Orders where:
-Status = Pending Fulfillment
-Transaction Date > 90 days
-Close all remaining line items.
-Skip orders with open invoices.
-Log closed records
-[29/06, 4:02 pm] ~: Customer Deduplication
-Requirement
-Search duplicate customers.
-Compare:
-Email
-Phone
-Company Name
-Merge records
+                    const acknowledgment = runtime.getCurrentScript().getParameter("custscript_ada_fonteva_acknowledgment");
+                    log.debug("acknowledgment",acknowledgment);
+                    var txnsrc = newRecord.getValue({
+                        fieldId: "custbody_ada_transaction_source"
+                    });
+                    if (transactionSource == txnsrc) 
+                    {
+                        log.debug("Transaction Source Of Sales Order:", txnsrc);
+
+                        var recordType = newRecord.type;
+                        log.debug("Record Type:", recordType);
+
+                        var fieldLookUp = search.lookupFields({
+                            type:recordType,
+                            id: salesorderId,
+                            columns: ['externalid', 'tranid']
+                        });
+                        var extid = fieldLookUp.externalid;
+                        log.debug("extid:",extid);
+                        var externalId = extid[0].value;
+                        log.debug("externalid:", externalId);
+                        var tranid = fieldLookUp.tranid;
+                        log.debug("tranid:", tranid);
+                        var date = new Date();
+                        var transactionDate = date.getDate();
+                        var transactionMonth = date.getMonth() + 1;
+                        var transactionYear = date.getFullYear();
+                        var transactionTimeHour = date.getHours();
+                        var transactionTimeMin = date.getMinutes();
+                        var transactionTimeSec = date.getSeconds();
+                        var fullDate = transactionDate + ":" + transactionMonth + ":" + transactionYear + ":" + transactionTimeHour + ":" + transactionTimeMin + ":" + transactionTimeSec;
+
+                        var corelation_id = newRecord.id + "_" + fullDate;
+                        log.debug("corelation_id", corelation_id);
+
+                        var shipNoticeJson = {
+                            "messageHeader": {
+                                "correlationId": corelation_id,
+                                "action":acknowledgment ,
+                                "commandName": "outbound"
+                            },
+                            "messageContent": {
+                                "externalOrderId": externalId,
+                                "documentNumber": tranid,
+                            }
+                        }                 
+                       
+                        log.debug("shipNoticeJson", shipNoticeJson);
+                         const response = JSON.parse(
+                             connect.IntegrationConnection(shipNoticeJson, ifIntegRecId, newRecord.id)
+                         );
+                         log.debug("MuleSoft Response", response);
+                    }
+                    
+                }
+            } catch (e) {
+                log.error("error in afterSubmit", e);
+            }
+        }
+        return {
+            afterSubmit: afterSubmit
+        }
+    });
