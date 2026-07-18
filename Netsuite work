@@ -1,21 +1,27 @@
-Oauth 2.0:
- 
- 
-To establish the key and certificate we need to do this process:
-set OPENSSL_CONF=C:\Program Files\OpenSSL-Win64\bin\openssl.cfg
- 
-openssl req -x509 -newkey rsa:3072 -keyout sw2021d_key.pem -out sw2021d_cert.pem -days 365 -nodes
- 
-Link:
-https://slproweb.com/products/Win32OpenSSL.html
- 
- 
-Win64 OpenSSL v3.5.1
-EXE |MSI	281MB Installer
- 
- 
-Authorization Grant:
-https://suiteanswers.custhelp.com/app/answers/detail/a_id/1020926/loc/en_US
- 
-Machine to Machine SuiteAnswer Id:
-1013484
+Copilot said:
+
+Short Description:
+
+The item "Labour - STD" with description "ERROR - No Required Rates Found" is added by the script when no chargeable rates are calculated for the Sales Order.
+
+This happens in addRequiredRates() when:
+
+JavaScript
+Object.keys(rates).length == 0
+
+Show more lines
+
+Meaning the rates object returned from gatherRates() is empty. Common reasons include:
+
+No maintenance charges found for the project.
+No valid asset testing records on the case.
+All tested assets were filtered out (outcome = "No Test").
+No applicable labour/callout rates were generated.
+
+In this scenario, the script intentionally adds item 2647 (Labour - STD) with the description:
+
+ERROR - No Required Rates Found
+
+Show more lines
+
+to alert Accounts that the order could not determine the required billing items automatically.
