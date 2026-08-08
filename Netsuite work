@@ -1,27 +1,416 @@
-Copilot said:
+/**
+ * @NApiVersion 2.x
+ * @NScriptType MapReduceScript
+ */
+define([ 'N/search','N/email','N/url','N/record','N/runtime'
+        ,'./aiGenerateDocs.js','./aiIDLibrary.js' ],
+	function( search,email,url,record,runtime
+			 ,genDocs,idlib ) {
 
-Short Description:
+  		/**
+  		 * Creates a search for all cases that require a contractor work order to be processed.
+  		 * Does not check each case in detail, just gathers a list of all probable cases.
+  		 **/
+		function getInputData(context) {
+          // Create search to gather all valid cases.
+          var new_search = search.create({
+            type: search.Type.SUPPORT_CASE,
+            filters: [
+              {
+                name: 'status',
+                operator: search.Operator.ANYOF,
+                values: [ '1' ] // Not Started
+              },
+              {
+                name: 'assigned',
+                operator: search.Operator.ANYOF,
+                values: [ '48099' ] // NX Subcontractor
+              },
+              {
+                name: 'custevent_nx_case_type',
+                operator: search.Operator.ANYOF,
+                values: [ '1', '6' ] // Major & Minor Maintenance
+              },
+              /*{
+                name: 'custevent_nx_case_details',
+                operator: search.Operator.CONTAINS,
+                values: 'AIDAN_TEST'
+              },*/
+              {
+                name: 'startdate',
+                operator: search.Operator.ONORBEFORE,
+                values: 'thismonth'
+              }
+            ],
+            columns: [
+              'custevent_nxc_subcontractor',
+              'custevent_nxc_subcontractor_email',
+              'contact',
+              'casenumber',
+              'title',
+              'startdate',
+              'company'
+            ]
+          });
 
-The item "Labour - STD" with description "ERROR - No Required Rates Found" is added by the script when no chargeable rates are calculated for the Sales Order.
+          return new_search;
+		}; // end getInputData(context)
 
-This happens in addRequiredRates() when:
+  		/**
+  		 * Takes the results from the search created during the getInput stage and checks for any issues
+  		 * that would prevent the work order being sent. For each case, these issues are compiled into
+  		 * an error report ready for the summary stage to submit to the user.
+  		 * If no issues are identified, the case details are sent to the reduce stage with the contractor
+  		 * as the key.
+  		 **/
+		function map(context) {
+      try{
+        // Map cases against assigned contractor, checks for problems
+        var value = JSON.parse( context.value );
 
-JavaScript
-Object.keys(rates).length == 0
+        var case_num = value.values.casenumber;
+        var contact = value.values.contact.value;
+        var contractor = value.values.custevent_nxc_subcontractor.value;
+        var contractor_name = value.values.custevent_nxc_subcontractor.text;
+        var contractor_email = value.values.custevent_nxc_subcontractor_email;
 
-Show more lines
+        try {
+          var project_id = value.values.company.value;
+          var on_hold = search.lookupFields({
+            type: search.Type.ENTITY,
+            id: project_id,
+            columns: [ 'custentity_ai_hold_contractor_wo' ]
+          }).custentity_ai_hold_contractor_wo;
+        } catch (e) {
+          log.error({title:'Map - Project Detail Error',details:JSON.stringify(e)});
+          var err = new Error(case_num+' Error gathering Project details. Contact your administrator.');
+          err.cause = e;
+          throw err;
+        }
 
-Meaning the rates object returned from gatherRates() is empty. Common reasons include:
+        var error_message = case_num + ': ';
+        if ( contractor == null ) error_message += ' No contractor assigned to the Case.';
+        if ( contractor_email == '' ) error_message += ' Contractor email not set correctly on the Case.';
+        if ( contact == null ) error_message += ' Primary contact not set on the Case.';
+        if ( on_hold ) error_message += ' On-hold set on Case\'s parent Project.';
+        if ( error_message != case_num + ': ' ) {
+          var err = new Error(error_message);
+          throw err;
+        }
 
-No maintenance charges found for the project.
-No valid asset testing records on the case.
-All tested assets were filtered out (outcome = "No Test").
-No applicable labour/callout rates were generated.
+        context.write( {
+          key: contractor,
+          value: {
+            case_id: context.key,
+            case_title: value.values.title,
+            case_date: value.values.startdate,
+            contractor_email: contractor_email,
+            contractor_name: contractor_name
+          }
+        } );
+      }
+      catch(e){
+        log.error("There was an error in the map section" , e)
+      }
+          
+		}; // end map(context)
 
-In this scenario, the script intentionally adds item 2647 (Labour - STD) with the description:
+  		/**
+  		 * Working a contractor at a time, the reduce stage goes through each case identified for that
+  		 * contractor and generates the work order pdf and marks the case as processed.
+  		 * It compiles a list of cases that have failed, along with thier reason.
+  		 * Files generated are then grouped into batches to avoid excessive attachment sizes.
+  		 * Batches are then emailed to the contractor.
+  		 * After the succesful cases have been emailed, the system throws the failed cases (recorded
+  		 * earlier) as an error for the summarise stage to notify the user.
+  		 *
+  		 * Governance 10 + 20 per email batch + 65 per case(+1 per door, +1 per contact)
+  		 **/
+		function reduce(context) {
+      try{
+        // Given the assigned contractor, generate WOs for each case.
+        var months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+        var today = new Date();
+        var year = today.getFullYear();
+        var month = months[today.getMonth()];
+        var contractor_name = JSON.parse(context.values[0]).contractor_name;
+        var contractor_email = JSON.parse(context.values[0]).contractor_email;
+        var script_details = gatherScriptDetails([
+          { id: 'custscript_ai_qtly_wo_iteration', name: 'attempt_num' }
+        ]);
+        script_details.params.attempt_num = script_details.params.attempt_num || 1;
 
-ERROR - No Required Rates Found
+        // For each case recorded against this contractor, generate the WO pdf
+        // Governance 65 +1 for each door on case + 1 for each site contact on case
+        // Calculated that there must not be more than around 60 cases before there are
+        // governance issues in this reduce stage.
+        var files = [];
+        var template_errors = [];
+        var status_errors = [];
+        var num_exceeded_errors = [];
+        var num_cases = 0;
+        context.values.forEach( function(val) {
+          num_cases++;
+          if ( num_cases > 60 ) {
+            num_exceeded_errors.push(val.case_title);
+            log.error({title:'Reduce Error',details:'Max number of cases exceeded, could not process case - '+val.case_title});
+            return true;
+          }
 
-Show more lines
+          try {
+            val = JSON.parse(val);
+            var file = genDocs.generateContractorWO(val.case_id).file;
+            var case_date_string = val.case_date.split('/');
+            var case_year = case_date_string[2].split(' ')[0];
+            var case_month = months[case_date_string[1]-1];
+            file.name = '['+case_month+case_year+'] '+ val.case_title+'.pdf';
+            files.push( file );
+          } catch (e) {
+            template_errors.push(val.case_title);
+            log.error({title:'Reduce Error',details:'Could not generate template for this Case - '+val.case_title+' - '+JSON.stringify(e)});
+            return true;
+          }
 
-to alert Accounts that the order could not determine the required billing items automatically.
+          // Mark cases as sent (set to in-progress) and record any errors
+          try {
+            record.submitFields({
+              type: record.Type.SUPPORT_CASE,
+              id: val.case_id,
+              values: {
+                'status': 2 // In Progress
+              },
+              options: {
+                enableSourcing: false,
+                ignoreMandatoryFields: true
+              }
+            });
+          } catch (e) {
+            status_errors.push(val.case_title);
+            log.error({title:'Reduce Error',details:'Could not move case to In Progress Status - '+val.case_title+' - '+JSON.stringify(e)});
+          }
+        });
+
+        // Group WOs into batches of no larger than 3MB
+        var batches = batchFiles(files,3145728);
+
+        // Email WO's in batches.
+        batches.forEach( function(batch,ind) {
+          var subject_line = month+' '+year+' - Maintenance Case [Email '+(ind+1)+' of '+batches.length
+                            +'] '+script_details.title+' Run#'+script_details.params.attempt_num;
+          var body_html = '<html>';
+          body_html += '<p>Dear '+contractor_name+',</p>';
+          body_html += '<p>Please find attached the maintenance WOs for '+month+' '+year+':</p>';
+          body_html += '<ul>';
+          batch.files.forEach( function(file) {
+            body_html += '<li>'+file.name+'</li>'
+          });
+          body_html += '</ul>';
+          body_html += '<p>The attached SC job sheets MUST be completed and returned to us with your invoice. Failure to return the attached job sheet will result in a delay in payment.</p>';
+          body_html += '<p>Kind Regards,<br><b>Auto Ingress Service</b></p>';
+          body_html += '<img src="https://5238530-sb2.app.netsuite.com/core/media/media.nl?id=361702&c=5238530_SB2&h=fede6dc62e3a97296fce"></img>'
+          body_html += '</html>';
+          email.send({
+            author: idlib.USER.SERVICE.ID,
+            recipients: contractor_email,
+            subject: subject_line,
+            body: body_html,
+            attachments: batch.files,
+            relatedRecords: {
+              entityId: context.key
+            }
+          });
+        });
+
+        // Notify the user of any errors moving cases to the in-progress status or generating the pdf files.
+        // Also notify them if any cases could not be sent due to governance issues.
+        if ( status_errors.length > 0 || template_errors.length > 0 || num_exceeded_errors.length > 0 ) {
+          var error_message = '';
+          if ( status_errors.length > 0 ) {
+            error_message += ' ## Could not move case(s) to the "In Progress" status';
+            status_errors.forEach( function(e) { error_message += ', '+e } );
+          }
+          if ( template_errors.length > 0 ) {
+            error_message += ' ## Could not generate pdf for case(s)';
+            template_errors.forEach( function(e) { error_message += ', '+e } );
+          }
+          if ( num_exceeded_errors.length > 0 ) {
+            error_message += ' ## Max number of cases exceeded, try these cases again on next sweep';
+            template_errors.forEach( function(e) { error_message += ', '+e } );
+          }
+          throw new Error(error_message);
+        }
+
+      }
+      catch(e){
+        log.error("There was an error in the reduce section" , e)
+      }
+          
+		}; // end reduce(context)
+
+  		/**
+  		 * Generates a summary email for the Service and Contracts team.
+  		 * This email outlines the number of cases processed (map stage), the number of contractors
+  		 * contacted (reduce stage) as well as any issues identified in each stage.
+  		 * The errors provide user friendly information to the department including instructions to
+  		 * rectify the issue and in most cases a link to the offending record.
+  		 * The top of the email also contains a link to request another sweep be run, presumably
+  		 * after the issues have been resolved.
+  		 */
+		function summarize(context) {
+      try{
+        // Email someone the outcome of the sweep.
+        var months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+        var today = new Date();
+        var year = today.getFullYear();
+        var month = months[today.getMonth()];
+        var script_details = gatherScriptDetails([
+          { id: 'custscript_ai_qtly_wo_iteration', name: 'attempt_num' }
+        ]);
+        script_details.params.attempt_num = script_details.params.attempt_num || 1;
+        var map_errors = [];
+        context.mapSummary.errors.iterator().each( function(key,error,exNo) {
+          map_errors.push({key:key,error:JSON.parse(error).message});
+          return true;
+        });
+        var num_cases = 0;
+        context.mapSummary.keys.iterator().each( function(key,error,exNo) {
+          num_cases++;
+          return true;
+        });
+        var reduce_errors = [];
+        context.reduceSummary.errors.iterator().each( function(key,error,exNo) {
+          reduce_errors.push({key:key,error:JSON.parse(error).message});
+          return true;
+        });
+        var num_contractors = 0;
+        context.reduceSummary.keys.iterator().each( function(key,error,exNo) {
+          num_contractors++;
+          return true;
+        });
+        // Generate Email
+        var body_html = '<html>';
+        body_html += '<p style="font-size:12pt;"><b>'+month+' '+year+' Contractor Maintenance Work Orders Sent</b></p>';
+        // add the Re-run link
+        if ( reduce_errors.length > 0 || map_errors.length > 0 ) {
+          var rerun_url = url.resolveScript({
+            scriptId: 'customscript_ai_start_qtly_sweep_suite',
+            deploymentId: 'customdeploy_ai_start_qtly_sweep_suite',
+            params: {
+              deployment_id: script_details.params.deploymentId,
+              attempt_num: script_details.params.attempt_num + 1
+            }
+          });
+          body_html += '<a style="color: blue;" href="'+rerun_url+'">Re-run Sweep</a>';
+        }
+        // Add map stage results
+        body_html += '<p><b>'+num_cases+' Cases processed with '+map_errors.length+' issues:</b></p>';
+        body_html += '<ol>';
+        map_errors.forEach( function(error) {
+          var case_url = url.resolveRecord({
+            recordType: record.Type.SUPPORT_CASE,
+            recordId: error.key,
+            isEditMode: false
+          });
+          body_html += '<li><a href="'+case_url+'">Open</a> '+error.error+'</li>';
+        });
+        body_html += '</ol>';
+        // Add the reduce stage results
+        body_html += '<p><b>'+num_contractors+' Contractors processed with '+reduce_errors.length+' issues:</b></p>';
+        body_html += '<ol>';
+        reduce_errors.forEach( function(error) {
+          var contractor_name = search.lookupFields({
+            type: search.Type.VENDOR,
+            id: error.key,
+            columns: [ 'entityid' ]
+          }).entityid;
+          body_html += '<li>'+contractor_name+' - '+error.error+'</li>';
+        });
+        body_html += '</ol>';
+        body_html += '</html>';
+        // Send
+        email.send({
+          author: idlib.USER.SERVICE.ID,
+          recipients: idlib.USER.SERVICE.ID,
+          cc: [ idlib.USER.CONTRACTS.ID ],
+          bcc: [ idlib.USER.AIDANJ.ID ],
+          subject: month+year+' Contractor Maintenance Sweep Completed ['+script_details.title+' Run# '+script_details.params.attempt_num+']',
+          body: body_html
+        });
+      }
+      catch(e){
+        log.error("Error in the Summary section" , e)
+      }
+          
+		}; // end summarize(context)
+
+  		// Takes an array of File objects and a max_size in bytes and returns the same files
+  		// grouped in batches of no more than max_size bytes. Throws an error if any given file
+  		// is larger than the max_size requested.
+  		//
+  		// 		files		[ file, file, ... ] files to be grouped.
+  		// 		max_size	Interger representing the desired maximum batch size in bytes.
+  		//
+  		// 		returns		[ { files: [file, file, ...], total_size: xxx (bytes) }, ... ]
+  		function batchFiles(files,max_size) {
+          var batches = [];
+          var curr_batch = [];
+          var curr_batch_size = 0;
+          files.forEach( function(file,ind){
+            if ( file.size > max_size ) throw new Error("Current file size is larger than maximum batch size requested, cannot include this file in the current batch. Please increase the maximum batch size or control the size of this file. File: "+file.name);
+            if ( curr_batch_size + file.size > max_size){
+              batches.push( { files: curr_batch, total_size: curr_batch_size } );
+              curr_batch = [];
+              curr_batch_size = 0;
+            }
+            curr_batch.push(file);
+            curr_batch_size += file.size;
+          });
+          if ( curr_batch_size > 0 ) batches.push( { files: curr_batch, total_size: curr_batch_size } );
+          return batches;
+        }; // end batchFiles(files,max_size);
+
+  		/**
+  		 * Takes an array of params and returns an object containing details about the currently running
+  		 * script along with the values of those script parameters. Params are re-named in the process 
+  		 * to assist with shorter code. Governance 10
+  		 *
+  		 * 		params		Array of objects of the form { id: [internal id], name: [new key] } where
+  		 * 					id is the internal id of the script parameter and name is the new key used
+  		 * 					to record the parameter in the output object.
+  		 *
+  		 * 		returns		An object of the form:
+  		 *         			{ title: xxx, deplopymentId: xxx, params: { key: value, key: value, ... } }
+  		 **/
+  		function gatherScriptDetails(params) {
+          var curr_script = runtime.getCurrentScript();
+          var script_title = search.create({
+            type: search.Type.SCRIPT_DEPLOYMENT,
+            filters: [
+              {
+                name: 'scriptId',
+                operator: search.Operator.IS,
+                values: curr_script.deploymentId
+              }
+            ],
+            columns: [
+              { name: 'title' }
+            ]
+          }).run().getRange(0,1)[0].getValue({name:'title'});
+          var out_params = {};
+          params.forEach( function(param) {
+            out_params[param.name] = curr_script.getParameter(param.id);
+          });
+          return {
+            title: script_title,
+            deploymentId: curr_script.deploymentId,
+            params: out_params
+          };
+        }; // end gatherScriptDetails(params)
+
+		return {
+			getInputData: getInputData,
+			map: map,
+			reduce: reduce,
+			summarize: summarize
+		};
+});
