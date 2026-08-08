@@ -41,19 +41,19 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
                 operator: search.Operator.ONORBEFORE,
                 values: 'thismonth'
               }
-            ],
-            columns: [
-              'custevent_nxc_subcontractor',
-              'custevent_nxc_subcontractor_email',
-              'contact',
-              'casenumber',
-              'title',
-              'startdate',
-              'company'
-            ]
-          });
+          ],
+          columns: [
+            'custevent_nxc_subcontractor',
+            'custevent_nxc_subcontractor_email',
+            'contact',
+            'casenumber',
+            'title',
+            'startdate',
+            'company'
+          ]
+        });
 
-          return new_search;
+        return new_search;
 		}; // end getInputData(context)
 
   		/**
@@ -80,7 +80,7 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
             type: search.Type.ENTITY,
             id: project_id,
             columns: [ 'custentity_ai_hold_contractor_wo' ]
-          }).custentity_ai_hold_contractor_wo;
+        }).custentity_ai_hold_contractor_wo;
         } catch (e) {
           log.error({title:'Map - Project Detail Error',details:JSON.stringify(e)});
           var err = new Error(case_num+' Error gathering Project details. Contact your administrator.');
@@ -119,12 +119,11 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
   		 * Working a contractor at a time, the reduce stage goes through each case identified for that
   		 * contractor and generates the work order pdf and marks the case as processed.
   		 * It compiles a list of cases that have failed, along with thier reason.
-  		 * Files generated are then grouped into batches to avoid excessive attachment sizes.
-  		 * Batches are then emailed to the contractor.
+  		 * Files generated are then sent individually per case via email to the contractor.
   		 * After the succesful cases have been emailed, the system throws the failed cases (recorded
   		 * earlier) as an error for the summarise stage to notify the user.
   		 *
-  		 * Governance 10 + 20 per email batch + 65 per case(+1 per door, +1 per contact)
+  		 * Governance 10 + 20 per email + 65 per case(+1 per door, +1 per contact)
   		 **/
 		function reduce(context) {
       try{
@@ -140,11 +139,7 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
         ]);
         script_details.params.attempt_num = script_details.params.attempt_num || 1;
 
-        // For each case recorded against this contractor, generate the WO pdf
-        // Governance 65 +1 for each door on case + 1 for each site contact on case
-        // Calculated that there must not be more than around 60 cases before there are
-        // governance issues in this reduce stage.
-        var files = [];
+        // For each case recorded against this contractor, generate the WO pdf and send individually
         var template_errors = [];
         var status_errors = [];
         var num_exceeded_errors = [];
@@ -157,25 +152,26 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
             return true;
           }
 
+         var parsedVal, file;
           try {
-            val = JSON.parse(val);
-            var file = genDocs.generateContractorWO(val.case_id).file;
-            var case_date_string = val.case_date.split('/');
+            parsedVal = JSON.parse(val);
+            file = genDocs.generateContractorWO(parsedVal.case_id).file;
+            var case_date_string = parsedVal.case_date.split('/');
             var case_year = case_date_string[2].split(' ')[0];
             var case_month = months[case_date_string[1]-1];
-            file.name = '['+case_month+case_year+'] '+ val.case_title+'.pdf';
-            files.push( file );
+            file.name = '['+case_month+case_year+'] '+ parsedVal.case_title+'.pdf';
           } catch (e) {
-            template_errors.push(val.case_title);
-            log.error({title:'Reduce Error',details:'Could not generate template for this Case - '+val.case_title+' - '+JSON.stringify(e)});
+            var errorCaseTitle = parsedVal ? parsedVal.case_title : 'Unknown';
+            template_errors.push(errorCaseTitle);
+            log.error({title:'Reduce Error',details:'Could not generate template for this Case - '+errorCaseTitle+' - '+JSON.stringify(e)});
             return true;
-          }
+        }
 
-          // Mark cases as sent (set to in-progress) and record any errors
+          // Mark case as sent (set to in-progress) and record any errors
           try {
             record.submitFields({
               type: record.Type.SUPPORT_CASE,
-              id: val.case_id,
+              id: parsedVal.case_id,
               values: {
                 'status': 2 // In Progress
               },
@@ -185,40 +181,38 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
               }
             });
           } catch (e) {
-            status_errors.push(val.case_title);
-            log.error({title:'Reduce Error',details:'Could not move case to In Progress Status - '+val.case_title+' - '+JSON.stringify(e)});
-          }
-        });
+            status_errors.push(parsedVal.case_title);
+            log.error({title:'Reduce Error',details:'Could not move case to In Progress Status - '+parsedVal.case_title+' - '+JSON.stringify(e)});
+        }
 
-        // Group WOs into batches of no larger than 3MB
-        var batches = batchFiles(files,3145728);
+         // Send individual email for the work order
+         var subject_line = month+' '+year+' - Maintenance Case ['+parsedVal.case_title
+                           +'] '+script_details.title+' Run#'+script_details.params.attempt_num;
+         var body_html = '<html>';
+         body_html += '<p>Dear '+contractor_name+',</p>';
+         body_html += '<p>Please find attached the maintenance WO for '+month+' '+year+':</p>';
+         body_html += '<ul>';
+         body_html += '<li>'+file.name+'</li>';
+         body_html += '</ul>';
+         body_html += '<p>The attached SC job sheet MUST be completed and returned to us with your invoice. Failure to return the attached job sheet will result in a delay in payment.</p>';
+         body_html += '<p>Kind Regards,<br><b>Auto Ingress Service</b></p>';
+         body_html += '<img src="https://5238530-sb2.app.netsuite.com/core/media/media.nl?id=361702&c=5238530_SB2&h=fede6dc62e3a97296fce"></img>';
+         body_html += '</html>';
 
-        // Email WO's in batches.
-        batches.forEach( function(batch,ind) {
-          var subject_line = month+' '+year+' - Maintenance Case [Email '+(ind+1)+' of '+batches.length
-                            +'] '+script_details.title+' Run#'+script_details.params.attempt_num;
-          var body_html = '<html>';
-          body_html += '<p>Dear '+contractor_name+',</p>';
-          body_html += '<p>Please find attached the maintenance WOs for '+month+' '+year+':</p>';
-          body_html += '<ul>';
-          batch.files.forEach( function(file) {
-            body_html += '<li>'+file.name+'</li>'
-          });
-          body_html += '</ul>';
-          body_html += '<p>The attached SC job sheets MUST be completed and returned to us with your invoice. Failure to return the attached job sheet will result in a delay in payment.</p>';
-          body_html += '<p>Kind Regards,<br><b>Auto Ingress Service</b></p>';
-          body_html += '<img src="https://5238530-sb2.app.netsuite.com/core/media/media.nl?id=361702&c=5238530_SB2&h=fede6dc62e3a97296fce"></img>'
-          body_html += '</html>';
-          email.send({
-            author: idlib.USER.SERVICE.ID,
-            recipients: contractor_email,
-            subject: subject_line,
-            body: body_html,
-            attachments: batch.files,
-            relatedRecords: {
-              entityId: context.key
-            }
-          });
+         try {
+           email.send({
+             author: idlib.USER.SERVICE.ID,
+             recipients: contractor_email,
+             subject: subject_line,
+             body: body_html,
+             attachments: [file],
+             relatedRecords: {
+               entityId: context.key
+             }
+           });
+         } catch (emailErr) {
+           log.error({title:'Reduce Email Error',details:'Could not send email for case - '+parsedVal.case_title+' - '+JSON.stringify(emailErr)});
+         }
         });
 
         // Notify the user of any errors moving cases to the in-progress status or generating the pdf files.
@@ -228,15 +222,15 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
           if ( status_errors.length > 0 ) {
             error_message += ' ## Could not move case(s) to the "In Progress" status';
             status_errors.forEach( function(e) { error_message += ', '+e } );
-          }
+        }
           if ( template_errors.length > 0 ) {
             error_message += ' ## Could not generate pdf for case(s)';
             template_errors.forEach( function(e) { error_message += ', '+e } );
-          }
+        }
           if ( num_exceeded_errors.length > 0 ) {
             error_message += ' ## Max number of cases exceeded, try these cases again on next sweep';
-            template_errors.forEach( function(e) { error_message += ', '+e } );
-          }
+            num_exceeded_errors.forEach( function(e) { error_message += ', '+e } );
+        }
           throw new Error(error_message);
         }
 
@@ -343,15 +337,15 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
           
 		}; // end summarize(context)
 
-  		// Takes an array of File objects and a max_size in bytes and returns the same files
-  		// grouped in batches of no more than max_size bytes. Throws an error if any given file
-  		// is larger than the max_size requested.
-  		//
-  		// 		files		[ file, file, ... ] files to be grouped.
-  		// 		max_size	Interger representing the desired maximum batch size in bytes.
-  		//
-  		// 		returns		[ { files: [file, file, ...], total_size: xxx (bytes) }, ... ]
-  		function batchFiles(files,max_size) {
+ 		// Takes an array of File objects and a max_size in bytes and returns the same files
+ 		// grouped in batches of no more than max_size bytes. Throws an error if any given file
+ 		// is larger than the max_size requested.
+ 		//
+ 		// 		files		[ file, file, ... ] files to be grouped.
+ 		// 		max_size	Interger representing the desired maximum batch size in bytes.
+ 		//
+ 		// 		returns		[ { files: [file, file, ...], total_size: xxx (bytes) }, ... ]
+ 		function batchFiles(files,max_size) {
           var batches = [];
           var curr_batch = [];
           var curr_batch_size = 0;
@@ -399,13 +393,13 @@ define([ 'N/search','N/email','N/url','N/record','N/runtime'
           var out_params = {};
           params.forEach( function(param) {
             out_params[param.name] = curr_script.getParameter(param.id);
-          });
-          return {
-            title: script_title,
-            deploymentId: curr_script.deploymentId,
-            params: out_params
-          };
-        }; // end gatherScriptDetails(params)
+        });
+        return {
+          title: script_title,
+          deploymentId: curr_script.deploymentId,
+          params: out_params
+        };
+      }; // end gatherScriptDetails(params)
 
 		return {
 			getInputData: getInputData,
