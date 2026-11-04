@@ -1,0 +1,2 @@
+Posting Entity,SalesOrderExternalId,External ID,External Transaction #,Date,Payment Option,Stripe Reference Number,Check #,Memo,Last 4 Digits Card,Card Type,Payment Amount
+"Invoice","a1VKj00000T2QuqMAF","a1Odi000000jnMLEAY","0001527797","2026-02-25","Credit Memo","","5634567","Credit Memo #002258883","","","200.0"
