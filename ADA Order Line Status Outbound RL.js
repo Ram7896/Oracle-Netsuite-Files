@@ -6,7 +6,7 @@
  * Description			:	This script is used send Order Line Status Updates to BCM, when NS receives a GET request.
  * Change Log	  		:	||    Changed By    ||    Date          ||            Description                    ||
                       ||    Rashmi Desai  ||  5-March-2024    ||   Added new fuction to build Item Object  ||
-                      ||    Rashmi Desai  ||  5-March-2024    ||   Updated the outbound for Kit Item       ||
+                      ||    Rashmi Desai  ||  5-March-2024    ||   Upadted the outbound for Kit Item       ||
  *************************************************************************************************************************************/
 
 /**

@@ -75,7 +75,7 @@ define([
     pbdDistributionType
   ) {
     log.debug("Received Data", data);
-    if (data.orderId && data.status === "shipped") {
+    if (data.orderId && (data.status === "Shipped" || data.status === "shipped")) {
       // Create Saved Search to fetch Sales Order Internal Id from Document Number
       const SalesorderSearch = search.create({
         type: "salesorder",

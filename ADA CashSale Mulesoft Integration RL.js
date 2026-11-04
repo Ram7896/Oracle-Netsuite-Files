@@ -89,7 +89,8 @@ define([
   function CreateCashSale(data, configs) {
     log.debug("Body: ", JSON.stringify(data));
     // Setup values
-    const removeLines = [];      
+    const removeLines = [];   
+    const removeMarketingInsertLines = [];   
 
     log.audit("data.externalOrderId", data.externalOrderId);
     // Search to get Parent Sales Order
@@ -189,86 +190,100 @@ define([
               sublistId: "item",
               fieldId: "custcol_ada_external_line_id",
             });
+            const item = cashSaleRecord.getCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "item",
+            });
+            if(lineNumber)
+            {
+              log.debug("lineNumber Not Empty",lineNumber);
 
-            const index = data.itemDetails.findIndex(
-              (item) => item.externalLineId == lineNumber
-            );
-            if (index === -1) {
-              const item = cashSaleRecord.getCurrentSublistValue({
-                sublistId: "item",
-                fieldId: "item",
-              });
-              if (item != configs.tax_item) {
-                // Adding unwanted items remove line array
-                log.debug("Item added to Remove",item)
-                log.debug("configs.tax_item",configs.tax_item)
-                removeLines.push(i);
+              const index = data.itemDetails.findIndex(
+                (item) => item.externalLineId == lineNumber
+              );
+              if (index === -1) {
+                
+                if (item != configs.tax_item) {
+                  // Adding unwanted items remove line array
+                  log.debug("Item added to Remove",item)
+                  log.debug("configs.tax_item",configs.tax_item)
+                  removeLines.push(lineNumber);
+                }
+              } else {
+                // Setting sublist values and calculating total tax amount on Cash Sale
+                const quantity = data.itemDetails[index].quantity;
+                const taxOnLine = data.itemDetails[index].itemTaxAmount;
+                const rate = data.itemDetails[index].rate;
+                const amount = data.itemDetails[index].amount;
+                const unitDiscount = data.itemDetails[index].unitDiscount;
+                const unitPrice = data.itemDetails[index].unitPrice;
+                log.debug("Quantity: ", quantity);
+                cashSaleRecord.setCurrentSublistValue({
+                  sublistId: "item",
+                  fieldId: "quantity",
+                  value: quantity,
+                });
+                cashSaleRecord.setCurrentSublistValue({
+                  sublistId: "item",
+                  fieldId: "rate",
+                  value: rate,
+                });
+                cashSaleRecord.setCurrentSublistValue({
+                  sublistId: "item",
+                  fieldId: "amount",
+                  value: amount,
+                });
+                cashSaleRecord.setCurrentSublistValue({
+                    sublistId: "item",
+                    fieldId: "custcol_ada_tax_amount",
+                    value: taxOnLine,
+                  });
+                cashSaleRecord.setCurrentSublistValue({
+                  sublistId: "item",
+                  fieldId: "custcol_ada_unit_discount",
+                  value: unitDiscount,
+                });
+                cashSaleRecord.setCurrentSublistValue({
+                    sublistId: "item",
+                    fieldId: "custcol_ada_unit_price",
+                    value: unitPrice,
+                  });
+
+                cashSaleRecord.commitLine({
+                  sublistId: "item",
+                });
               }
-            } else {
-              // Setting sublist values and calculating total tax amount on Cash Sale
-              const quantity = data.itemDetails[index].quantity;
-              const taxOnLine = data.itemDetails[index].itemTaxAmount;
-              const rate = data.itemDetails[index].rate;
-              const amount = data.itemDetails[index].amount;
-              const unitDiscount = data.itemDetails[index].unitDiscount;
-              const unitPrice = data.itemDetails[index].unitPrice;
-              log.debug("Quantity: ", quantity);
-              cashSaleRecord.setCurrentSublistValue({
-                sublistId: "item",
-                fieldId: "quantity",
-                value: quantity,
-              });
-              cashSaleRecord.setCurrentSublistValue({
-                sublistId: "item",
-                fieldId: "rate",
-                value: rate,
-              });
-              cashSaleRecord.setCurrentSublistValue({
-                sublistId: "item",
-                fieldId: "amount",
-                value: amount,
-              });
-              cashSaleRecord.setCurrentSublistValue({
-                  sublistId: "item",
-                  fieldId: "custcol_ada_tax_amount",
-                  value: taxOnLine,
-                });
-              cashSaleRecord.setCurrentSublistValue({
-                sublistId: "item",
-                fieldId: "custcol_ada_unit_discount",
-                value: unitDiscount,
-              });
-              cashSaleRecord.setCurrentSublistValue({
-                  sublistId: "item",
-                  fieldId: "custcol_ada_unit_price",
-                  value: unitPrice,
-                });
-
-              cashSaleRecord.commitLine({
-                sublistId: "item",
-              });
-            }
+            }            
           }
            
           // Checking if Tax item is present, if not adding it with proper tax amount
           CheckAndAddTaxItem(cashSaleRecord, data.totalTax, configs);
           log.audit("Remove Lines: ", removeLines);
+          log.audit("Remove Marketing Insert Lines Items: ", removeMarketingInsertLines);
 
           // Removing all unwanted lines from Cash Sale
-          removeLines.forEach((line) =>
-            cashSaleRecord.removeLine({
-              sublistId: "item",
-              line: line,
-              ignoreRecalc: false,
-            })
-          );
+          removeLines.forEach((line)=>{
+              log.debug("External Line Id of Cash Sale to be Removed",line);
+              var lineIndex = cashSaleRecord.findSublistLineWithValue({
+                sublistId: "item",
+                fieldId: "custcol_ada_external_line_id",
+                value: line,
+              });
+              log.debug("Remove Line Line Index",lineIndex);
+              cashSaleRecord.removeLine({
+                sublistId: "item",
+                line: lineIndex,
+                ignoreRecalc: false,
+              })
 
+          });         
+          
           // Checking if cash sale has any line items except tax item
           let itemCount = cashSaleRecord.getLineCount({
             sublistId: "item",
           });
           log.audit("Items on Cash Sale Before Saving Record", itemCount);
-          if (itemCount < 2) {
+          /*if (itemCount < 2) {
             throw {
               message:
                 "Invalid or No items present on Cash Sale:\n" +
@@ -278,7 +293,7 @@ define([
           log.debug(
             "Items on received Before Saving Record",
             data.itemDetails.length
-          );
+          );*/
 
           if (itemCount <= data.itemDetails.length) {
             throw {
@@ -353,6 +368,11 @@ define([
           line: taxLine,
         });
       }
+      csObj.setCurrentSublistValue({
+        sublistId: "item",
+        fieldId: "rate",
+        value: taxAmount,
+      });
       csObj.setCurrentSublistValue({
         sublistId: "item",
         fieldId: "amount",
