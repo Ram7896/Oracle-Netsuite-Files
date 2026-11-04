@@ -101,9 +101,9 @@ define(['N/file', 'N/search', 'N/log', 'N/record', "N/runtime","./lib/Error Hand
                     "ExternalPaymentTransactionId": cells[3],
                     "TransactionDate": cells[4],
                     "PaymentOption": cells[5],
-                    "StripeReferenceNumber": cells[6].replace(/[^\d.]/g, ''),
-                    "Check": cells[7].replace(/[^\d.]/g, ''),
-                    "Last4DigitsCard": cells[8].replace(/[^\d.]/g, ''),
+                    "StripeReferenceNumber": cells[6],
+                    "Check": cells[7],
+                    "Last4DigitsCard": cells[8],
                     "CardType": cells[9],
                     "PaymentAmount": cells[10].replace(/[^\d.]/g, ''),
                 }
