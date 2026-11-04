@@ -1,0 +1,29 @@
+--Change to Default Sorting for SuiteQL Queries and Analytics Datasets:
+1.Transaction.tranDate as the default sort field when no sort order is specified. This change helps prevent performance issues.
+2.Previously, these queries and datasets used Transaction.tranDisplayName as the default sort field.
+3.This change may alter the order of returned results. Queries and datasets that specify a sort order are not affected. If result order is important, specify the required sort order.
+
+--Start Order Fulfillment Directly from Sales Order Record Lists:
+When you select the fulfillment action, NetSuite opens the appropriate fulfillment flow for the selected sales order and uses existing salesorder information where applicable. 
+This helps users move from reviewing sales orders to fulfilling them with fewer navigation steps, especially when working from filtered or saved sales order lists.
+. For example, if the Advanced Shipping feature is not enabled, fulfilling a sales order can also bill the sales order by opening an invoice or cash sale flow. This change does not impact existing 
+workflows, customizations, or scripts.
+--permissions required for sales order fulfillment, including the Fulfill Orders permission with Edit access, the Sales Order permission with View access, and the Item Fulfillment permission with 
+Create access. Depending on the fulfillment flow, users may also need Create access for invoices or cash sales.
+
+--Passwordless Authentication with Passkeys
+July 13, 2026, all NetSuite users can set up passwordless authentication with a passkey.
+you set up a passkey, you can use it the next time you log in your NetSuite account, instead of using a password.
+Passkeys are available only for logging in to the account. You still need a password for other actions inside NetSuite.
+
+--Passkey as a 2FA Authenticator
+As of NetSuite 2026.2, users who set up a passkey that complies with FIDO2 specification can use it as a second authentication factor during login.
+Administrators can disable this feature, which will require the users with FIDO2 compliant passkeys to use an authenticator app for 2FA.
+
+End of Support for NLAuth Authentication for RESTlets and Unique Use Cases in 2027.1
+Previously, NLAuth served as a RESTlet authentication method before the introduction of the Token-based Authentication and OAuth 2.0 features.2027.1 NLAuth is stop working so better to switch oauth 2.0
+
+--End of Support for New Integrations Using the Tokenbased Authentication (TBA) feature in NetSuite 2027.1
+In 2027.1 we won't able to create the tba authetication and new integrations
+
+

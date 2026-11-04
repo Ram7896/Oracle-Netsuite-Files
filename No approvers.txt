@@ -1,0 +1,38 @@
+inactive     Program Externalid  approver records
+no                0201050000         no   1
+yes               9850200002         no    3
+yes               9850300000         no    3
+yes               9850300000         no    3
+yes               9850350000         no    2
+yes               9850350001         no    2
+yes               9850350002         no    2
+yes               9850350003         no    2
+yes               9850350004         no    2
+yes               9850350005         no    2
+yes               9850350006         no    2
+yes               9850350007         no    2
+yes               9850350008         no    2
+yes               9850350009         no    3
+no                9850350009         no    2
+yes               9850350010         no    2
+yes               9850350011         no    2
+yes               9850350012         no    2
+yes               9850350013         no    2
+yes               9850350014         no    2
+yes               9850350015         no    2
+yes               9850350016         no    2
+yes               9850350017         no    2
+No                    ADM428         no    2
+No                    BPP100         no    1-- data also wrong contract laison
+No                    BPP102         no    1-- data also wrong contract laison
+No                    BPP104         no    1-- data also wrong contract laison
+No                    BPP264         no    1
+No                    BPS100         no    1-- data also wrong contract laison
+No                    BPS102         no    1-- data also wrong contract laison
+No                    BPS104         no    1 (user only 8 no department reviewer)
+No                    BPS117         no    1 (user only 8 no department reviewer)
+No                    BPS208         no    1
+No                    PRD100        no    1(user only 8 no department reviewer)
+No                    PRD104        no    1(user only 8 no department reviewer)
+No                    PRD208        no    1(user only 8 no department reviewer)
+no                SSA264         no   1
