@@ -1,0 +1,39 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ */
+define(['N/record'], function (record) {
+    function beforeSubmit(context) {
+        if (context.type === context.UserEventType.CREATE || context.type === context.UserEventType.EDIT) {
+            var itemReceipt = context.newRecord;
+            log.debug("Item Record:", itemReceipt);
+            var itemReceipt2 = itemReceipt.id;
+            log.debug("Item Receipt id:", itemReceipt2);
+
+            var createdFromId = itemReceipt.getValue('createdfrom');
+            log.debug("Created from", createdFromId);
+
+            if (createdFromId) {
+                try {
+                    var vraRecord = record.load({
+                        type: 'returnauthorization',
+                        id: createdFromId
+                    });
+
+                    vraRecord.setValue({
+                        fieldId: 'custbody_wf_app_done',
+                        value: true
+                    });
+
+                    vraRecord.save();
+                } catch (e) {
+                    log.error('Error updating Vendor Return Authorization', e);
+                }
+            }
+        }
+    }
+
+    return {
+        beforeSubmit: beforeSubmit
+    };
+});

@@ -1,0 +1,57 @@
+{
+    "messageHeader": {
+      "correlationId": "2022-02-28T07:37:00.011Z",
+      "action": "FontevaCreateSalesOrder",
+      "commandName": "inbound"
+    },
+    "messageContent": {
+      "amsCustomerId": "00001484",
+      "firstName": "John",
+      "lastName": "Smith",
+      "userEmail": "ada2@test.com",
+      "externalOrderId": "123413-124322-314222-454233-000093",
+      "orderId": "093",
+      "orderDate": "03/06/2024",
+      "poNumber": "TestPO12345",
+      "memo": "Test Memo",
+      "employeeId": "1234567892",//Created From: Salesforce 18C ID what this means
+      "orderSource": "Web",//Ask ADA - either leave blank or hardcode web
+      "shippingMethod": 7126,//// do we need to add this?
+      "shippingCost": 100,
+      "shippingTaxAmount": 60,///This is included in the order header tax total.  Is this value accessible in Salesforce to be passed in the integration?
+      "terms":"Due on receipt",//hardcode in script
+      "billToAttention": "John Smith",
+      "billAddress1": "47 W 13th St",
+      "billCity": "New York",
+      "billState": "NY",
+      "billZip": "10011",
+      "billCountry": "US",
+      "shipToAttention": "John Smith",
+      "shipAddress1": "47 W Street",
+      "shipCity": "New York",
+      "shipState": "NY",
+      "shipZip": "10011",
+      "shipCountry": "US",
+      "items":
+      [
+        {
+          "externalLineId": "c1f66cb0-f612-11ed-91fd-00059a3c7a00",
+          "name": "J58122BT",
+          "quantity": 1,
+          "unitPrice": 100,
+          "rate": 80,//Confirm whether there is a Salesforce Rate field that is relevant or whether we should calculate it by dividing Amount by Quantity in the integration.
+          "amount": 80,
+          "isTax": "False"
+        },
+        {
+            "externalLineId": "c1f66cb0-f612-11ed-91fd-00059a3c7a01",
+            "name": "J58122BT",
+            "quantity": 1,
+            "unitPrice": 100,
+            "rate": 80,//Confirm whether there is a Salesforce Rate field that is relevant or whether we should calculate it by dividing Amount by Quantity in the integration.
+            "amount": 80,
+            "isTax": "True"
+          }
+        ]
+    }
+}

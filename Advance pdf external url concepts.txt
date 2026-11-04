@@ -1,0 +1,203 @@
+<?xml version="1.0"?><!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+<head>
+	<link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}" src-bold="${nsfont.NotoSans_Bold}" src-italic="${nsfont.NotoSans_Italic}" src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
+	<#if .locale == "zh_CN">
+		<link name="NotoSansCJKsc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKsc_Regular}" src-bold="${nsfont.NotoSansCJKsc_Bold}" bytes="2" />
+	<#elseif .locale == "zh_TW">
+		<link name="NotoSansCJKtc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKtc_Regular}" src-bold="${nsfont.NotoSansCJKtc_Bold}" bytes="2" />
+	<#elseif .locale == "ja_JP">
+		<link name="NotoSansCJKjp" type="font" subtype="opentype" src="${nsfont.NotoSansCJKjp_Regular}" src-bold="${nsfont.NotoSansCJKjp_Bold}" bytes="2" />
+	<#elseif .locale == "ko_KR">
+		<link name="NotoSansCJKkr" type="font" subtype="opentype" src="${nsfont.NotoSansCJKkr_Regular}" src-bold="${nsfont.NotoSansCJKkr_Bold}" bytes="2" />
+	<#elseif .locale == "th_TH">
+		<link name="NotoSansThai" type="font" subtype="opentype" src="${nsfont.NotoSansThai_Regular}" src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
+	</#if>
+    <macrolist>
+        <macro id="nlheader">
+            
+<p style="font-size: 16pt;" align="center"><strong>Packing Slip #${record.tranid}</strong></p>
+&gt;
+<table class="header" style="width: 100%;"><tr>
+<td rowspan="3" align="left"><#if companyInformation.logoUrl?length != 0><@filecabinet nstype="image" style="font-size: 6pt; float: left; margin: 3px;" src="${companyInformation.logoUrl}" width="275" height="47" /> </#if></td>
+<td rowspan="4" align="right"><span class="nameandaddress" style="font-size: 10pt;">${companyInformation.addressText}</span></td>
+</tr></table>
+
+        </macro>
+        <macro id="nlfooter">
+            <hr />
+<table class="footer" style="width: 100%;"><tr>
+<td colspan="4" align="left"><barcode codetype="code128" showtext="true" value="${record.tranid}"/></td>
+<!-- <td colspan="10" align="center"><p>To pay with check, please remit to:<br/>American Dental Association <br/>28094 Network Place <br/>Chicago IL 60673-1280 <br/>Reference Packing Slip #${record.tranid} <br/></p></td> -->
+<td colspan="3" align="right"><pagenumber/> of <totalpages/></td>
+</tr></table>
+
+        </macro>
+    </macrolist>
+    <style type="text/css">* {
+		<#if .locale == "zh_CN">
+			font-family: NotoSans, NotoSansCJKsc, sans-serif;
+		<#elseif .locale == "zh_TW">
+			font-family: NotoSans, NotoSansCJKtc, sans-serif;
+		<#elseif .locale == "ja_JP">
+			font-family: NotoSans, NotoSansCJKjp, sans-serif;
+		<#elseif .locale == "ko_KR">
+			font-family: NotoSans, NotoSansCJKkr, sans-serif;
+		<#elseif .locale == "th_TH">
+			font-family: NotoSans, NotoSansThai, sans-serif;
+		<#else>
+			font-family: NotoSans, sans-serif;
+		</#if>
+		}
+        table {
+            font-size: 9pt;
+            table-layout: fixed;
+        }
+        th {
+            font-weight: bold;
+            font-size: 8pt;
+            vertical-align: middle;
+            padding: 5px 6px 3px;
+            background-color: #e3e3e3;
+            color: #333333;
+        }
+        td {
+            padding: 4px 6px;
+        } 
+		td p { align:left }
+        b {
+            font-weight: bold;
+            color: #333333;
+        }
+        table.header td {
+            padding: 0;
+            font-size: 10pt;
+        }
+        table.footer td {
+            padding: 0;
+            font-size: 9pt;
+        }
+        table.itemtable th {
+            padding-bottom: 10px;
+            padding-top: 10px; 
+        } 
+        table.body td {
+            padding-top: 2px;
+        }
+        table.total {
+            page-break-inside: avoid;
+        }
+        tr.totalrow {
+            background-color: #e3e3e3;
+            line-height: 200%;
+        }
+        <!-- td.totalboxtop {
+            font-size: 12pt;
+            background-color: #e3e3e3;
+        } -->
+        td.addressheader {
+            font-size: 8pt;
+            padding-top: 6px;
+            padding-bottom: 2px;
+        }
+        td.address {
+            padding-top: 0;
+        }
+        <!-- td.totalboxmid {
+            font-size: 12pt;
+            padding-top: 10px; 
+            background-color: #e3e3e3;
+        } -->
+        td.totalboxbot {
+            background-color: #e3e3e3;
+            font-weight: bold;
+        }
+        title {
+            font-size: 26pt;
+        }
+        span.number {
+            font-size: 16pt;
+        }
+        span.itemname {
+            font-weight: bold;
+            line-height: 150%;
+        }
+        hr {
+            width: 100%;
+            color: #d3d3d3;
+            background-color: #d3d3d3;
+            height: 1px;
+        }
+</style>
+</head>
+<body header="nlheader" header-height="15%" footer="nlfooter" footer-height="40pt" padding="0.5in 0.5in 0.5in 0.5in" size="Letter">
+    <#assign shipAdd=record.shipaddress/>
+<table style="width: 100%; margin-top: 15px;"><tr>
+<td class="addressheader" colspan="6"><strong>Ship To :</strong></td>
+</tr>
+<tr><#if !record.shippingaddress?contains("United States") >
+<td class="address" colspan="6" rowspan="2">${shipAdd?replace("United States","")}</td>
+<#else>
+<td class="address" colspan="6" rowspan="2">${record.shipaddress}</td>
+</#if></tr></table>
+<table style="width: 100%; margin-top: 15px;"><tr>
+<th colspan="3">Order #</th>
+<th colspan="3">PO #</th>
+<th colspan="3">Ship Date</th>
+<th colspan="3">Shipping Method</th>
+<th colspan="3">Ship To Address</th>
+<!-- 	<#if record.shipmethod?has_content>  --> <!-- </#if>   --> <!-- <th colspan="3">${record.shipdate@label}</th>  --></tr>
+<tr>
+<td style="padding-top: 4px;" colspan="3">${record.createdfrom.tranid}</td>
+<td style="padding-top: 4px;" colspan="3">${record.createdfrom.otherrefnum}</td>
+<td style="padding-top: 4px;" colspan="3">${record.trandate}</td>
+<td style="padding-top: 4px;" colspan="3">${record.shipmethod}</td>
+<td style="padding-top: 4px;" colspan="3">${record.shipaddress}</td>
+<!--	<#if record.shipmethod?has_content>    --> <!--    </#if>    --> <!-- <td colspan="3" style="padding-top: 4px;">${record.shipdate}</td>  --></tr></table>
+<#if record.item?has_content>
+<table style="width: 100%; margin-top: 20px;"><!-- start items --><#list record.item as item><#if item_index==0>
+<thead>
+<tr>
+<th style="padding: 10px 6px;" colspan="3" align="left">Item</th>
+<th style="padding: 10px 6px;" colspan="10">Description</th>
+<th style="padding: 10px 6px;" colspan="4" align="left">Shipped Quantity</th>
+<th style="padding: 10px 6px;" colspan="4" align="left">Tracking Number</th>
+</tr>
+</thead>
+</#if><tr>
+<td colspan="3" align="left">${item.itemname}</td>
+<td colspan="10"><span style="font-weight: bold; line-height: 150%; color: #333333;">${item.description}</span></td>
+<td colspan="4" align="left">${item.quantity}</td>
+<td colspan="4" align="left"><#if item.custcol_ada_distribution_type?contains("SmartPractice")><a href="https://www.fedex.com/fedextrack/?trknbr=${item.custcol_ada_tracking_number}trkqual=12026~${item.custcol_ada_tracking_number}~FDEG&amp;" target="_blank" rel="noopener">${item.custcol_ada_tracking_number}</a>
+<#elseif item.custcol_ada_distribution_type != "SmartPractice" && record.shipmethod != "USPS"><a href="https://wwwapps.ups.com/tracking/tracking.cgi?tracknum=${item.custcol_ada_tracking_number}&amp;" target="_blank" rel="noopener">${item.custcol_ada_tracking_number}</a>
+<#elseif item.custcol_ada_distribution_type != "SmartPractice" && record.shipmethod =="USPS"><a href="https://tools.usps.com/go/TrackConfirmAction.action?tRef=fullpagetLc=1text28777=tLabels=${item.custcol_ada_tracking_number}&amp;" target="_blank" rel="noopener">${item.custcol_ada_tracking_number}</a>
+</#if></td> 
+</tr>
+</#list><!-- end items --></table>
+<hr /></#if> <!-- <table align="left" style="width: 100%; margin-top: 10px;">
+    <tr>
+        <td colspan="3" align="left"><b>To pay with check, please remit to:</b><br></br><br></br>American Dental Association,<br></br>28094 Network Place,<br></br>Chicago, IL 60673-1280 and<br></br>reference id #${record.tranid} number. </td>
+    </tr>
+    </table> --> <!-- <table class="total" align="right" style="width: 100%; margin-top: 10px;">
+        <tr>                            
+        <! <td colspan="6" align="left"><b>To pay with check, please remit to:</b><br></br><br></br>American Dental Association, 28094 Network Place, Chicago, IL 60673-1280 and reference id #${record.tranid} number. </td> --> <!-- <td colspan="4">&nbsp;</td>
+        <td align="right"><b>${record.subtotal@label}</b></td>
+        <td align="center">${record.subtotal}</td>
+        </tr>
+    <tr>
+	<td colspan="4">&nbsp;</td>
+	<td align="right"><b>Shipping and</b><br/> <b>Handling</b> </td>
+	<td align="center">${record.shippingcost}</td>
+	</tr>
+	<tr>
+	<td colspan="4">&nbsp;</td>
+	<td align="right" style="font-weight: bold; color: #333333;">Tax</td>
+	<td align="center">${record.taxtotal}</td>
+	</tr>
+	<tr style="background-color: #e3e3e3; line-height: 200%;">
+	<td background-color="#ffffff" colspan="4">&nbsp;</td>
+	<td align="right" style="font-weight: bold; color: #333333;">${record.total@label}</td>
+	<td align="center">${record.total}</td>
+	</tr></table> -->
+</body>
+</pdf>
