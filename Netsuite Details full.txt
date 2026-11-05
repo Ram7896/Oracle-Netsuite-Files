@@ -1,0 +1,47 @@
+netsuite account ticket rasing extension
+https://nlcorp.extforms.netsuite.com/app/site/crm/externalcasepage.nl/compid.NLCORP/.f?formid=9604&h=AAFdikaIsKzWgOEgZeVBaV_CWvhFVzUNdF3cNNDx2iD_LLUmyhY&redirect_count=1&did_javascript_redirect=T
+
+
+New netsuite account request
+https://nlcorp.extforms.netsuite.com/app/site/crm/externalcustrecordpage.nl/compid.NLCORP/.f?formid=8256&h=AAFdikaIIsNiQCQ-XSKownV3tsVH3NXwAG7sgaa4XMFORgu3an8&redirect_count=1&did_javascript_redirect=T
+
+https://www.promptingguide.ai/research/llm-reasoning
+
+netsuite internalids link:https://7179138-sb3.app.netsuite.com/help/helpcenter/en_US/srbrowser/Browser2022_2/script/record/account.html
+
+https://rossum.university/docs/learn/netsuite/postman
+NetSuite: Postman collection | Rossum.ai University
+It might be useful to call NetSuite using Postman for testing purposes. Follow the guide on this page to be able to send requests directly to NetSuite.
+ 
+https://www.zuar.com/blog/netsuite-api-exploring-soap/#second-soap-request
+
+
+Oauth 2.0:
+ 
+ 
+To establish the key and certificate we need to do this process:
+set OPENSSL_CONF=C:\Program Files\OpenSSL-Win64\bin\openssl.cfg
+ 
+openssl req -x509 -newkey rsa:3072 -keyout sw2021d_key.pem -out sw2021d_cert.pem -days 365 -nodes
+ 
+Link:
+Win32/Win64 OpenSSL Installer for Windows - Shining Light Productions
+ 
+ 
+Win64 OpenSSL v3.5.1
+EXE |MSI	281MB Installer
+ 
+ 
+Authorization Grant:
+https://suiteanswers.custhelp.com/app/answers/detail/a_id/1020926/loc/en_US
+ 
+Machine to Machine SuiteAnswer Id:
+1013484
+Win32/Win64 OpenSSL Installer for Windows - Shining Light Productions
+ https://slproweb.com/products/Win32OpenSSL.html
+https://slproweb.com/download/Win64OpenSSL-3_5_1.exe
+
+OAuth 2.0 Setup by using authorization code grant:
+https://suiteanswers.custhelp.com/app/answers/detail/a_id/1020926/loc/en_US
+Download setup postman link:https://td3056891.app.netsuite.com/app/external/integration/integrationDownloadPage.nl
+Callback URL - The client application callback URL to redirect to after auth. This must be registered with the API provider. If not provided, Postman will use a default empty URL and try to extract the code or access token from it. If this doesn’t work for your API, you can use the following URL:Callback :https://oauth.pstmn.io/v1/browser-callback
